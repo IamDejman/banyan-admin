@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import type { UsersReport } from "@/lib/types/report";
+import type { DateRange } from "react-day-picker";
 
 const mockUsersReport: UsersReport = {
   totalUsers: 1247,
@@ -52,7 +53,7 @@ type TimeSeriesDataPoint = {
 export default function UsersReportsClient() {
   const [report] = useState<UsersReport>(mockUsersReport);
   const [period, setPeriod] = useState<string>("weekly");
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(new Date().getFullYear(), 0, 1),
     to: new Date(),
   });
@@ -115,9 +116,8 @@ export default function UsersReportsClient() {
           </SelectContent>
         </Select>
         <DateRangePicker
-          value={dateRange}
-          onChange={setDateRange}
-          placeholder="Select date range"
+          date={dateRange}
+          onDateChange={setDateRange}
         />
       </div>
 

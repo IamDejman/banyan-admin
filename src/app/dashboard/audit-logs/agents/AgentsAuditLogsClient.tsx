@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import type { AuditLog, AuditLogAction, AuditLogSeverity } from "@/lib/types/audit";
+import type { DateRange } from "react-day-picker";
 
 const mockAgentAuditLogs: AuditLog[] = [
   {
@@ -112,7 +113,7 @@ export default function AgentsAuditLogsClient() {
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("all");
   const [severityFilter, setSeverityFilter] = useState<string>("all");
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     to: new Date(),
   });
@@ -194,9 +195,8 @@ export default function AgentsAuditLogsClient() {
           </SelectContent>
         </Select>
         <DateRangePicker
-          value={dateRange}
-          onChange={setDateRange}
-          placeholder="Select date range"
+          date={dateRange}
+          onDateChange={setDateRange}
         />
       </div>
 

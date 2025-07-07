@@ -134,8 +134,8 @@ export default function InsurersClient() {
               <>
                 <h3 className="text-lg font-semibold mb-4">Add Insurer</h3>
                 <InsurerForm
-                  initialData={{}}
-                  onSave={handleAdd}
+                  insurer={undefined}
+                  onSubmit={handleAdd}
                   onCancel={() => setModal(null)}
                 />
               </>
@@ -144,13 +144,13 @@ export default function InsurersClient() {
               <>
                 <h3 className="text-lg font-semibold mb-4">Edit Insurer</h3>
                 <InsurerForm
-                  initialData={modal.insurer}
-                  onSave={handleEdit}
+                  insurer={modal.insurer ?? undefined}
+                  onSubmit={handleEdit}
                   onCancel={() => setModal(null)}
                 />
               </>
             )}
-            {modal.mode === "view" && (
+            {modal.mode === "view" && modal.insurer && (
               <>
                 <h3 className="text-lg font-semibold mb-4">Insurer Details</h3>
                 <div className="space-y-2">

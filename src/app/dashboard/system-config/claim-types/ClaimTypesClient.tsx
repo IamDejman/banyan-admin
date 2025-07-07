@@ -87,7 +87,7 @@ export default function ClaimTypesClient() {
               ✕
             </Button>
             <h3 className="text-lg font-semibold mb-4">{modal.mode === "add" ? "Add Claim Type" : "Edit Claim Type"}</h3>
-            <form onSubmit={e => { e.preventDefault(); modal.mode === "add" ? handleAdd() : handleEdit(); }} className="space-y-4">
+            <form onSubmit={e => { e.preventDefault(); if (modal.mode === "add") { handleAdd(); } else { handleEdit(); } }} className="space-y-4">
               <Input value={name} onChange={e => setName(e.target.value)} placeholder="Claim type name" required />
               {error && <div className="text-red-600 text-sm">{error}</div>}
               <div className="flex gap-2 justify-end">

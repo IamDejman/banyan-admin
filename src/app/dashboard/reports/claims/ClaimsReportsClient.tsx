@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import type { ClaimsReport } from "@/lib/types/report";
+import type { DateRange } from "react-day-picker";
 
 const mockClaimsReport: ClaimsReport = {
   totalClaims: 1247,
@@ -58,7 +59,7 @@ type ChartDataPoint = {
 export default function ClaimsReportsClient() {
   const [report] = useState<ClaimsReport>(mockClaimsReport);
   const [period, setPeriod] = useState<string>("monthly");
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(new Date().getFullYear(), 0, 1),
     to: new Date(),
   });
@@ -115,9 +116,8 @@ export default function ClaimsReportsClient() {
           </SelectContent>
         </Select>
         <DateRangePicker
-          value={dateRange}
-          onChange={setDateRange}
-          placeholder="Select date range"
+          date={dateRange}
+          onDateChange={setDateRange}
         />
       </div>
 

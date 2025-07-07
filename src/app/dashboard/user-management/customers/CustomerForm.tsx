@@ -78,6 +78,7 @@ export default function CustomerForm({ initialData, onSave, onCancel }: Customer
         language,
       },
       role: "customer",
+      claims: [],
     });
   }
 

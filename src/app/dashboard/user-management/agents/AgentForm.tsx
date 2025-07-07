@@ -71,6 +71,7 @@ export default function AgentForm({ initialData, onSave, onCancel, specializatio
       specializations: selectedSpecializations,
       performanceRating: performanceRating ? parseFloat(performanceRating) : undefined,
       role: "agent",
+      assignedClaims: [],
     });
   }
 

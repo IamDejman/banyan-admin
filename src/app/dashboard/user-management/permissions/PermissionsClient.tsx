@@ -9,110 +9,106 @@ import type { Permission, Role } from "@/lib/types/permission";
 const mockPermissions: Permission[] = [
   {
     id: "1",
-    name: "claims_view",
-    displayName: "View Claims",
+    name: "View Claims",
     description: "Can view claim details and status",
-    category: "claims",
     resource: "claims",
     action: "read",
+    category: "claims",
   },
   {
     id: "2",
-    name: "claims_manage",
-    displayName: "Manage Claims",
-    description: "Can create, edit, and delete claims",
-    category: "claims",
+    name: "Manage Claims",
+    description: "Can create, update, and delete claims",
     resource: "claims",
     action: "write",
+    category: "claims",
   },
   {
     id: "3",
-    name: "claims_approve",
-    displayName: "Approve Claims",
+    name: "Approve Claims",
     description: "Can approve or reject claims",
-    category: "claims",
     resource: "claims",
     action: "approve",
+    category: "claims",
   },
   {
     id: "4",
-    name: "users_view",
-    displayName: "View Users",
+    name: "View Users",
     description: "Can view user profiles and information",
-    category: "users",
     resource: "users",
     action: "read",
+    category: "users",
   },
   {
     id: "5",
-    name: "users_manage",
-    displayName: "Manage Users",
-    description: "Can create, edit, and delete users",
-    category: "users",
+    name: "Manage Users",
+    description: "Can create, update, and delete users",
     resource: "users",
     action: "write",
+    category: "users",
   },
   {
     id: "6",
-    name: "reports_view",
-    displayName: "View Reports",
+    name: "View Reports",
     description: "Can view system reports and analytics",
-    category: "reports",
     resource: "reports",
     action: "read",
+    category: "reports",
   },
   {
     id: "7",
-    name: "reports_generate",
-    displayName: "Generate Reports",
+    name: "Generate Reports",
     description: "Can generate and export reports",
-    category: "reports",
     resource: "reports",
     action: "write",
+    category: "reports",
   },
   {
     id: "8",
-    name: "system_config",
-    displayName: "System Configuration",
+    name: "System Configuration",
     description: "Can modify system settings and configuration",
-    category: "system",
     resource: "system",
     action: "write",
+    category: "system",
   },
 ];
 
 const mockRoles: Role[] = [
   {
     id: "1",
-    name: "super_admin",
-    displayName: "Super Administrator",
+    name: "super-admin",
     description: "Full system access with all permissions",
-    permissions: mockPermissions.map(p => p.id),
-    userCount: 2,
+    permissions: ["1", "2", "3", "4", "5", "6", "7", "8"],
+    isDefault: false,
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
   },
   {
     id: "2",
     name: "admin",
-    displayName: "Administrator",
     description: "Administrative access with most permissions",
-    permissions: ["claims_view", "claims_manage", "claims_approve", "users_view", "reports_view", "reports_generate"],
-    userCount: 5,
+    permissions: ["1", "2", "3", "4", "5", "6", "7"],
+    isDefault: false,
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
   },
   {
     id: "3",
     name: "agent",
-    displayName: "Agent",
-    description: "Standard agent access for claim processing",
-    permissions: ["claims_view", "claims_manage", "reports_view"],
-    userCount: 15,
+    description: "Agent access for claim processing",
+    permissions: ["1", "2", "3"],
+    isDefault: true,
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
   },
   {
     id: "4",
     name: "viewer",
-    displayName: "Viewer",
     description: "Read-only access to view information",
-    permissions: ["claims_view", "users_view", "reports_view"],
-    userCount: 8,
+    permissions: ["1", "4", "6"],
+    isDefault: false,
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
   },
 ];
 
@@ -121,11 +117,10 @@ export default function PermissionsClient() {
   const [roles, setRoles] = useState<Role[]>(mockRoles);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [modal, setModal] = useState<{ mode: "add" | "edit" | "view"; role: Role | null } | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{ name: string; description: string; permissions: string[] }>({
     name: "",
-    displayName: "",
     description: "",
-    permissions: [] as string[],
+    permissions: [],
   });
 
   const filtered = permissions.filter((permission) => {
@@ -133,21 +128,23 @@ export default function PermissionsClient() {
   });
 
   function handleAddRole() {
-    if (!formData.name || !formData.displayName || !formData.description) {
+    if (!formData.name || !formData.description) {
       return;
     }
     const newRole: Role = {
       id: (Math.random() * 100000).toFixed(0),
       ...formData,
-      userCount: 0,
+      isDefault: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     setRoles(prev => [newRole, ...prev]);
-    setFormData({ name: "", displayName: "", description: "", permissions: [] });
+    setFormData({ name: "", description: "", permissions: [] });
     setModal(null);
   }
 
   function handleEditRole() {
-    if (!modal?.role || !formData.name || !formData.displayName || !formData.description) {
+    if (!modal?.role || !formData.name || !formData.description) {
       return;
     }
     setRoles(prev => prev.map(role => 
@@ -155,7 +152,7 @@ export default function PermissionsClient() {
         ? { ...role, ...formData }
         : role
     ));
-    setFormData({ name: "", displayName: "", description: "", permissions: [] });
+    setFormData({ name: "", description: "", permissions: [] });
     setModal(null);
   }
 
@@ -186,7 +183,7 @@ export default function PermissionsClient() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Permissions & Roles</h2>
-        <Button onClick={() => { setModal({ mode: "add", role: null }); setFormData({ name: "", displayName: "", description: "", permissions: [] }); }}>
+        <Button onClick={() => { setModal({ mode: "add", role: null }); setFormData({ name: "", description: "", permissions: [] }); }}>
           Add Role
         </Button>
       </div>
@@ -213,7 +210,7 @@ export default function PermissionsClient() {
             {filtered.map((permission) => (
               <div key={permission.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
-                  <div className="font-medium">{permission.displayName}</div>
+                  <div className="font-medium">{permission.name}</div>
                   <div className="text-sm text-muted-foreground">{permission.description}</div>
                   <div className="flex gap-2 mt-1">
                     <Badge variant={getCategoryColor(permission.category)}>
@@ -237,17 +234,17 @@ export default function PermissionsClient() {
               <div key={role.id} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <div className="font-medium">{role.displayName}</div>
+                    <div className="font-medium">{role.name}</div>
                     <div className="text-sm text-muted-foreground">{role.description}</div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {role.userCount} users assigned
+                      Role created {new Date(role.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => { setModal({ mode: "view", role }); setFormData({ name: role.name, displayName: role.displayName, description: role.description, permissions: role.permissions }); }}>
+                    <Button size="sm" variant="outline" onClick={() => { setModal({ mode: "view", role }); setFormData({ name: role.name, description: role.description, permissions: role.permissions }); }}>
                       View
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => { setModal({ mode: "edit", role }); setFormData({ name: role.name, displayName: role.displayName, description: role.description, permissions: role.permissions }); }}>
+                    <Button size="sm" variant="outline" onClick={() => { setModal({ mode: "edit", role }); setFormData({ name: role.name, description: role.description, permissions: role.permissions }); }}>
                       Edit
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => handleDeleteRole(role.id)}>
@@ -260,7 +257,7 @@ export default function PermissionsClient() {
                     const permission = permissions.find(p => p.id === permissionId);
                     return permission ? (
                       <Badge key={permissionId} variant="outline" className="text-xs">
-                        {permission.displayName}
+                        {permission.name}
                       </Badge>
                     ) : null;
                   })}
@@ -292,7 +289,7 @@ export default function PermissionsClient() {
             <h3 className="text-lg font-semibold mb-4">
               {modal.mode === "add" ? "Add Role" : modal.mode === "edit" ? "Edit Role" : "Role Details"}
             </h3>
-            <form onSubmit={e => { e.preventDefault(); modal.mode === "add" ? handleAddRole() : handleEditRole(); }} className="space-y-4">
+            <form onSubmit={e => { e.preventDefault(); if (modal.mode === "add") { handleAddRole(); } else { handleEditRole(); } }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Name</label>
                 <input
@@ -300,18 +297,6 @@ export default function PermissionsClient() {
                   value={formData.name}
                   onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Role name (e.g., admin)"
-                  disabled={modal.mode === "view"}
-                  className="w-full px-3 py-2 border rounded-md"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Display Name</label>
-                <input
-                  type="text"
-                  value={formData.displayName}
-                  onChange={e => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
-                  placeholder="Display name (e.g., Administrator)"
                   disabled={modal.mode === "view"}
                   className="w-full px-3 py-2 border rounded-md"
                   required
@@ -347,7 +332,7 @@ export default function PermissionsClient() {
                         disabled={modal.mode === "view"}
                         className="rounded"
                       />
-                      <span className="text-sm">{permission.displayName}</span>
+                      <span className="text-sm">{permission.name}</span>
                     </label>
                   ))}
                 </div>
