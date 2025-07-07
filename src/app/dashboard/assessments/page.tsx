@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Search, Calculator, MessageSquare, AlertCircle } from 'lucide-react';
+import { FileText, Search, Calculator, MessageSquare } from 'lucide-react';
 
 // Mock data for information requests
 const informationRequests = [

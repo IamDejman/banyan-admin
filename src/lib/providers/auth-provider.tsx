@@ -15,7 +15,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => void;
+  login: () => void;
   logout: () => void;
 }
 
@@ -31,10 +31,9 @@ const mockUser: User = {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const login = (email: string, password: string) => {
+  const login = () => {
     // For demo purposes, just set the mock user
     setUser(mockUser);
     router.push('/dashboard');
@@ -46,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading: false, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

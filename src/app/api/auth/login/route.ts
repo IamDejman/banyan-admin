@@ -44,7 +44,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
+    const userWithoutPassword = { ...user, password: undefined };
+    delete userWithoutPassword.password;
 
     // In a real application, you would generate a JWT token here
     const token = 'mock-jwt-token';

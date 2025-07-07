@@ -8,15 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
 import {
   ArrowLeft,
   CheckCircle2,
   XCircle,
   AlertCircle,
-  FileText,
   Clock,
-  User,
   Filter,
 } from 'lucide-react';
 
@@ -80,7 +77,7 @@ export default function BulkResponsePage() {
   const router = useRouter();
   const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState('');
-  const [responseType, setResponseType] = useState('');
+  const [responseType] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [responseNotes, setResponseNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -117,11 +114,11 @@ export default function BulkResponsePage() {
     router.push('/dashboard/settlements/responses');
   };
 
-  const handleResponse = async (type) => {
+  const handleResponse = async (type: string) => {
     setIsLoading(type);
     try {
-      // ... existing logic for handling response ...
-      await sendResponse(type);
+      // Simulate response sending (replace with real API call)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } finally {
       setIsLoading('');
     }

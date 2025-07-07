@@ -9,8 +9,9 @@ import {
   getFilteredRowModel,
   ColumnDef,
   flexRender,
+  SortingState,
 } from '@tanstack/react-table';
-import { Claim, ClaimStatus, ClaimType } from '@/lib/types/claims';
+import { Claim, ClaimStatus } from '@/lib/types/claims';
 import { useClaimsStore } from '@/lib/store/claims-store';
 import { format } from 'date-fns';
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
@@ -36,10 +37,6 @@ const columns: ColumnDef<Claim>[] = [
   {
     accessorKey: 'clientName',
     header: 'Client Name',
-  },
-  {
-    accessorKey: 'claimType',
-    header: 'Type',
   },
   {
     accessorKey: 'submissionDate',
@@ -104,7 +101,7 @@ const columns: ColumnDef<Claim>[] = [
 
 export function ClaimsPendingTable() {
   const { claims, isLoading } = useClaimsStore();
-  const [sorting, setSorting] = useState([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
 
   const table = useReactTable({

@@ -7,13 +7,8 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   FileText,
-  Users,
   Settings,
-  Bell,
-  BarChart,
-  Activity,
   CheckSquare,
-  AlertCircle,
   Shield,
   FileCheck,
 } from 'lucide-react';
@@ -45,48 +40,8 @@ const navigation = [
     icon: Shield,
   },
   {
-    name: 'Team',
-    href: '/dashboard/agents',
-    icon: Users,
-  },
-  {
-    name: 'Analytics',
-    href: '/dashboard/analytics',
-    icon: BarChart,
-  },
-  {
-    name: 'Performance',
-    href: '/dashboard/performance',
-    icon: Activity,
-  },
-  {
-    name: 'Validation',
-    href: '/dashboard/validation',
-    icon: AlertCircle,
-  },
-  {
-    name: 'Notifications',
-    href: '/dashboard/notifications',
-    icon: Bell,
-  },
-  {
-    name: 'Workflows',
-    href: '/dashboard/workflows',
-    icon: CheckSquare,
-  },
-  {
-    name: 'Reports',
-    href: '/dashboard/reports',
-    icon: BarChart,
-  },
-  {
     name: 'Admin',
     href: '/dashboard/admin',
-    icon: Settings,
-  },
-  {
-    name: 'Settings',
-    href: '/dashboard/settings',
     icon: Settings,
   },
 ];
@@ -195,18 +150,7 @@ export default function DashboardLayout({
               </svg>
             </button>
             <div className="flex items-center space-x-4">
-              <Link
-                href="/dashboard/notifications"
-                className="p-2 rounded-md hover:bg-accent"
-              >
-                <Bell className="w-5 h-5" />
-              </Link>
-              <Link
-                href="/dashboard/settings"
-                className="p-2 rounded-md hover:bg-accent"
-              >
-                <Settings className="w-5 h-5" />
-              </Link>
+              {/* Removed notification and settings links - sections deleted */}
             </div>
           </div>
         </header>

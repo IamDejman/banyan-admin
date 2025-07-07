@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, FileText, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 
 // Mock data for counter offer
 const counterOffer = {
@@ -77,7 +77,7 @@ export default function CounterOfferPage() {
         <div>
           <h1 className="text-2xl font-bold">Review Counter Offer</h1>
           <p className="text-muted-foreground">
-            Review and respond to client's counter offer
+            Review and respond to client&apos;s counter offer
           </p>
         </div>
       </div>
@@ -135,7 +135,7 @@ export default function CounterOfferPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Client's Notes</Label>
+              <Label>Client&apos;s Notes</Label>
               <div className="rounded-md border p-3 text-sm">
                 {counterOffer.clientNotes}
               </div>

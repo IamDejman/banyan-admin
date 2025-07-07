@@ -2,9 +2,7 @@ import * as React from "react"
 import { Separator as RadixSeparator } from "@radix-ui/react-separator"
 import { cn } from "@/lib/utils"
 
-export interface SeparatorProps extends React.ComponentPropsWithoutRef<typeof RadixSeparator> {}
-
-const Separator = React.forwardRef<React.ElementRef<typeof RadixSeparator>, SeparatorProps>(
+const Separator = React.forwardRef<React.ElementRef<typeof RadixSeparator>, React.ComponentPropsWithoutRef<typeof RadixSeparator>>(
   ({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
     <RadixSeparator
       ref={ref}

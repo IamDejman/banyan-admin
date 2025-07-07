@@ -4,97 +4,304 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/lib/store/auth-store';
+import { useAuth } from '@/lib/providers/auth-provider';
 import {
   LayoutDashboard,
   FileText,
-  FileCheck,
   MessageSquare,
   DollarSign,
   Settings,
   Users,
-  BarChart,
   ChevronLeft,
   ChevronRight,
   User,
   X,
   CheckSquare,
+  Calculator,
+  UserCheck,
+  CheckCircle,
+  Send,
+  Eye,
+  Clock,
+  HelpCircle,
+  FilePlus,
+  ClipboardList,
+  CreditCard,
+  BarChart,
 } from 'lucide-react';
-import { useAuth } from '@/lib/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 
-const navigationItems = [
+// Only keep the six main workflow sections
+const navigationSections = [
   {
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
+    name: 'Claims Review',
+    icon: CheckSquare,
+    description: 'Handle initial claim processing and review workflow',
     roles: ['CLAIMS_AGENT', 'MANAGER', 'FINANCIAL_OFFICER'],
-  },
-  {
-    name: 'Claims',
-    href: '/dashboard/claims',
-    icon: FileText,
-    roles: ['CLAIMS_AGENT', 'MANAGER', 'FINANCIAL_OFFICER'],
+    items: [
+      {
+        name: 'Pending Review',
+        href: '/dashboard/claims',
+        icon: Clock,
+        description: 'Claims pending review (Function 1)',
+      },
+      {
+        name: 'Review Details',
+        href: '/dashboard/claims/review',
+        icon: Eye,
+        description: 'Detailed claim review (Function 2)',
+      },
+      {
+        name: 'Complete Review',
+        href: '/dashboard/claims/complete',
+        icon: CheckCircle,
+        description: 'Complete claim review (Function 3)',
+      },
+    ],
   },
   {
     name: 'Documents',
-    href: '/dashboard/documents',
-    icon: FileCheck,
+    icon: FileText,
+    description: 'Centralized document verification and management',
     roles: ['CLAIMS_AGENT', 'MANAGER'],
+    items: [
+      {
+        name: 'Pending Verification',
+        href: '/dashboard/documents',
+        icon: Clock,
+        description: 'Documents pending verification (Function 4)',
+      },
+      {
+        name: 'Verify Documents',
+        href: '/dashboard/documents/verify',
+        icon: CheckSquare,
+        description: 'Verify documents (Function 5)',
+      },
+      {
+        name: 'Reject Documents',
+        href: '/dashboard/documents/reject',
+        icon: X,
+        description: 'Reject documents (Function 6)',
+      },
+    ],
   },
   {
-    name: 'Communications',
-    href: '/dashboard/communications',
-    icon: MessageSquare,
+    name: 'Information Requests',
+    icon: HelpCircle,
+    description: 'Manage additional information gathering from clients',
     roles: ['CLAIMS_AGENT', 'MANAGER'],
+    items: [
+      {
+        name: 'Request Documents',
+        href: '/dashboard/information-requests',
+        icon: FileText,
+        description: 'Request documents from clients (Function 7)',
+      },
+      {
+        name: 'Request Information',
+        href: '/dashboard/information-requests/info',
+        icon: HelpCircle,
+        description: 'Request additional information (Function 8)',
+      },
+      {
+        name: 'Review Responses',
+        href: '/dashboard/information-requests/responses',
+        icon: MessageSquare,
+        description: 'Review client responses (Function 9)',
+      },
+    ],
   },
   {
-    name: 'Settlements',
-    href: '/dashboard/settlements',
-    icon: DollarSign,
-    roles: ['MANAGER', 'FINANCIAL_OFFICER'],
-  },
-  {
-    name: 'Workflows',
-    href: '/dashboard/workflows',
-    icon: CheckSquare,
+    name: 'Assessment',
+    icon: Calculator,
+    description: 'Handle claim valuation and settlement recommendations',
     roles: ['CLAIMS_AGENT', 'MANAGER', 'FINANCIAL_OFFICER'],
+    items: [
+      {
+        name: 'Submit Assessment',
+        href: '/dashboard/assessment',
+        icon: Calculator,
+        description: 'Submit claim assessment (Function 10)',
+      },
+      {
+        name: 'Ready for Offers',
+        href: '/dashboard/assessment/offers',
+        icon: DollarSign,
+        description: 'Claims ready for offers (Function 11)',
+      },
+    ],
   },
   {
-    name: 'Agents',
-    href: '/dashboard/agents',
+    name: 'Settlement Management',
+    icon: DollarSign,
+    description: 'Handle settlements and payments',
+    roles: ['MANAGER', 'FINANCIAL_OFFICER'],
+    items: [
+      {
+        name: 'Settlements',
+        href: '/dashboard/settlements',
+        icon: DollarSign,
+        description: 'Complete settlement offer and payment workflow',
+      },
+      {
+        name: 'Create Offers',
+        href: '/dashboard/settlements/new',
+        icon: FilePlus,
+        description: 'Create settlement offers (Function 12)',
+      },
+      {
+        name: 'Approve Offers',
+        href: '/dashboard/settlements/approve',
+        icon: CheckCircle,
+        description: 'Approve settlement offers (Function 13)',
+      },
+      {
+        name: 'Present Offers',
+        href: '/dashboard/settlements/present',
+        icon: Send,
+        description: 'Present offers to clients (Function 14)',
+      },
+      {
+        name: 'Manage Offers',
+        href: '/dashboard/settlements/manage',
+        icon: ClipboardList,
+        description: 'Manage offers and responses (Functions 15-17)',
+      },
+      {
+        name: 'Process Settlements',
+        href: '/dashboard/settlements/process',
+        icon: CreditCard,
+        description: 'Process settlements and payments (Functions 18-20)',
+      },
+    ],
+  },
+  {
+    name: 'Administration',
+    icon: Settings,
+    description: 'Administrative functions and system management',
+    roles: ['MANAGER', 'FINANCIAL_OFFICER'],
+    items: [
+      {
+        name: 'Assign Claims',
+        href: '/dashboard/admin/assign',
+        icon: UserCheck,
+        description: 'Assign claims to agents (Function 21)',
+      },
+      {
+        name: 'Agent Workload',
+        href: '/dashboard/admin/workload',
+        icon: Users,
+        description: 'View and manage agent workload (Function 22)',
+      },
+      {
+        name: 'Status Management',
+        href: '/dashboard/admin/status',
+        icon: BarChart,
+        description: 'Manage claim statuses (Function 23)',
+      },
+    ],
+  },
+  {
+    name: 'System Config',
+    icon: Settings,
+    description: 'Manage insurers and claim types',
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+    items: [
+      {
+        name: 'Insurers',
+        href: '/dashboard/system-config/insurers',
+        icon: Settings,
+        description: 'Manage insurers',
+      },
+      {
+        name: 'Claim Types',
+        href: '/dashboard/system-config/claim-types',
+        icon: Settings,
+        description: 'Manage claim types',
+      },
+    ],
+  },
+  {
+    name: 'User Management',
     icon: Users,
-    roles: ['MANAGER'],
+    description: 'Manage all system users',
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+    items: [
+      {
+        name: 'Customers',
+        href: '/dashboard/user-management/customers',
+        icon: Users,
+        description: 'Manage customers',
+      },
+      {
+        name: 'Agents',
+        href: '/dashboard/user-management/agents',
+        icon: Users,
+        description: 'Manage agents',
+      },
+      {
+        name: 'Admins',
+        href: '/dashboard/user-management/admins',
+        icon: Users,
+        description: 'Manage admins',
+      },
+      {
+        name: 'Permissions',
+        href: '/dashboard/user-management/permissions',
+        icon: Settings,
+        description: 'Manage permissions',
+      },
+    ],
   },
   {
     name: 'Reports',
-    href: '/dashboard/reports',
     icon: BarChart,
-    roles: ['MANAGER', 'FINANCIAL_OFFICER'],
-  },
-  {
-    name: 'Admin',
-    href: '/dashboard/admin',
-    icon: Settings,
-    roles: ['MANAGER', 'FINANCIAL_OFFICER'],
-  },
-  {
-    name: 'Settings',
-    href: '/dashboard/settings',
-    icon: Settings,
-    roles: ['CLAIMS_AGENT', 'MANAGER', 'FINANCIAL_OFFICER'],
-    subItems: [
+    description: 'Generate and view system reports',
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+    items: [
       {
-        name: 'General',
-        href: '/dashboard/settings',
+        name: 'Claims Reports',
+        href: '/dashboard/reports/claims',
+        icon: BarChart,
+        description: 'Claims analytics',
       },
       {
-        name: 'Security',
-        href: '/dashboard/security/settings',
+        name: 'Performance Reports',
+        href: '/dashboard/reports/performance',
+        icon: BarChart,
+        description: 'Performance analytics',
       },
       {
-        name: 'Company',
-        href: '/dashboard/security/company',
+        name: 'User Reports',
+        href: '/dashboard/reports/users',
+        icon: BarChart,
+        description: 'User analytics',
+      },
+      {
+        name: 'System Reports',
+        href: '/dashboard/reports/system',
+        icon: BarChart,
+        description: 'System analytics',
+      },
+    ],
+  },
+  {
+    name: 'Audit Logs',
+    icon: Clock,
+    description: 'Track and monitor all system activities',
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+    items: [
+      {
+        name: 'Agent Activity Logs',
+        href: '/dashboard/audit-logs/agents',
+        icon: Clock,
+        description: 'Agent activity logs',
+      },
+      {
+        name: 'Admin Activity Logs',
+        href: '/dashboard/audit-logs/admins',
+        icon: Clock,
+        description: 'Admin activity logs',
       },
     ],
   },
@@ -106,24 +313,35 @@ interface SidebarProps {
 
 export function Sidebar({ onClose }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['Claims Review']); // Default expanded
   const pathname = usePathname();
   const { user } = useAuth();
 
-  const filteredNavigation = navigationItems.filter((item) =>
-    item.roles.includes(user?.role || '')
+  const filteredSections = navigationSections.filter((section) =>
+    section.roles.includes(user?.role || '')
   );
 
-  // Find the best match (longest href that matches the pathname)
+  const toggleSection = (sectionName: string) => {
+    setExpandedSections(prev =>
+      prev.includes(sectionName)
+        ? prev.filter(name => name !== sectionName)
+        : [...prev, sectionName]
+    );
+  };
+
+  // Find the best match for active state
   let bestMatchHref = '';
-  filteredNavigation.forEach((item) => {
-    if (
-      pathname === item.href ||
-      (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
-    ) {
-      if (item.href.length > bestMatchHref.length) {
-        bestMatchHref = item.href;
+  filteredSections.forEach((section) => {
+    section.items.forEach((item) => {
+      if (
+        pathname === item.href ||
+        (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
+      ) {
+        if (item.href.length > bestMatchHref.length) {
+          bestMatchHref = item.href;
+        }
       }
-    }
+    });
   });
 
   return (
@@ -156,23 +374,79 @@ export function Sidebar({ onClose }: SidebarProps) {
       </div>
 
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {filteredNavigation.map((item) => {
-          const isActive = item.href === bestMatchHref;
+        {/* Dashboard Link */}
+        <Link
+          href="/dashboard"
+          onClick={onClose}
+          className={cn(
+            'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors mb-6',
+            pathname === '/dashboard'
+              ? 'bg-primary text-primary-foreground'
+              : 'hover:bg-gray-100'
+          )}
+        >
+          <LayoutDashboard size={20} />
+          {!isCollapsed && <span>Dashboard</span>}
+        </Link>
+
+        {/* Workflow Sections */}
+        {filteredSections.map((section) => {
+          const isExpanded = expandedSections.includes(section.name);
+          const hasActiveItem = section.items.some(item => 
+            pathname === item.href || 
+            (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
+          );
+
           return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={onClose}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-gray-100'
+            <div key={section.name} className="space-y-1">
+              {/* Section Header */}
+              <button
+                onClick={() => toggleSection(section.name)}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full text-left',
+                  hasActiveItem ? 'bg-primary/10 text-primary' : 'hover:bg-gray-100'
+                )}
+              >
+                <section.icon size={20} />
+                {!isCollapsed && (
+                  <>
+                    <span className="flex-1">{section.name}</span>
+                    <ChevronRight 
+                      size={16} 
+                      className={cn(
+                        'transition-transform',
+                        isExpanded ? 'rotate-90' : ''
+                      )}
+                    />
+                  </>
+                )}
+              </button>
+
+              {/* Section Items */}
+              {isExpanded && !isCollapsed && (
+                <div className="ml-8 space-y-1">
+                  {section.items.map((item) => {
+                    const isActive = item.href === bestMatchHref;
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={onClose}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm',
+                          isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-gray-100'
+                        )}
+                      >
+                        <item.icon size={16} />
+                        <span>{item.name}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-            >
-              <item.icon size={20} />
-              {!isCollapsed && <span>{item.name}</span>}
-            </Link>
+            </div>
           );
         })}
       </nav>

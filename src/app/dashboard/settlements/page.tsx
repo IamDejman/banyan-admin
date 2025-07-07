@@ -1,11 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -14,72 +11,48 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Search, Calculator, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Search, DollarSign, CheckCircle, MessageSquare, ClipboardList } from 'lucide-react';
 
-// Mock data for claims ready for offer
-const claimsReadyForOffer = [
-  {
-    id: '1',
-    claimId: 'CLM-001',
-    clientName: 'John Doe',
-    type: 'MEDICAL_CLAIM',
-    assessedValue: 5000,
-    status: 'READY_FOR_OFFER',
-    lastUpdated: '2024-03-15 10:30',
-  },
-  {
-    id: '2',
-    claimId: 'CLM-002',
-    clientName: 'Jane Smith',
-    type: 'PROPERTY_CLAIM',
-    assessedValue: 15000,
-    status: 'READY_FOR_OFFER',
-    lastUpdated: '2024-03-15 09:15',
-  },
+// Mock stats and data
+const quickStats = [
+  { title: 'Active Offers', value: '12', icon: DollarSign, description: 'Currently open offers', trend: '+2', trendUp: true },
+  { title: 'Pending Approvals', value: '5', icon: CheckCircle, description: 'Awaiting admin approval', trend: '+1', trendUp: true },
+  { title: 'Counter-Offers Received', value: '3', icon: MessageSquare, description: 'Client counter-offers', trend: '0', trendUp: false },
+  { title: 'Settlements in Progress', value: '8', icon: ClipboardList, description: 'Ongoing settlements', trend: '-1', trendUp: false },
 ];
-
-// Mock data for settlement offers
-const settlementOffers = [
-  {
-    id: '1',
-    claimId: 'CLM-003',
-    clientName: 'Mike Johnson',
-    type: 'MEDICAL_CLAIM',
-    offerAmount: 7500,
-    status: 'PENDING_APPROVAL',
-    createdBy: 'John Manager',
-    createdAt: '2024-03-15 11:30',
-  },
-  {
-    id: '2',
-    claimId: 'CLM-004',
-    clientName: 'Sarah Wilson',
-    type: 'PROPERTY_CLAIM',
-    offerAmount: 12000,
-    status: 'APPROVED',
-    createdBy: 'Jane Manager',
-    createdAt: '2024-03-15 10:15',
-  },
-];
-
-const statusColors = {
-  READY_FOR_OFFER: 'bg-blue-100 text-blue-800',
-  PENDING_APPROVAL: 'bg-yellow-100 text-yellow-800',
-  APPROVED: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
-  ACCEPTED: 'bg-green-100 text-green-800',
-  DECLINED: 'bg-red-100 text-red-800',
-};
 
 export default function SettlementsPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState('claims');
+  const [activeTab, setActiveTab] = useState('create');
   const [searchQuery, setSearchQuery] = useState('');
   const [claimType, setClaimType] = useState<string>('all');
   const [offerStatus, setOfferStatus] = useState<string>('all');
 
   return (
     <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Settlement Management</h1>
+        <p className="text-muted-foreground">Complete settlement offer and payment workflow</p>
+      </div>
+
+      {/* Quick Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {quickStats.map((stat) => (
+          <Card key={stat.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <stat.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">{stat.description}</p>
+                <div className={`flex items-center text-xs ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>{stat.trend}</div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Settlement Offers Management</h1>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -122,146 +95,70 @@ export default function SettlementsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="claims">Claims Ready for Offer</TabsTrigger>
-          <TabsTrigger value="offers">Settlement Offers</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="create">Create Offers</TabsTrigger>
+          <TabsTrigger value="approve">Approve Offers</TabsTrigger>
+          <TabsTrigger value="present">Present Offers</TabsTrigger>
+          <TabsTrigger value="manage">Manage Offers</TabsTrigger>
+          <TabsTrigger value="process">Process Settlements</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="claims" className="space-y-4">
+        <TabsContent value="create">
           <Card>
             <CardHeader>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <CardTitle>Claims Ready for Offer</CardTitle>
-                <Button onClick={() => router.push('/dashboard/settlements/new')}>
-                  Create Offer
-                </Button>
-              </div>
+              <CardTitle>Offer Creation</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {claimsReadyForOffer.map((claim) => (
-                  <div
-                    key={claim.id}
-                    className="flex flex-col gap-4 p-4 border rounded-lg sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                        <span className="font-medium">
-                          {claim.type.replace(/_/g, ' ')}
-                        </span>
-                        <Badge
-                          className={statusColors[claim.status as keyof typeof statusColors]}
-                        >
-                          {claim.status.replace(/_/g, ' ')}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Claim ID: {claim.claimId}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Client: {claim.clientName}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2 sm:items-end">
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Assessed Value: </span>
-                        ${claim.assessedValue.toLocaleString()}
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Last Updated: </span>
-                        {claim.lastUpdated}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          router.push(`/dashboard/settlements/new?claimId=${claim.claimId}`)
-                        }
-                      >
-                        <Calculator className="h-4 w-4 mr-2" />
-                        Create Offer
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {/* Assessment-based offer calculator, breakdown builder, T&C templates, expiry, fee config */}
+              <p className="text-muted-foreground">Assessment-based offer calculator, breakdown builder, terms and conditions templates, expiry date management, fee structure configuration.</p>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="offers" className="space-y-4">
+        <TabsContent value="approve">
           <Card>
             <CardHeader>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <CardTitle>Settlement Offers</CardTitle>
-              </div>
+              <CardTitle>Offer Approval</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {settlementOffers.map((offer) => (
-                  <div
-                    key={offer.id}
-                    className="flex flex-col gap-4 p-4 border rounded-lg sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                        <span className="font-medium">
-                          {offer.type.replace(/_/g, ' ')}
-                        </span>
-                        <Badge
-                          className={statusColors[offer.status as keyof typeof statusColors]}
-                        >
-                          {offer.status.replace(/_/g, ' ')}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Claim ID: {offer.claimId}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Client: {offer.clientName}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2 sm:items-end">
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Offer Amount: </span>
-                        ${offer.offerAmount.toLocaleString()}
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Created by: </span>
-                        {offer.createdBy}
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Created at: </span>
-                        {offer.createdAt}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            router.push(`/dashboard/settlements/${offer.id}`)
-                          }
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          View Details
-                        </Button>
-                        {offer.status === 'APPROVED' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              router.push(`/dashboard/settlements/${offer.id}/present`)
-                            }
-                          >
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            Present to Client
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {/* Approval workflow, side-by-side assessment/offer, modification, approval history */}
+              <p className="text-muted-foreground">Approval workflow based on amount and admin role, side-by-side comparison of assessment vs. offer, modification tools, approval history tracking.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="present">
+          <Card>
+            <CardHeader>
+              <CardTitle>Offer Presentation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Presentation method, document attachment, communication templates, delivery tracking */}
+              <p className="text-muted-foreground">Presentation method selection, document attachment system, client communication templates, delivery confirmation tracking.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="manage">
+          <Card>
+            <CardHeader>
+              <CardTitle>Offer Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Pending responses, counter-offers, counter-offer response */}
+              <p className="text-muted-foreground">Pending responses (expiry tracking, reminders, status), counter-offers (comparison tools, evaluation, recommendations), counter-offer response (response type, justification, new offer workflow).</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="process">
+          <Card>
+            <CardHeader>
+              <CardTitle>Settlement Processing</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Finalization, payment, completion */}
+              <p className="text-muted-foreground">Finalization (document generation, fee confirmation, client instructions), payment (secure interface, method selection, transaction tracking), completion (checklist, final docs, claim closure).</p>
             </CardContent>
           </Card>
         </TabsContent>

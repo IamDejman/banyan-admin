@@ -46,13 +46,7 @@ export function ClaimReviewForm({ claimId, onSuccess }: ClaimReviewFormProps) {
 
     setIsSubmitting(true);
     try {
-      await submitClaimReview({
-        claimId,
-        reviewerId: user.id,
-        reviewerName: user.name,
-        outcome: data.outcome as ReviewOutcome,
-        notes: data.notes,
-      });
+      await submitClaimReview(claimId, data.outcome as ReviewOutcome, data.notes);
       onSuccess?.();
     } catch (error) {
       console.error('Failed to submit review:', error);

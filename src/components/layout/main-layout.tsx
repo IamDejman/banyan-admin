@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Sidebar } from './sidebar';
-import { Header } from './header';
+import { Sidebar } from './Sidebar';
+import { Header } from './Header';
 import { useAuth } from '@/lib/providers/auth-provider';
 import { cn } from '@/lib/utils';
 import { Menu } from 'lucide-react';

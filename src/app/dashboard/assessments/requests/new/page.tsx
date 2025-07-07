@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -50,8 +49,8 @@ export default function NewRequestPage() {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      // Handle request submission
-      await submitRequest();
+      // Simulate request submission (replace with real API call)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       router.push('/dashboard/assessments');
     } finally {
       setIsLoading(false);

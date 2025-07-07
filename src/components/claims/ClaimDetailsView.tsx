@@ -2,19 +2,18 @@
 
 import { useEffect } from 'react';
 import { useClaimsStore } from '@/lib/store/claims-store';
-import { format } from 'date-fns';
 import { ClaimStatus } from '@/lib/types/claims';
+import { format } from 'date-fns';
 import {
-  FileText,
+  FileIcon,
   User,
-  Calendar,
-  Phone,
   Mail,
+  Phone,
+  FileText,
+  Calendar,
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle,
-  FileIcon,
 } from 'lucide-react';
 
 const statusColors: Record<ClaimStatus, string> = {
@@ -35,15 +34,7 @@ interface ClaimDetailsViewProps {
 }
 
 export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
-  const {
-    selectedClaim,
-    claimDocuments,
-    claimAudits,
-    claimCommunications,
-    fetchClaimById,
-    isLoading,
-    uploadDocument,
-  } = useClaimsStore();
+  const { selectedClaim, fetchClaimById, isLoading, uploadDocument } = useClaimsStore();
 
   useEffect(() => {
     fetchClaimById(claimId);

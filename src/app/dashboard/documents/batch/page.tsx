@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -15,8 +14,6 @@ import {
   FileText,
   Clock,
   User,
-  AlertCircle,
-  Check,
   Filter,
 } from 'lucide-react';
 

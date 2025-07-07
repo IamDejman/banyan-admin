@@ -27,7 +27,7 @@ export type AuditLog = {
   action: string;
   resource: string;
   resourceId: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   ipAddress: string;
   userAgent: string;
   timestamp: string;
@@ -55,4 +55,6 @@ export type SecuritySettings = {
   requireMFA: boolean;
   allowedIPs: string[];
   restrictedIPs: string[];
-}; 
+};
+
+export type SecurityEvent = unknown; 

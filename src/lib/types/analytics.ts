@@ -53,7 +53,7 @@ export type ReportFilter = {
   id: string;
   field: string;
   operator: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'between';
-  value: any;
+  value: unknown;
 };
 
 export type ReportLayout = {
@@ -67,7 +67,7 @@ export type ReportWidget = {
   id: string;
   type: 'metric' | 'chart' | 'table' | 'text';
   title: string;
-  data: any;
+  data: unknown;
   position: {
     x: number;
     y: number;
@@ -86,4 +86,7 @@ export type TrendData = {
   period: 'daily' | 'weekly' | 'monthly' | 'yearly';
   startDate: string;
   endDate: string;
-}; 
+};
+
+export type AnalyticsData = unknown;
+export type AnalyticsTrend = unknown; 

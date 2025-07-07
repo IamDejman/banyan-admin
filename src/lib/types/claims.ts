@@ -35,6 +35,9 @@ export interface Claim {
   totalValue: number;
   description: string;
   lastUpdated: string;
+  documents: ClaimDocument[];
+  audits: ClaimAudit[];
+  communications: ClaimCommunication[];
 }
 
 export interface ClaimReview {
@@ -52,7 +55,7 @@ export interface ClaimDocument {
   claimId: string;
   name: string;
   type: string;
-  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'APPROVED';
   url: string;
   uploadedAt: string;
   verifiedAt?: string;
@@ -66,7 +69,7 @@ export interface ClaimAudit {
   performedBy: string;
   performedById: string;
   timestamp: string;
-  details: string;
+  notes?: string;
 }
 
 export interface ClaimCommunication {
@@ -74,6 +77,7 @@ export interface ClaimCommunication {
   claimId: string;
   type: 'EMAIL' | 'PHONE' | 'NOTE';
   direction: 'INBOUND' | 'OUTBOUND';
+  subject: string;
   content: string;
   timestamp: string;
   sender: string;

@@ -164,7 +164,7 @@ export default function ResponsesPage() {
                         <span className="text-muted-foreground">Offer Amount: </span>
                         ${response.offerAmount.toLocaleString()}
                       </div>
-                      {response.status === 'COUNTER_OFFER' && (
+                      {response.status === 'COUNTER_OFFER' && response.counterOfferAmount && (
                         <div className="text-sm">
                           <span className="text-muted-foreground">
                             Counter Offer Amount:{' '}

@@ -36,6 +36,7 @@ export type Notification = {
   createdAt: string;
   createdBy: string;
   analytics?: NotificationAnalytics;
+  metadata?: Record<string, unknown>;
 };
 
 export type NotificationAnalytics = {
@@ -66,7 +67,7 @@ export type UserSegment = {
   criteria: {
     field: string;
     operator: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'between';
-    value: any;
+    value: unknown;
   }[];
   userCount: number;
   createdAt: string;
@@ -80,4 +81,6 @@ export type NotificationSettings = {
   requireApproval: boolean;
   defaultPriority: NotificationPriority;
   allowedMergeTags: string[];
-}; 
+};
+
+export type NotificationPayload = unknown; 
