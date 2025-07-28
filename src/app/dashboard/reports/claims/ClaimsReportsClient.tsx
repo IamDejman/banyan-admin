@@ -65,7 +65,7 @@ export default function ClaimsReportsClient() {
   });
 
   function handleExport() {
-    // Mock export functionality
+    // Export functionality
     console.log("Exporting claims report...");
   }
 

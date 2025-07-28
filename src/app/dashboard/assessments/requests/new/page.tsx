@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
-// Mock data for claims
+
 const claims = [
   {
     id: 'CLM-001',

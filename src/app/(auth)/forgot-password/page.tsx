@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield } from 'lucide-react';
+import { BanyanLogo } from '@/components/ui/banyan-logo';
 import Link from 'next/link';
 
 export default function ForgotPasswordPage() {
@@ -48,8 +48,8 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/40">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <Shield className="h-8 w-8 text-primary" />
+          <div className="flex items-center justify-center mb-6">
+            <BanyanLogo size={64} className="text-primary" />
           </div>
           <CardTitle className="text-2xl text-center">
             {step === 'email' && 'Forgot Password'}

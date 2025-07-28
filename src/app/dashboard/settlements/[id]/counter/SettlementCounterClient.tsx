@@ -12,12 +12,12 @@ import {
   ArrowLeft,
   CheckCircle2,
   XCircle,
-  DollarSign,
   Clock,
   User,
   FileText,
   TrendingUp,
 } from 'lucide-react';
+import { NairaIcon } from '@/components/ui/naira-icon';
 
 // Mock data for settlement
 const settlement = {
@@ -191,9 +191,9 @@ export default function SettlementCounterClient({ settlementId }: SettlementCoun
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Amount</span>
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <NairaIcon className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">
-                        ${settlement.originalOffer.amount}
+                        ₦{settlement.originalOffer.amount}
                       </span>
                     </div>
                   </div>
@@ -229,9 +229,9 @@ export default function SettlementCounterClient({ settlementId }: SettlementCoun
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Amount</span>
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <NairaIcon className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">
-                        ${settlement.counterOffer.amount}
+                        ₦{settlement.counterOffer.amount}
                       </span>
                     </div>
                   </div>

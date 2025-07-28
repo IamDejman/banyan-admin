@@ -21,7 +21,7 @@ import {
   Plus,
 } from 'lucide-react';
 
-// Mock data for document types
+
 const documentTypes = [
   'MEDICAL_REPORT',
   'POLICE_REPORT',
@@ -33,7 +33,7 @@ const documentTypes = [
   'OTHER',
 ];
 
-// Mock data for claims
+
 const claims = [
   {
     id: 'CLM-001',

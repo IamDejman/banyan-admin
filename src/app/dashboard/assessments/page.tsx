@@ -16,7 +16,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Search, Calculator, MessageSquare } from 'lucide-react';
 
-// Mock data for information requests
+
 const informationRequests = [
   {
     id: '1',
@@ -40,7 +40,7 @@ const informationRequests = [
   },
 ];
 
-// Mock data for claim assessments
+
 const claimAssessments = [
   {
     id: '1',
@@ -83,7 +83,7 @@ export default function AssessmentsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold">Information Management & Assessment</h1>
+        <h1 className="text-3xl font-bold">Assessments</h1>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -229,7 +229,7 @@ export default function AssessmentsPage() {
                     <div className="flex flex-col gap-2 sm:items-end">
                       <div className="text-sm">
                         <span className="text-muted-foreground">Claimed Amount: </span>
-                        ${assessment.amount.toLocaleString()}
+                        ₦{assessment.amount.toLocaleString()}
                       </div>
                       {assessment.assessedValue && (
                         <div className="text-sm">

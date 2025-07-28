@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { ArrowLeft, FileText, Clock, Shield, XCircle, CheckCircle2 } from 'lucide-react';
 
-// Mock data for settlement
+
 const settlement = {
   id: 'SET-001',
   claimId: 'CLM-001',
@@ -42,7 +42,7 @@ const settlement = {
   ],
 };
 
-// Mock data for payment methods
+
 const paymentMethods = [
   {
     id: 'BANK_TRANSFER',
@@ -64,7 +64,7 @@ const paymentMethods = [
   },
 ];
 
-// Mock data for user role
+
 const userRole = 'FINANCIAL_OFFICER';
 
 interface SettlementPaymentClientProps {

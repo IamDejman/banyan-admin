@@ -20,7 +20,6 @@ const workflowSections = {
   '/dashboard/claims': { section: 'Claims Review', page: 'All Claims' },
   '/dashboard/documents': { section: 'Document Management', page: 'Document Library' },
   '/dashboard/documents/upload': { section: 'Document Management', page: 'Upload Documents' },
-  '/dashboard/documents/batch': { section: 'Document Management', page: 'Batch Processing' },
   '/dashboard/assessments': { section: 'Assessment & Valuation', page: 'Assessments' },
   '/dashboard/assessments/requests': { section: 'Assessment & Valuation', page: 'Assessment Requests' },
   '/dashboard/settlements': { section: 'Settlement Management', page: 'Settlements' },

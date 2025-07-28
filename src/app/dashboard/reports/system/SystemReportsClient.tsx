@@ -43,7 +43,7 @@ export default function SystemReportsClient() {
   });
 
   function handleExport() {
-    // Mock export functionality
+    // Export functionality
     console.log("Exporting system report...");
   }
 

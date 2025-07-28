@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
-import { DollarSign, Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { NairaIcon } from '@/components/ui/naira-icon';
 
 export default function CreateOfferPage() {
   const [assessmentValue, setAssessmentValue] = useState(10000);
@@ -31,14 +32,14 @@ export default function CreateOfferPage() {
           <div>
             <Label>Assessment Value</Label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <NairaIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input type="number" value={assessmentValue} onChange={e => setAssessmentValue(Number(e.target.value))} className="pl-10" />
             </div>
           </div>
           <div>
             <Label>Offer Value</Label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <NairaIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input type="number" value={offerValue} onChange={e => setOfferValue(Number(e.target.value))} className="pl-10" />
             </div>
           </div>

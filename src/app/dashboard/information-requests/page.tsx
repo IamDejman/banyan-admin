@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { FileText, HelpCircle, Send, CalendarDays, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 
-// Mock data for demonstration
+
 const mockRequests = [
   {
     id: 'REQ-001',
@@ -21,7 +21,6 @@ const mockRequests = [
     requestType: 'Document Request',
     documentType: 'Medical Records',
     status: 'Pending Response',
-    priority: 'High',
     submissionDate: '2024-01-15',
     deadline: '2024-01-22',
     daysRemaining: 3,
@@ -35,7 +34,6 @@ const mockRequests = [
     requestType: 'Information Request',
     documentType: 'Accident Details',
     status: 'Response Received',
-    priority: 'Medium',
     submissionDate: '2024-01-14',
     deadline: '2024-01-21',
     daysRemaining: -1,
@@ -49,7 +47,6 @@ const mockRequests = [
     requestType: 'Document Request',
     documentType: 'Police Report',
     status: 'Overdue',
-    priority: 'High',
     submissionDate: '2024-01-10',
     deadline: '2024-01-17',
     daysRemaining: -3,
@@ -63,7 +60,6 @@ const mockRequests = [
     requestType: 'Information Request',
     documentType: 'Witness Statement',
     status: 'Pending Response',
-    priority: 'Low',
     submissionDate: '2024-01-16',
     deadline: '2024-01-23',
     daysRemaining: 4,
@@ -77,7 +73,6 @@ const mockRequests = [
     requestType: 'Document Request',
     documentType: 'Repair Estimates',
     status: 'Response Received',
-    priority: 'Medium',
     submissionDate: '2024-01-13',
     deadline: '2024-01-20',
     daysRemaining: 0,
@@ -155,7 +150,6 @@ export default function InformationRequestsPage() {
     dateRange: 'all',
     requestType: 'all',
     status: 'all',
-    priority: 'all',
   });
   const [activeTab, setActiveTab] = useState('documents');
   const [selectedDocumentType, setSelectedDocumentType] = useState('');

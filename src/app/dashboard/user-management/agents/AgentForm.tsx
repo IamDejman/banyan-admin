@@ -1,189 +1,137 @@
 "use client";
 import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Agent } from "@/lib/types/user";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 
-type AgentFormProps = {
-  initialData: Partial<Agent>;
-  onSave: (data: Omit<Agent, "id" | "createdAt">) => void;
+interface AgentFormProps {
+  agent?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+  };
+  onSubmit: (agent: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+  }) => void;
   onCancel: () => void;
-  specializations: string[];
-};
+}
 
-export default function AgentForm({ initialData, onSave, onCancel, specializations }: AgentFormProps) {
-  const [firstName, setFirstName] = useState(initialData?.firstName || "");
-  const [lastName, setLastName] = useState(initialData?.lastName || "");
-  const [email, setEmail] = useState(initialData?.email || "");
-  const [phone, setPhone] = useState(initialData?.phone || "");
-  const [employeeId, setEmployeeId] = useState(initialData?.employeeId || "");
-  const [department, setDepartment] = useState(initialData?.department || "");
-  const [supervisor, setSupervisor] = useState(initialData?.supervisor || "");
-  const [status, setStatus] = useState<Agent["status"]>(initialData?.status || "active");
-  const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>(initialData?.specializations || []);
-  const [performanceRating, setPerformanceRating] = useState<string>(initialData?.performanceRating?.toString() || "");
-  const [error, setError] = useState<string | null>(null);
-
-  const departments = ["Claims", "Customer Service", "Sales", "Underwriting", "Finance"];
-  const supervisors = ["John Doe", "Jane Smith", "Mike Johnson", "Sarah Wilson"];
-
-  function handleSpecializationToggle(spec: string) {
-    setSelectedSpecializations(prev => 
-      prev.includes(spec) 
-        ? prev.filter(s => s !== spec)
-        : [...prev, spec]
-    );
-  }
-
-  function validate() {
-    if (!firstName.trim()) return "First name is required";
-    if (!lastName.trim()) return "Last name is required";
-    if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) return "Valid email is required";
-    if (!phone.match(/^\+?\d{7,15}$/)) return "Valid phone number is required";
-    if (!employeeId.trim()) return "Employee ID is required";
-    if (!department) return "Department is required";
-    if (selectedSpecializations.length === 0) return "At least one specialization must be selected";
-    if (performanceRating && (parseFloat(performanceRating) < 0 || parseFloat(performanceRating) > 5)) {
-      return "Performance rating must be between 0 and 5";
-    }
-    return null;
-  }
+export default function AgentForm({
+  agent,
+  onSubmit,
+  onCancel,
+}: AgentFormProps) {
+  const [firstName, setFirstName] = useState(agent?.firstName || "");
+  const [lastName, setLastName] = useState(agent?.lastName || "");
+  const [email, setEmail] = useState(agent?.email || "");
+  const [phoneNumber, setPhoneNumber] = useState(agent?.phoneNumber || "");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const err = validate();
-    if (err) {
-      setError(err);
+    const newErrors: Record<string, string> = {};
+
+    if (!firstName.trim()) {
+      newErrors.firstName = "First name is required";
+    }
+
+    if (!lastName.trim()) {
+      newErrors.lastName = "Last name is required";
+    }
+
+    if (!email.trim()) {
+      newErrors.email = "Email address is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    if (!phoneNumber.trim()) {
+      newErrors.phoneNumber = "Phone number is required";
+    } else if (!/^\+234\d{10}$/.test(phoneNumber)) {
+      newErrors.phoneNumber = "Please enter a valid Nigerian phone number (+234XXXXXXXXXX)";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
-    setError(null);
-    onSave({
+
+    onSubmit({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      employeeId: employeeId.trim(),
-      department,
-      supervisor: supervisor.trim() || undefined,
-      status,
-      specializations: selectedSpecializations,
-      performanceRating: performanceRating ? parseFloat(performanceRating) : undefined,
-      role: "agent",
-      assignedClaims: [],
+      email: email.trim().toLowerCase(),
+      phoneNumber: phoneNumber.trim(),
     });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">First Name *</label>
-          <Input value={firstName} onChange={e => setFirstName(e.target.value)} required />
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Last Name *</label>
-          <Input value={lastName} onChange={e => setLastName(e.target.value)} required />
-        </div>
-      </div>
+    <Card className="p-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="firstName">First Name *</Label>
+            <Input
+              id="firstName"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className={errors.firstName ? "border-red-500" : ""}
+              placeholder="Sarah"
+            />
+            {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Email *</label>
-          <Input value={email} onChange={e => setEmail(e.target.value)} type="email" required />
+          <div>
+            <Label htmlFor="lastName">Last Name *</Label>
+            <Input
+              id="lastName"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className={errors.lastName ? "border-red-500" : ""}
+              placeholder="Johnson"
+            />
+            {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Phone *</label>
-          <Input value={phone} onChange={e => setPhone(e.target.value)} type="tel" required />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Employee ID *</label>
-          <Input value={employeeId} onChange={e => setEmployeeId(e.target.value)} required />
+        <div>
+          <Label htmlFor="email">Email Address *</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={errors.email ? "border-red-500" : ""}
+            placeholder="sarah.johnson@company.com"
+          />
+          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Department *</label>
-          <Select value={department} onValueChange={setDepartment}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select department" />
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map(dept => (
-                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        <div>
+          <Label htmlFor="phoneNumber">Phone Number *</Label>
+          <Input
+            id="phoneNumber"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            className={errors.phoneNumber ? "border-red-500" : ""}
+            placeholder="+2348012345678"
+          />
+          {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>}
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Supervisor</label>
-          <Select value={supervisor} onValueChange={setSupervisor}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select supervisor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">No Supervisor</SelectItem>
-              {supervisors.map(sup => (
-                <SelectItem key={sup} value={sup}>{sup}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex gap-2 justify-end pt-4">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit">
+            {agent ? "Update Agent" : "Create Agent"}
+          </Button>
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Status</label>
-          <Select value={status} onValueChange={(value: Agent["status"]) => setStatus(value)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-              <SelectItem value="suspended">Suspended</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="font-medium">Performance Rating (0-5)</label>
-        <Input 
-          value={performanceRating} 
-          onChange={e => setPerformanceRating(e.target.value)} 
-          type="number" 
-          min="0" 
-          max="5" 
-          step="0.1"
-          placeholder="e.g., 4.5"
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="font-medium">Specializations *</label>
-        <div className="flex flex-wrap gap-2">
-          {specializations.map(spec => (
-            <Badge
-              key={spec}
-              variant={selectedSpecializations.includes(spec) ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => handleSpecializationToggle(spec)}
-            >
-              {spec}
-            </Badge>
-          ))}
-        </div>
-      </div>
-
-      {error && <div className="text-red-600 text-sm">{error}</div>}
-
-      <div className="flex gap-2 justify-end">
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="submit">Save</Button>
-      </div>
-    </form>
+      </form>
+    </Card>
   );
 } 

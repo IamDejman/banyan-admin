@@ -2,10 +2,10 @@ export type Insurer = {
   id: string;
   name: string;
   logo: string | null;
-  email: string;
-  phone: string;
+  contact_email: string;
+  contact_phone: string;
   address: string;
-  claimTypes: string[];
-  instructions: string;
+  supported_claim_types: string[];
+  special_instructions: string;
   status: boolean;
 }; 

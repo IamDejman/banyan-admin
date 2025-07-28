@@ -2,7 +2,7 @@ export type NotificationType = 'EMAIL' | 'SMS' | 'PUSH';
 
 export type NotificationStatus = 'DRAFT' | 'SCHEDULED' | 'SENDING' | 'SENT' | 'FAILED';
 
-export type NotificationPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
 
 export type RecipientType = 'ALL' | 'GROUP' | 'INDIVIDUAL';
 
@@ -24,7 +24,7 @@ export type Notification = {
   id: string;
   type: NotificationType;
   status: NotificationStatus;
-  priority: NotificationPriority;
+
   subject: string;
   content: string;
   recipients: {
@@ -79,7 +79,7 @@ export type NotificationSettings = {
   maxRecipients: number;
   allowedTypes: NotificationType[];
   requireApproval: boolean;
-  defaultPriority: NotificationPriority;
+
   allowedMergeTags: string[];
 };
 

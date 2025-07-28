@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, XCircle, AlertCircle, Send } from 'lucide-react';
 
-// Mock data
+
 const claimDetails = {
   id: 'CLM-001',
   clientName: 'John Doe',
@@ -101,7 +101,7 @@ export default function ClaimReviewClient({ claimId }: ClaimReviewClientProps) {
               </div>
               <div>
                 <Label>Amount</Label>
-                <p className="text-sm">${claimDetails.amount.toLocaleString()}</p>
+                <p className="text-sm">₦{claimDetails.amount.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>

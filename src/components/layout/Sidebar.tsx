@@ -22,11 +22,11 @@ const navigationSections = [
     href: '/dashboard/documents',
     items: [],
   },
-  {
-    name: 'Assessments',
-    href: '/dashboard/assessments',
-    items: [],
-  },
+  // {
+  //   name: 'Assessments',
+  //   href: '/dashboard/assessments',
+  //   items: [],
+  // },
   {
     name: 'Settlements',
     href: '/dashboard/settlements',
@@ -71,38 +71,14 @@ const navigationSections = [
   // --- Reports ---
   {
     name: 'Reports',
-    items: [
-      {
-        name: 'Claims Reports',
-        href: '/dashboard/reports/claims',
-      },
-      {
-        name: 'Performance Reports',
-        href: '/dashboard/reports/performance',
-      },
-      {
-        name: 'User Reports',
-        href: '/dashboard/reports/users',
-      },
-      {
-        name: 'System Reports',
-        href: '/dashboard/reports/system',
-      },
-    ],
+    href: '/dashboard/reports',
+    items: [],
   },
   // --- Audit Logs ---
   {
     name: 'Audit Logs',
-    items: [
-      {
-        name: 'Agent Activity',
-        href: '/dashboard/audit-logs/agents',
-      },
-      {
-        name: 'Admin Activity',
-        href: '/dashboard/audit-logs/admins',
-      },
-    ],
+    href: '/dashboard/audit-logs',
+    items: [],
   },
   // --- Admin/Settings ---
   {
@@ -130,8 +106,8 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   }
 
   return (
-    <nav className="h-full w-full bg-white border-r flex flex-col">
-      <div className="flex flex-col gap-2 p-4">
+    <nav className="h-full w-full bg-white border-r flex flex-col z-50">
+      <div className="flex flex-col gap-1 sm:gap-2 p-2 sm:p-4 overflow-y-auto">
         {navigationSections.map((section) => {
           const hasSubmenu = section.items && section.items.length > 0;
           const isExpanded = expandedSections.includes(section.name);
@@ -140,7 +116,7 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
               <div className="flex items-center">
                 <Link
                   href={section.href || '#'}
-                  className={`py-2 px-3 rounded hover:bg-gray-100 font-medium flex-1${pathname === section.href ? ' bg-primary text-primary-foreground' : ''}`}
+                  className={`py-2 px-2 sm:px-3 rounded hover:bg-gray-100 font-medium flex-1 text-sm sm:text-base transition-colors${pathname === section.href ? ' bg-primary text-primary-foreground' : ''}`}
                   onClick={() => hasSubmenu ? toggleSection(section.name) : undefined}
                 >
                   {section.name}
@@ -149,16 +125,20 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
                 {hasSubmenu && (
                   <button
                     onClick={() => toggleSection(section.name)}
-                    className="ml-2 focus:outline-none"
+                    className="ml-1 sm:ml-2 focus:outline-none p-1"
                   >
-                    <ChevronRight size={16} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                    <ChevronRight size={14} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                   </button>
                 )}
               </div>
               {hasSubmenu && isExpanded && (
-                <div className="ml-7 mt-1 flex flex-col gap-1">
+                <div className="ml-3 sm:ml-7 mt-1 flex flex-col gap-1">
                   {section.items.map((item) => (
-                    <Link key={item.name} href={item.href} className={`py-1 px-2 rounded hover:bg-gray-50 text-sm${pathname === item.href ? ' bg-primary text-primary-foreground' : ''}`}>
+                    <Link 
+                      key={item.name} 
+                      href={item.href} 
+                      className={`py-1 px-2 rounded hover:bg-gray-50 text-xs sm:text-sm transition-colors${pathname === item.href ? ' bg-primary text-primary-foreground' : ''}`}
+                    >
                       {item.name}
                     </Link>
                   ))}

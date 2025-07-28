@@ -59,7 +59,7 @@ export default function UsersReportsClient() {
   });
 
   function handleExport() {
-    // Mock export functionality
+    // Export functionality
     console.log("Exporting users report...");
   }
 

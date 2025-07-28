@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Claim, ClaimStatus, ClaimCommunication } from '../types/claims';
 
-// Mock data
+
 const mockClaims: Claim[] = [
   {
     id: '1',

@@ -59,17 +59,17 @@ const responseTemplates = [
   {
     id: '1',
     name: 'Standard Acceptance',
-    template: 'We accept your counter offer of ${amount}. The settlement will be processed according to the agreed terms.',
+    template: 'We accept your counter offer of ₦{amount}. The settlement will be processed according to the agreed terms.',
   },
   {
     id: '2',
     name: 'Standard Rejection',
-    template: 'We regret to inform you that we cannot accept the counter offer of ${amount}. We would like to propose a different amount.',
+    template: 'We regret to inform you that we cannot accept the counter offer of ₦{amount}. We would like to propose a different amount.',
   },
   {
     id: '3',
     name: 'Negotiation Request',
-    template: 'Thank you for your counter offer of ${amount}. We would like to discuss this further and propose a middle ground.',
+    template: 'Thank you for your counter offer of ₦{amount}. We would like to discuss this further and propose a middle ground.',
   },
 ];
 
@@ -196,7 +196,7 @@ export default function BulkResponsePage() {
                         Claim ID: {offer.claimId} • Client: {offer.clientName}
                       </div>
                       <div className="text-sm">
-                        Original: ${offer.originalAmount.toLocaleString()} • Counter: ${offer.counterAmount.toLocaleString()}
+                        Original: ₦{offer.originalAmount.toLocaleString()} • Counter: ₦{offer.counterAmount.toLocaleString()}
                       </div>
                     </div>
                   </div>

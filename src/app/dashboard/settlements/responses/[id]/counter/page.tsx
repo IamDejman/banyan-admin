@@ -115,13 +115,13 @@ export default function CounterOfferPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Original Offer</span>
                 <span className="text-sm">
-                  ${counterOffer.originalAmount.toLocaleString()}
+                  ₦{counterOffer.originalAmount.toLocaleString()}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Counter Offer</span>
                 <span className="text-sm">
-                  ${counterOffer.counterAmount.toLocaleString()}
+                  ₦{counterOffer.counterAmount.toLocaleString()}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -186,7 +186,7 @@ export default function CounterOfferPage() {
                 {analysisData.historicalData.map((data) => (
                   <div key={data.date} className="flex items-center justify-between text-sm">
                     <span>{data.date}</span>
-                    <span>${data.amount.toLocaleString()}</span>
+                    <span>₦{data.amount.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -204,7 +204,7 @@ export default function CounterOfferPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Suggested Amount</span>
                   <span className="text-sm">
-                    ${analysisData.recommendation.suggestedAmount.toLocaleString()}
+                    ₦{analysisData.recommendation.suggestedAmount.toLocaleString()}
                   </span>
                 </div>
                 <div className="text-sm text-muted-foreground">

@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 
-// Mock data for claim and agents
+
 const claim = {
   id: 'CLM-001',
   clientName: 'John Doe',

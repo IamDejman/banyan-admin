@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
 
-// Mock data for settlement offer
+
 const settlementOffer = {
   id: '1',
   claimId: 'CLM-001',
@@ -133,7 +133,7 @@ export default function SettlementPresentClient({ settlementId }: SettlementPres
                 <div className="flex justify-between font-medium">
                   <span>Net Amount</span>
                   <span>
-                    ${settlementOffer.feeStructure.netAmount.toLocaleString()}
+                    ₦{settlementOffer.feeStructure.netAmount.toLocaleString()}
                   </span>
                 </div>
               </div>

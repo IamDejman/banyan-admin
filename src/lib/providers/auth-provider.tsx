@@ -21,7 +21,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data for demo
+// User data for demo
 const mockUser: User = {
   id: '1',
   email: 'demo@example.com',
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const login = () => {
-    // For demo purposes, just set the mock user
+    // For demo purposes, just set the user
     setUser(mockUser);
     router.push('/dashboard');
   };

@@ -63,21 +63,38 @@ export default function AdminsClient() {
     return matchesSearch && matchesStatus;
   });
 
-  function handleAdd(newAdmin: Omit<Admin, "id" | "createdAt">) {
-    setAdmins((prev) => [
-      { 
-        ...newAdmin, 
-        id: (Math.random() * 100000).toFixed(0),
-        createdAt: new Date().toISOString().split('T')[0]
-      },
-      ...prev,
-    ]);
+  function handleAdd(adminData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    const newAdmin: Admin = {
+      id: `admin-${Date.now()}`,
+      firstName: adminData.firstName,
+      lastName: adminData.lastName,
+      email: adminData.email,
+      phone: adminData.phoneNumber,
+      role: "admin",
+      status: "active",
+      permissions: [],
+      isSuperAdmin: false,
+      createdAt: new Date().toISOString().split('T')[0],
+      lastLogin: undefined,
+      department: "Administration"
+    };
+    setAdmins(prev => [...prev, newAdmin]);
     setModal(null);
   }
 
-  function handleEdit(updated: Omit<Admin, "id" | "createdAt">) {
-    setAdmins((prev) => prev.map((admin) => 
-      admin.id === modal?.admin?.id ? { ...admin, ...updated } : admin
+  function handleEdit(adminData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    if (!modal?.admin) return;
+    
+    const updatedAdmin: Admin = {
+      ...modal.admin,
+      firstName: adminData.firstName,
+      lastName: adminData.lastName,
+      email: adminData.email,
+      phone: adminData.phoneNumber,
+    };
+    
+    setAdmins(prev => prev.map(admin => 
+      admin.id === modal.admin!.id ? updatedAdmin : admin
     ));
     setModal(null);
   }
@@ -186,10 +203,9 @@ export default function AdminsClient() {
               <>
                 <h3 className="text-lg font-semibold mb-4">Add Admin</h3>
                 <AdminForm
-                  initialData={{}}
-                  onSave={handleAdd}
+                  admin={undefined}
+                  onSubmit={handleAdd}
                   onCancel={() => setModal(null)}
-                  permissions={mockPermissions}
                 />
               </>
             )}
@@ -197,10 +213,9 @@ export default function AdminsClient() {
               <>
                 <h3 className="text-lg font-semibold mb-4">Edit Admin</h3>
                 <AdminForm
-                  initialData={modal.admin!}
-                  onSave={handleEdit}
+                  admin={modal.admin!}
+                  onSubmit={handleEdit}
                   onCancel={() => setModal(null)}
-                  permissions={mockPermissions}
                 />
               </>
             )}

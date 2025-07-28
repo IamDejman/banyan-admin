@@ -63,8 +63,8 @@ export default function ApproveOffersPage() {
                 <TableRow key={offer.id}>
                   <TableCell>{offer.id}</TableCell>
                   <TableCell>{offer.claimId}</TableCell>
-                  <TableCell>${offer.assessment.toLocaleString()}</TableCell>
-                  <TableCell>${offer.offer.toLocaleString()}</TableCell>
+                  <TableCell>₦{offer.assessment.toLocaleString()}</TableCell>
+                  <TableCell>₦{offer.offer.toLocaleString()}</TableCell>
                   <TableCell><Badge>{offer.status}</Badge></TableCell>
                   <TableCell>
                     <Button size="sm" variant="outline" onClick={() => setSelected(offer.id)}>Review</Button>
@@ -90,11 +90,11 @@ export default function ApproveOffersPage() {
                   <div className="flex gap-8">
                     <div>
                       <div className="font-semibold">Assessment</div>
-                      <div>${offer.assessment.toLocaleString()}</div>
+                      <div>₦{offer.assessment.toLocaleString()}</div>
                     </div>
                     <div>
                       <div className="font-semibold">Offer</div>
-                      <div>${offer.offer.toLocaleString()}</div>
+                      <div>₦{offer.offer.toLocaleString()}</div>
                     </div>
                   </div>
                   <div>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Mock user data - In a real application, this would come from a database
+// User data - In a real application, this would come from a database
 const MOCK_USERS = [
   {
     id: '1',
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     delete userWithoutPassword.password;
 
     // In a real application, you would generate a JWT token here
-    const token = 'mock-jwt-token';
+    const token = 'jwt-token';
 
     return NextResponse.json({
       user: userWithoutPassword,

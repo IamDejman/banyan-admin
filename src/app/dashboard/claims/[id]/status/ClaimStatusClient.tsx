@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { ArrowLeft, Clock, User } from 'lucide-react';
 
-// Mock data for claim and status history
+
 const claim = {
   id: 'CLM-001',
   clientName: 'John Doe',

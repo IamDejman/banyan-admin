@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, CheckCircle, X } from 'lucide-react';
 
-const mockOffers = [
+const offers = [
   {
     id: 'OFFER-003',
     claimId: 'CLAIM-103',
@@ -50,7 +50,7 @@ export default function ManageOffersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockOffers.map((offer) => (
+              {offers.map((offer) => (
                 <TableRow key={offer.id}>
                   <TableCell>{offer.id}</TableCell>
                   <TableCell>{offer.claimId}</TableCell>
@@ -68,7 +68,7 @@ export default function ManageOffersPage() {
       </Card>
 
       {selected && (() => {
-        const offer = mockOffers.find(o => o.id === selected);
+        const offer = offers.find(o => o.id === selected);
         if (!offer) return null;
         return (
           <Card className="mt-4">
@@ -89,7 +89,7 @@ export default function ManageOffersPage() {
               {offer.counterOffer ? (
                 <div className="bg-yellow-50 p-3 rounded">
                   <div className="font-semibold flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Counter-Offer</div>
-                  <div>Amount: ${offer.counterOffer.amount.toLocaleString()}</div>
+                  <div>Amount: ₦{offer.counterOffer.amount.toLocaleString()}</div>
                   <div>Reason: {offer.counterOffer.reason}</div>
                   <div className="mt-2">
                     <Textarea value={response} onChange={e => setResponse(e.target.value)} placeholder="Respond to counter-offer..." />

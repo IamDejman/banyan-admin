@@ -75,7 +75,7 @@ export default function PerformanceReportsClient() {
   });
 
   function handleExport() {
-    // Mock export functionality
+    // Export functionality
     console.log("Exporting performance report...");
   }
 

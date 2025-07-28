@@ -1,173 +1,137 @@
 "use client";
 import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Admin } from "@/lib/types/user";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 
-type Permission = {
-  id: string;
-  name: string;
-  category: string;
-};
-
-type AdminFormProps = {
-  initialData: Partial<Admin>;
-  onSave: (data: Omit<Admin, "id" | "createdAt">) => void;
+interface AdminFormProps {
+  admin?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+  };
+  onSubmit: (admin: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+  }) => void;
   onCancel: () => void;
-  permissions: Permission[];
-};
+}
 
-export default function AdminForm({ initialData, onSave, onCancel, permissions }: AdminFormProps) {
-  const [firstName, setFirstName] = useState(initialData?.firstName || "");
-  const [lastName, setLastName] = useState(initialData?.lastName || "");
-  const [email, setEmail] = useState(initialData?.email || "");
-  const [phone, setPhone] = useState(initialData?.phone || "");
-  const [department, setDepartment] = useState(initialData?.department || "");
-  const [status, setStatus] = useState<Admin["status"]>(initialData?.status || "active");
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(initialData?.permissions || []);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(initialData?.isSuperAdmin || false);
-  const [error, setError] = useState<string | null>(null);
-
-  const departments = ["IT", "Operations", "Finance", "HR", "Legal", "Marketing"];
-
-  function handlePermissionToggle(permissionId: string) {
-    setSelectedPermissions(prev => 
-      prev.includes(permissionId) 
-        ? prev.filter(id => id !== permissionId)
-        : [...prev, permissionId]
-    );
-  }
-
-  function validate() {
-    if (!firstName.trim()) return "First name is required";
-    if (!lastName.trim()) return "Last name is required";
-    if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) return "Valid email is required";
-    if (!phone.match(/^\+?\d{7,15}$/)) return "Valid phone number is required";
-    if (selectedPermissions.length === 0) return "At least one permission must be selected";
-    return null;
-  }
+export default function AdminForm({
+  admin,
+  onSubmit,
+  onCancel,
+}: AdminFormProps) {
+  const [firstName, setFirstName] = useState(admin?.firstName || "");
+  const [lastName, setLastName] = useState(admin?.lastName || "");
+  const [email, setEmail] = useState(admin?.email || "");
+  const [phoneNumber, setPhoneNumber] = useState(admin?.phoneNumber || "");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const err = validate();
-    if (err) {
-      setError(err);
+    const newErrors: Record<string, string> = {};
+
+    if (!firstName.trim()) {
+      newErrors.firstName = "First name is required";
+    }
+
+    if (!lastName.trim()) {
+      newErrors.lastName = "Last name is required";
+    }
+
+    if (!email.trim()) {
+      newErrors.email = "Email address is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    if (!phoneNumber.trim()) {
+      newErrors.phoneNumber = "Phone number is required";
+    } else if (!/^\+234\d{10}$/.test(phoneNumber)) {
+      newErrors.phoneNumber = "Please enter a valid Nigerian phone number (+234XXXXXXXXXX)";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
-    setError(null);
-    onSave({
+
+    onSubmit({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      department: department.trim() || undefined,
-      status,
-      permissions: selectedPermissions,
-      isSuperAdmin,
-      role: "admin",
+      email: email.trim().toLowerCase(),
+      phoneNumber: phoneNumber.trim(),
     });
   }
 
-  const permissionsByCategory = permissions.reduce((acc, perm) => {
-    if (!acc[perm.category]) acc[perm.category] = [];
-    acc[perm.category].push(perm);
-    return acc;
-  }, {} as Record<string, Permission[]>);
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">First Name *</label>
-          <Input value={firstName} onChange={e => setFirstName(e.target.value)} required />
-        </div>
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Last Name *</label>
-          <Input value={lastName} onChange={e => setLastName(e.target.value)} required />
-        </div>
-      </div>
+    <Card className="p-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="firstName">First Name *</Label>
+            <Input
+              id="firstName"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className={errors.firstName ? "border-red-500" : ""}
+              placeholder="David"
+            />
+            {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Email *</label>
-          <Input value={email} onChange={e => setEmail(e.target.value)} type="email" required />
+          <div>
+            <Label htmlFor="lastName">Last Name *</Label>
+            <Input
+              id="lastName"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className={errors.lastName ? "border-red-500" : ""}
+              placeholder="Wilson"
+            />
+            {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Phone *</label>
-          <Input value={phone} onChange={e => setPhone(e.target.value)} type="tel" required />
+
+        <div>
+          <Label htmlFor="email">Email Address *</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={errors.email ? "border-red-500" : ""}
+            placeholder="david.wilson@company.com"
+          />
+          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Department</label>
-          <Select value={department} onValueChange={setDepartment}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select department" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">No Department</SelectItem>
-              {departments.map(dept => (
-                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div>
+          <Label htmlFor="phoneNumber">Phone Number *</Label>
+          <Input
+            id="phoneNumber"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            className={errors.phoneNumber ? "border-red-500" : ""}
+            placeholder="+2348012345678"
+          />
+          {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>}
         </div>
-        <div className="flex flex-col gap-2">
-          <label className="font-medium">Status</label>
-          <Select value={status} onValueChange={(value: Admin["status"]) => setStatus(value)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-              <SelectItem value="suspended">Suspended</SelectItem>
-            </SelectContent>
-          </Select>
+
+        <div className="flex gap-2 justify-end pt-4">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit">
+            {admin ? "Update Admin" : "Create Admin"}
+          </Button>
         </div>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <label className="font-medium">Super Admin</label>
-        <Switch checked={isSuperAdmin} onCheckedChange={setIsSuperAdmin} />
-        <span className="text-sm text-muted-foreground">
-          {isSuperAdmin ? "Has full system access" : "Standard admin access"}
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="font-medium">Permissions *</label>
-        <div className="space-y-4">
-          {Object.entries(permissionsByCategory).map(([category, perms]) => (
-            <div key={category}>
-              <h4 className="font-medium text-sm text-muted-foreground mb-2">{category}</h4>
-              <div className="flex flex-wrap gap-2">
-                {perms.map(perm => (
-                  <Badge
-                    key={perm.id}
-                    variant={selectedPermissions.includes(perm.id) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => handlePermissionToggle(perm.id)}
-                  >
-                    {perm.name}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {error && <div className="text-red-600 text-sm">{error}</div>}
-
-      <div className="flex gap-2 justify-end">
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="submit">Save</Button>
-      </div>
-    </form>
+      </form>
+    </Card>
   );
 } 

@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, FileText, Calendar } from 'lucide-react';
 
-// Mock data for settlement
+
 const settlement = {
   id: 'SET-001',
   claimId: 'CLM-001',
@@ -50,7 +50,7 @@ const settlement = {
   ],
 };
 
-// Mock data for completion checklist
+
 const completionChecklist = [
   {
     id: 'PAYMENT_VERIFIED',

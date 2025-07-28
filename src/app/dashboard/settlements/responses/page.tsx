@@ -161,15 +161,15 @@ export default function ResponsesPage() {
                     </div>
                     <div className="flex flex-col gap-2 sm:items-end">
                       <div className="text-sm">
-                        <span className="text-muted-foreground">Offer Amount: </span>
-                        ${response.offerAmount.toLocaleString()}
+                                        <span className="text-muted-foreground">Offer Amount: </span>
+                ₦{response.offerAmount.toLocaleString()}
                       </div>
                       {response.status === 'COUNTER_OFFER' && response.counterOfferAmount && (
                         <div className="text-sm">
                           <span className="text-muted-foreground">
                             Counter Offer Amount:{' '}
                           </span>
-                          ${response.counterOfferAmount.toLocaleString()}
+                          ₦{response.counterOfferAmount.toLocaleString()}
                         </div>
                       )}
                       <div className="text-sm">
@@ -247,7 +247,7 @@ export default function ResponsesPage() {
                     <div className="flex flex-col gap-2 sm:items-end">
                       <div className="text-sm">
                         <span className="text-muted-foreground">Amount: </span>
-                        ${settlement.amount.toLocaleString()}
+                        ₦{settlement.amount.toLocaleString()}
                       </div>
                       <div className="text-sm">
                         <span className="text-muted-foreground">Accepted: </span>
