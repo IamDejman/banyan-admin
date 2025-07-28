@@ -68,21 +68,43 @@ export default function CustomersClient() {
     return matchesSearch && matchesStatus;
   });
 
-  function handleAdd(newCustomer: Omit<Customer, "id" | "createdAt">) {
-    setCustomers((prev) => [
-      { 
-        ...newCustomer, 
-        id: (Math.random() * 100000).toFixed(0),
-        createdAt: new Date().toISOString().split('T')[0]
+  function handleAdd(customerData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    const newCustomer: Customer = {
+      id: `customer-${Date.now()}`,
+      firstName: customerData.firstName,
+      lastName: customerData.lastName,
+      email: customerData.email,
+      phone: customerData.phoneNumber,
+      role: "customer",
+      status: "active",
+      dateOfBirth: "1990-01-01",
+      address: "Lagos, Nigeria",
+      emergencyContact: undefined,
+      claims: [],
+      preferences: {
+        notifications: true,
+        language: "en"
       },
-      ...prev,
-    ]);
+      createdAt: new Date().toISOString().split('T')[0],
+      lastLogin: undefined
+    };
+    setCustomers(prev => [...prev, newCustomer]);
     setModal(null);
   }
 
-  function handleEdit(updated: Omit<Customer, "id" | "createdAt">) {
-    setCustomers((prev) => prev.map((customer) => 
-      customer.id === modal?.customer?.id ? { ...customer, ...updated } : customer
+  function handleEdit(customerData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    if (!modal?.customer) return;
+    
+    const updatedCustomer: Customer = {
+      ...modal.customer,
+      firstName: customerData.firstName,
+      lastName: customerData.lastName,
+      email: customerData.email,
+      phone: customerData.phoneNumber,
+    };
+    
+    setCustomers(prev => prev.map(customer => 
+      customer.id === modal.customer!.id ? updatedCustomer : customer
     ));
     setModal(null);
   }
@@ -203,8 +225,8 @@ export default function CustomersClient() {
               <>
                 <h3 className="text-lg font-semibold mb-4">Add Customer</h3>
                 <CustomerForm
-                  initialData={{}}
-                  onSave={handleAdd}
+                  customer={undefined}
+                  onSubmit={handleAdd}
                   onCancel={() => setModal(null)}
                 />
               </>
@@ -213,8 +235,8 @@ export default function CustomersClient() {
               <>
                 <h3 className="text-lg font-semibold mb-4">Edit Customer</h3>
                 <CustomerForm
-                  initialData={modal.customer!}
-                  onSave={handleEdit}
+                  customer={modal.customer!}
+                  onSubmit={handleEdit}
                   onCancel={() => setModal(null)}
                 />
               </>

@@ -8,50 +8,51 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Eye, Edit, UserX, ChevronDown, ChevronRight } from "lucide-react";
 import AdminForm from "./AdminForm";
 import { Tooltip } from "@/components/ui/tooltip";
+import type { Admin, UserStatus } from "@/lib/types/user";
 
 // Mock admin data
-const mockAdmins = [
+const mockAdmins: Admin[] = [
   {
     id: "1",
     firstName: "David",
     lastName: "Wilson",
     email: "david.wilson@company.com",
-    phoneNumber: "+2348012345678",
-    bvn: "12345678901",
-    bankName: "First Bank of Nigeria",
-    accountNumber: "1234567890",
-    accountName: "David Wilson",
+    phone: "+2348012345678",
+    status: "active" as UserStatus,
+    createdAt: "2024-01-01",
+    lastLogin: "2024-01-20T10:30:00",
+    role: "admin" as const,
     permissions: ["claims_management", "user_management", "system_config", "reports_view"],
-    status: "active",
-    lastLoginDate: new Date("2024-01-20T10:30:00"),
+    isSuperAdmin: false,
+    department: "Administration"
   },
   {
     id: "2",
     firstName: "Lisa",
     lastName: "Brown",
     email: "lisa.brown@company.com",
-    phoneNumber: "+2348098765432",
-    bvn: "98765432109",
-    bankName: "Zenith Bank",
-    accountNumber: "0987654321",
-    accountName: "Lisa Brown",
+    phone: "+2348098765432",
+    status: "active" as UserStatus,
+    createdAt: "2024-01-02",
+    lastLogin: "2024-01-19T14:15:00",
+    role: "admin" as const,
     permissions: ["claims_management", "user_management", "audit_logs"],
-    status: "active",
-    lastLoginDate: new Date("2024-01-19T14:15:00"),
+    isSuperAdmin: false,
+    department: "Operations"
   },
   {
     id: "3",
     firstName: "Robert",
     lastName: "Taylor",
     email: "robert.taylor@company.com",
-    phoneNumber: "+2348055555555",
-    bvn: "55555555555",
-    bankName: "GT Bank",
-    accountNumber: "5555555555",
-    accountName: "Robert Taylor",
+    phone: "+2348055555555",
+    status: "active" as UserStatus,
+    createdAt: "2024-01-03",
+    lastLogin: "2024-01-18T09:45:00",
+    role: "admin" as const,
     permissions: ["system_config", "reports_view", "audit_logs"],
-    status: "active",
-    lastLoginDate: new Date("2024-01-18T09:45:00"),
+    isSuperAdmin: true,
+    department: "IT"
   },
 ];
 
@@ -90,6 +91,42 @@ export default function AdminsPage() {
         ? prev.filter(id => id !== adminId)
         : [...prev, adminId]
     );
+  }
+
+  function handleCreateAdmin(adminData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    const newAdmin: Admin = {
+      id: `admin-${Date.now()}`,
+      firstName: adminData.firstName,
+      lastName: adminData.lastName,
+      email: adminData.email,
+      phone: adminData.phoneNumber,
+      role: "admin",
+      status: "active",
+      permissions: [],
+      isSuperAdmin: false,
+      createdAt: new Date().toISOString().split('T')[0],
+      lastLogin: undefined,
+      department: "Administration"
+    };
+    // In a real app, you'd add this to the database
+    console.log('Creating admin:', newAdmin);
+    setModal(null);
+  }
+
+  function handleUpdateAdmin(adminData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    if (!modal?.admin) return;
+    
+    const updatedAdmin: Admin = {
+      ...modal.admin,
+      firstName: adminData.firstName,
+      lastName: adminData.lastName,
+      email: adminData.email,
+      phone: adminData.phoneNumber,
+    };
+    
+    // In a real app, you'd update this in the database
+    console.log('Updating admin:', updatedAdmin);
+    setModal(null);
   }
 
   return (
@@ -174,9 +211,9 @@ export default function AdminsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">{admin.email}</TableCell>
-                        <TableCell className="hidden md:table-cell">{admin.phoneNumber}</TableCell>
+                        <TableCell className="hidden md:table-cell">{admin.phone}</TableCell>
                         <TableCell className="hidden lg:table-cell">
-                          {admin.lastLoginDate.toLocaleDateString()}
+                          {admin.lastLogin ? new Date(admin.lastLogin).toLocaleDateString() : "Never"}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           <Badge className={admin.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
@@ -220,28 +257,11 @@ export default function AdminsPage() {
                                     </div>
                                     <div className="flex justify-between">
                                       <span className="text-muted-foreground">Phone:</span>
-                                      <span>{admin.phoneNumber}</span>
+                                      <span>{admin.phone}</span>
                                     </div>
                                     <div className="flex justify-between">
                                       <span className="text-muted-foreground">Last Login:</span>
-                                      <span>{admin.lastLoginDate.toLocaleDateString()}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="space-y-2">
-                                  <h4 className="font-semibold text-sm">Bank Information</h4>
-                                  <div className="space-y-1 text-sm">
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Bank:</span>
-                                      <span>{admin.bankName}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Account:</span>
-                                      <span>{admin.accountNumber}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">BVN:</span>
-                                      <span>{admin.bvn}</span>
+                                      <span>{admin.lastLogin ? new Date(admin.lastLogin).toLocaleDateString() : "Never"}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -284,11 +304,11 @@ export default function AdminsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Phone:</span>
-                    <span>{admin.phoneNumber}</span>
+                    <span>{admin.phone}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Last Login:</span>
-                    <span>{admin.lastLoginDate.toLocaleDateString()}</span>
+                    <span>{admin.lastLogin ? new Date(admin.lastLogin).toLocaleDateString() : "Never"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-2">
@@ -303,23 +323,6 @@ export default function AdminsPage() {
                 </div>
                 {expandedRows.includes(admin.id) && (
                   <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-3">
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm">Bank Information</h4>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Bank:</span>
-                          <span>{admin.bankName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Account:</span>
-                          <span>{admin.accountNumber}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">BVN:</span>
-                          <span>{admin.bvn}</span>
-                        </div>
-                      </div>
-                    </div>
                     <div className="space-y-2">
                       <h4 className="font-semibold text-sm">Permissions</h4>
                       <div className="flex flex-wrap gap-1">

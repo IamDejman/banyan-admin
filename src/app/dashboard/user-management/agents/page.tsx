@@ -8,53 +8,60 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Eye, Edit, UserX, ChevronDown, ChevronRight } from "lucide-react";
 import AgentForm from "./AgentForm";
 import { Tooltip } from "@/components/ui/tooltip";
+import type { Agent, UserStatus } from "@/lib/types/user";
 
 // Mock agent data
-const mockAgents = [
+const mockAgents: Agent[] = [
   {
     id: "1",
     firstName: "Sarah",
     lastName: "Johnson",
     email: "sarah.johnson@company.com",
-    phoneNumber: "+2348012345678",
-    bvn: "12345678901",
-    bankName: "First Bank of Nigeria",
-    accountNumber: "1234567890",
-    accountName: "Sarah Johnson",
-    claimsAssigned: 12,
-    claimsCompleted: 8,
-    status: "active",
-    lastLoginDate: new Date("2024-01-20T08:15:00"),
+    phone: "+2348012345678",
+    status: "active" as UserStatus,
+    createdAt: "2024-01-01",
+    lastLogin: "2024-01-20T08:15:00",
+    role: "agent" as const,
+    employeeId: "EMP001",
+    department: "Claims Processing",
+    supervisor: "David Wilson",
+    assignedClaims: ["CLM-001", "CLM-002", "CLM-003"],
+    performanceRating: 4.8,
+    specializations: ["Motor", "Property"]
   },
   {
     id: "2",
     firstName: "Michael",
     lastName: "Chen",
     email: "michael.chen@company.com",
-    phoneNumber: "+2348098765432",
-    bvn: "98765432109",
-    bankName: "Zenith Bank",
-    accountNumber: "0987654321",
-    accountName: "Michael Chen",
-    claimsAssigned: 8,
-    claimsCompleted: 6,
-    status: "active",
-    lastLoginDate: new Date("2024-01-19T16:30:00"),
+    phone: "+2348098765432",
+    status: "active" as UserStatus,
+    createdAt: "2024-01-02",
+    lastLogin: "2024-01-19T16:30:00",
+    role: "agent" as const,
+    employeeId: "EMP002",
+    department: "Claims Processing",
+    supervisor: "David Wilson",
+    assignedClaims: ["CLM-004", "CLM-005"],
+    performanceRating: 4.5,
+    specializations: ["Health", "Life"]
   },
   {
     id: "3",
     firstName: "Emily",
     lastName: "Davis",
     email: "emily.davis@company.com",
-    phoneNumber: "+2348055555555",
-    bvn: "55555555555",
-    bankName: "GT Bank",
-    accountNumber: "5555555555",
-    accountName: "Emily Davis",
-    claimsAssigned: 15,
-    claimsCompleted: 12,
-    status: "active",
-    lastLoginDate: new Date("2024-01-18T11:45:00"),
+    phone: "+2348055555555",
+    status: "active" as UserStatus,
+    createdAt: "2024-01-03",
+    lastLogin: "2024-01-18T11:45:00",
+    role: "agent" as const,
+    employeeId: "EMP003",
+    department: "Claims Processing",
+    supervisor: "David Wilson",
+    assignedClaims: ["CLM-006", "CLM-007", "CLM-008"],
+    performanceRating: 4.9,
+    specializations: ["Business", "Travel"]
   },
 ];
 
@@ -70,23 +77,41 @@ export default function AgentsPage() {
     agent.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  function handleCreateAgent(newAgent: Omit<typeof agents[0], "id">) {
-    const agent = {
-      ...newAgent,
-      id: (Math.random() * 100000).toFixed(0),
-      claimsAssigned: 0,
-      claimsCompleted: 0,
+  function handleCreateAgent(agentData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    const newAgent: Agent = {
+      id: `agent-${Date.now()}`,
+      firstName: agentData.firstName,
+      lastName: agentData.lastName,
+      email: agentData.email,
+      phone: agentData.phoneNumber,
+      role: "agent",
       status: "active",
+      employeeId: `EMP${Date.now()}`,
+      department: "Claims Processing",
+      supervisor: undefined,
+      assignedClaims: [],
+      performanceRating: undefined,
+      specializations: [],
+      createdAt: new Date().toISOString().split('T')[0],
+      lastLogin: undefined
     };
-    setAgents([agent, ...agents]);
+    setAgents([newAgent, ...agents]);
     setModal(null);
   }
 
-  function handleUpdateAgent(updatedAgent: Omit<typeof agents[0], "id">) {
+  function handleUpdateAgent(agentData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    if (!modal?.agent) return;
+    
+    const updatedAgent: Agent = {
+      ...modal.agent,
+      firstName: agentData.firstName,
+      lastName: agentData.lastName,
+      email: agentData.email,
+      phone: agentData.phoneNumber,
+    };
+    
     setAgents(prev => prev.map(agent => 
-      agent.id === modal?.agent?.id 
-        ? { ...agent, ...updatedAgent }
-        : agent
+      agent.id === modal.agent!.id ? updatedAgent : agent
     ));
     setModal(null);
   }
@@ -94,7 +119,7 @@ export default function AgentsPage() {
   function handleToggleStatus(agentId: string) {
     setAgents(prev => prev.map(agent => 
       agent.id === agentId 
-        ? { ...agent, status: agent.status === "active" ? "disabled" : "active" }
+        ? { ...agent, status: agent.status === "active" ? "inactive" : "active" }
         : agent
     ));
   }
@@ -170,7 +195,7 @@ export default function AgentsPage() {
                       {agent.firstName} {agent.lastName}
                     </TableCell>
                     <TableCell>{agent.email}</TableCell>
-                    <TableCell>{agent.phoneNumber}</TableCell>
+                    <TableCell>{agent.phone}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Tooltip content="View Details">
@@ -196,7 +221,7 @@ export default function AgentsPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleToggleStatus(agent.id)}
-                            className={agent.status === "disabled" ? "text-red-500" : ""}
+                            className={agent.status === "inactive" ? "text-red-500" : ""}
                           >
                             <UserX className="h-4 w-4" />
                           </Button>
@@ -216,26 +241,26 @@ export default function AgentsPage() {
                               <div className="space-y-1">
                                 <div className="flex justify-between">
                                   <span className="text-sm">Assigned:</span>
-                                  <Badge variant="secondary">{agent.claimsAssigned}</Badge>
+                                  <Badge variant="secondary">{agent.assignedClaims.length}</Badge>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-sm">Completed:</span>
-                                  <Badge variant="default">{agent.claimsCompleted}</Badge>
+                                  <Badge variant="default">0</Badge>
                                 </div>
                               </div>
                             </div>
                             
                             <div>
                               <h4 className="font-medium text-sm text-muted-foreground mb-1">BVN</h4>
-                              <p className="text-sm font-mono">{agent.bvn}</p>
+                              <p className="text-sm font-mono">N/A</p>
                             </div>
                             
                             <div>
                               <h4 className="font-medium text-sm text-muted-foreground mb-1">Bank Details</h4>
                               <div className="space-y-1 text-sm">
-                                <div><span className="font-medium">Bank:</span> {agent.bankName}</div>
-                                <div><span className="font-medium">Account:</span> {agent.accountNumber}</div>
-                                <div><span className="font-medium">Name:</span> {agent.accountName}</div>
+                                <div><span className="font-medium">Bank:</span> N/A</div>
+                                <div><span className="font-medium">Account:</span> N/A</div>
+                                <div><span className="font-medium">Name:</span> N/A</div>
                               </div>
                             </div>
                             
@@ -249,8 +274,8 @@ export default function AgentsPage() {
                             <div>
                               <h4 className="font-medium text-sm text-muted-foreground mb-1">Last Login</h4>
                               <p className="text-sm">
-                                {agent.lastLoginDate 
-                                  ? `${agent.lastLoginDate.toLocaleDateString()} at ${agent.lastLoginDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
+                                {agent.lastLogin 
+                                  ? `${new Date(agent.lastLogin).toLocaleDateString()} at ${new Date(agent.lastLogin).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
                                   : "Never logged in"
                                 }
                               </p>

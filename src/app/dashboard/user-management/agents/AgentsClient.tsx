@@ -46,8 +46,6 @@ const initialMockAgents: Agent[] = [
   },
 ];
 
-const mockSpecializations = ["Auto", "Property", "Health", "Life", "Business", "Travel"];
-
 export default function AgentsClient() {
   const [agents, setAgents] = useState<Agent[]>(initialMockAgents);
   const [search, setSearch] = useState("");
@@ -66,21 +64,41 @@ export default function AgentsClient() {
     return matchesSearch && matchesStatus && matchesDepartment;
   });
 
-  function handleAdd(newAgent: Omit<Agent, "id" | "createdAt">) {
-    setAgents((prev) => [
-      { 
-        ...newAgent, 
-        id: (Math.random() * 100000).toFixed(0),
-        createdAt: new Date().toISOString().split('T')[0]
-      },
-      ...prev,
-    ]);
+  function handleAdd(agentData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    const newAgent: Agent = {
+      id: `agent-${Date.now()}`,
+      firstName: agentData.firstName,
+      lastName: agentData.lastName,
+      email: agentData.email,
+      phone: agentData.phoneNumber,
+      role: "agent",
+      status: "active",
+      employeeId: `EMP${Date.now()}`,
+      department: "Claims Processing",
+      supervisor: undefined,
+      assignedClaims: [],
+      performanceRating: undefined,
+      specializations: [],
+      createdAt: new Date().toISOString().split('T')[0],
+      lastLogin: undefined
+    };
+    setAgents(prev => [...prev, newAgent]);
     setModal(null);
   }
 
-  function handleEdit(updated: Omit<Agent, "id" | "createdAt">) {
-    setAgents((prev) => prev.map((agent) => 
-      agent.id === modal?.agent?.id ? { ...agent, ...updated } : agent
+  function handleEdit(agentData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    if (!modal?.agent) return;
+    
+    const updatedAgent: Agent = {
+      ...modal.agent,
+      firstName: agentData.firstName,
+      lastName: agentData.lastName,
+      email: agentData.email,
+      phone: agentData.phoneNumber,
+    };
+    
+    setAgents(prev => prev.map(agent => 
+      agent.id === modal.agent!.id ? updatedAgent : agent
     ));
     setModal(null);
   }
@@ -210,10 +228,9 @@ export default function AgentsClient() {
               <>
                 <h3 className="text-lg font-semibold mb-4">Add Agent</h3>
                 <AgentForm
-                  initialData={{}}
-                  onSave={handleAdd}
+                  agent={undefined}
+                  onSubmit={handleAdd}
                   onCancel={() => setModal(null)}
-                  specializations={mockSpecializations}
                 />
               </>
             )}
@@ -221,10 +238,9 @@ export default function AgentsClient() {
               <>
                 <h3 className="text-lg font-semibold mb-4">Edit Agent</h3>
                 <AgentForm
-                  initialData={modal.agent!}
-                  onSave={handleEdit}
+                  agent={modal.agent!}
+                  onSubmit={handleEdit}
                   onCancel={() => setModal(null)}
-                  specializations={mockSpecializations}
                 />
               </>
             )}

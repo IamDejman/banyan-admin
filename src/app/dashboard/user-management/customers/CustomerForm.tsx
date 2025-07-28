@@ -4,14 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import type { Customer } from "@/lib/types/user";
 
 interface CustomerFormProps {
-  customer?: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-  };
+  customer?: Customer;
   onSubmit: (customer: {
     firstName: string;
     lastName: string;
@@ -29,7 +25,7 @@ export default function CustomerForm({
   const [firstName, setFirstName] = useState(customer?.firstName || "");
   const [lastName, setLastName] = useState(customer?.lastName || "");
   const [email, setEmail] = useState(customer?.email || "");
-  const [phoneNumber, setPhoneNumber] = useState(customer?.phoneNumber || "");
+  const [phoneNumber, setPhoneNumber] = useState(customer?.phone || "");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmit(e: React.FormEvent) {

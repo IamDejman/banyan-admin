@@ -4,14 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import type { Admin } from "@/lib/types/user";
 
 interface AdminFormProps {
-  admin?: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-  };
+  admin?: Admin;
   onSubmit: (admin: {
     firstName: string;
     lastName: string;
@@ -29,7 +25,7 @@ export default function AdminForm({
   const [firstName, setFirstName] = useState(admin?.firstName || "");
   const [lastName, setLastName] = useState(admin?.lastName || "");
   const [email, setEmail] = useState(admin?.email || "");
-  const [phoneNumber, setPhoneNumber] = useState(admin?.phoneNumber || "");
+  const [phoneNumber, setPhoneNumber] = useState(admin?.phone || "");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmit(e: React.FormEvent) {

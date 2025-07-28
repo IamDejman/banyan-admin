@@ -8,53 +8,74 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Eye, Edit, UserX, ChevronDown, ChevronRight } from "lucide-react";
 import CustomerForm from "./CustomerForm";
 import { Tooltip } from "@/components/ui/tooltip";
+import type { Customer, UserStatus } from "@/lib/types/user";
 
 // Mock customer data
-const mockCustomers = [
+const mockCustomers: Customer[] = [
   {
     id: "1",
     firstName: "John",
     lastName: "Doe",
     email: "john.doe@email.com",
-    phoneNumber: "+2348012345678",
-    bvn: "12345678901",
-    bankName: "First Bank of Nigeria",
-    accountNumber: "1234567890",
-    accountName: "John Doe",
-    claimsPending: 3,
-    claimsSettled: 2,
-    status: "active",
-    lastLoginDate: new Date("2024-01-20T12:30:00"),
+    phone: "+2348012345678",
+    status: "active" as UserStatus,
+    createdAt: "2024-01-01",
+    lastLogin: "2024-01-20T12:30:00",
+    role: "customer" as const,
+    dateOfBirth: "1990-01-01",
+    address: "Lagos, Nigeria",
+    emergencyContact: {
+      name: "Jane Doe",
+      phone: "+2348012345679",
+      relationship: "Spouse"
+    },
+    claims: ["CLM-001", "CLM-002"],
+    preferences: {
+      notifications: true,
+      language: "en"
+    }
   },
   {
     id: "2",
     firstName: "Jane",
     lastName: "Smith",
     email: "jane.smith@email.com",
-    phoneNumber: "+2348098765432",
-    bvn: "98765432109",
-    bankName: "Zenith Bank",
-    accountNumber: "0987654321",
-    accountName: "Jane Smith",
-    claimsPending: 1,
-    claimsSettled: 5,
-    status: "active",
-    lastLoginDate: new Date("2024-01-19T15:20:00"),
+    phone: "+2348098765432",
+    status: "active" as UserStatus,
+    createdAt: "2024-01-02",
+    lastLogin: "2024-01-19T15:20:00",
+    role: "customer" as const,
+    dateOfBirth: "1985-05-15",
+    address: "Abuja, Nigeria",
+    emergencyContact: undefined,
+    claims: ["CLM-003", "CLM-004", "CLM-005"],
+    preferences: {
+      notifications: false,
+      language: "en"
+    }
   },
   {
     id: "3",
     firstName: "Michael",
     lastName: "Johnson",
     email: "michael.johnson@email.com",
-    phoneNumber: "+2348055555555",
-    bvn: "55555555555",
-    bankName: "GT Bank",
-    accountNumber: "5555555555",
-    accountName: "Michael Johnson",
-    claimsPending: 0,
-    claimsSettled: 8,
-    status: "active",
-    lastLoginDate: new Date("2024-01-18T09:10:00"),
+    phone: "+2348055555555",
+    status: "active" as UserStatus,
+    createdAt: "2024-01-03",
+    lastLogin: "2024-01-18T09:10:00",
+    role: "customer" as const,
+    dateOfBirth: "1988-12-20",
+    address: "Port Harcourt, Nigeria",
+    emergencyContact: {
+      name: "Sarah Johnson",
+      phone: "+2348055555556",
+      relationship: "Sister"
+    },
+    claims: ["CLM-006", "CLM-007", "CLM-008"],
+    preferences: {
+      notifications: true,
+      language: "en"
+    }
   },
 ];
 
@@ -70,23 +91,43 @@ export default function CustomersPage() {
     customer.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  function handleCreateCustomer(newCustomer: Omit<typeof customers[0], "id">) {
-    const customer = {
-      ...newCustomer,
-      id: (Math.random() * 100000).toFixed(0),
-      claimsPending: 0,
-      claimsSettled: 0,
+  function handleCreateCustomer(customerData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    const newCustomer: Customer = {
+      id: `customer-${Date.now()}`,
+      firstName: customerData.firstName,
+      lastName: customerData.lastName,
+      email: customerData.email,
+      phone: customerData.phoneNumber,
+      role: "customer",
       status: "active",
+      dateOfBirth: "1990-01-01",
+      address: "Lagos, Nigeria",
+      emergencyContact: undefined,
+      claims: [],
+      preferences: {
+        notifications: true,
+        language: "en"
+      },
+      createdAt: new Date().toISOString().split('T')[0],
+      lastLogin: undefined
     };
-    setCustomers([customer, ...customers]);
+    setCustomers([newCustomer, ...customers]);
     setModal(null);
   }
 
-  function handleUpdateCustomer(updatedCustomer: Omit<typeof customers[0], "id">) {
+  function handleUpdateCustomer(customerData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+    if (!modal?.customer) return;
+    
+    const updatedCustomer: Customer = {
+      ...modal.customer,
+      firstName: customerData.firstName,
+      lastName: customerData.lastName,
+      email: customerData.email,
+      phone: customerData.phoneNumber,
+    };
+    
     setCustomers(prev => prev.map(customer => 
-      customer.id === modal?.customer?.id 
-        ? { ...customer, ...updatedCustomer }
-        : customer
+      customer.id === modal.customer!.id ? updatedCustomer : customer
     ));
     setModal(null);
   }
@@ -94,7 +135,7 @@ export default function CustomersPage() {
   function handleToggleStatus(customerId: string) {
     setCustomers(prev => prev.map(customer => 
       customer.id === customerId 
-        ? { ...customer, status: customer.status === "active" ? "disabled" : "active" }
+        ? { ...customer, status: customer.status === "active" ? "inactive" : "active" }
         : customer
     ));
   }
@@ -170,7 +211,7 @@ export default function CustomersPage() {
                       {customer.firstName} {customer.lastName}
                     </TableCell>
                     <TableCell>{customer.email}</TableCell>
-                    <TableCell>{customer.phoneNumber}</TableCell>
+                    <TableCell>{customer.phone}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Tooltip content="View Details">
@@ -196,7 +237,7 @@ export default function CustomersPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => handleToggleStatus(customer.id)}
-                            className={customer.status === "disabled" ? "text-red-500" : ""}
+                            className={customer.status === "inactive" ? "text-red-500" : ""}
                           >
                             <UserX className="h-4 w-4" />
                           </Button>
@@ -216,26 +257,26 @@ export default function CustomersPage() {
                               <div className="space-y-1">
                                 <div className="flex justify-between">
                                   <span className="text-sm">Pending:</span>
-                                  <Badge variant="secondary">{customer.claimsPending}</Badge>
+                                  <Badge variant="secondary">{customer.claims.length}</Badge>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-sm">Settled:</span>
-                                  <Badge variant="default">{customer.claimsSettled}</Badge>
+                                  <Badge variant="default">0</Badge>
                                 </div>
                               </div>
                             </div>
                             
                             <div>
                               <h4 className="font-medium text-sm text-muted-foreground mb-1">BVN</h4>
-                              <p className="text-sm font-mono">{customer.bvn}</p>
+                              <p className="text-sm font-mono">N/A</p>
                             </div>
                             
                             <div>
                               <h4 className="font-medium text-sm text-muted-foreground mb-1">Bank Details</h4>
                               <div className="space-y-1 text-sm">
-                                <div><span className="font-medium">Bank:</span> {customer.bankName}</div>
-                                <div><span className="font-medium">Account:</span> {customer.accountNumber}</div>
-                                <div><span className="font-medium">Name:</span> {customer.accountName}</div>
+                                <div><span className="font-medium">Bank:</span> N/A</div>
+                                <div><span className="font-medium">Account:</span> N/A</div>
+                                <div><span className="font-medium">Name:</span> N/A</div>
                               </div>
                             </div>
                             
@@ -249,8 +290,8 @@ export default function CustomersPage() {
                             <div>
                               <h4 className="font-medium text-sm text-muted-foreground mb-1">Last Login</h4>
                               <p className="text-sm">
-                                {customer.lastLoginDate 
-                                  ? `${customer.lastLoginDate.toLocaleDateString()} at ${customer.lastLoginDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
+                                {customer.lastLogin 
+                                  ? `${new Date(customer.lastLogin).toLocaleDateString()} at ${new Date(customer.lastLogin).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
                                   : "Never logged in"
                                 }
                               </p>

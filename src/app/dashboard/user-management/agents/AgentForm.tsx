@@ -4,14 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import type { Agent } from "@/lib/types/user";
 
 interface AgentFormProps {
-  agent?: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-  };
+  agent?: Agent;
   onSubmit: (agent: {
     firstName: string;
     lastName: string;
@@ -29,7 +25,7 @@ export default function AgentForm({
   const [firstName, setFirstName] = useState(agent?.firstName || "");
   const [lastName, setLastName] = useState(agent?.lastName || "");
   const [email, setEmail] = useState(agent?.email || "");
-  const [phoneNumber, setPhoneNumber] = useState(agent?.phoneNumber || "");
+  const [phoneNumber, setPhoneNumber] = useState(agent?.phone || "");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmit(e: React.FormEvent) {
