@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import Link from 'next/link';
+import { getClaims, getClaimsStatistics, } from '@/app/services/dashboard';
 
 
 const mockClaims = [
@@ -192,6 +193,16 @@ export default function ClaimsReviewPage() {
     };
     return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800";
   };
+
+  useEffect(() => {
+    console.log("fetching claims statistics__");
+    getClaimsStatistics ().then((res) => {
+      console.log(res, "res__");
+    });
+    getClaims().then((res) => {
+      console.log(res, "res__");
+    });
+  }, []);
 
   return (
     <div className="space-y-4 sm:space-y-6">

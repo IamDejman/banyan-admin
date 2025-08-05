@@ -10,28 +10,56 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BanyanLogo } from '@/components/ui/banyan-logo';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
+import { login, verifyEmail } from '@/app/services/auth';
+import { Loader2 } from 'lucide-react';
+import cookie from '@/app/utils/cookie';
+
 
 export default function LoginPage() {
   const [step, setStep] = useState<'credentials' | '2fa'>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otpHash, setOtpHash] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
-
-  const handleCredentialsSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    // For demo purposes, just move to 2FA step
-    setStep('2fa');
+  const [isLoading, setIsLoading] = useState(false);
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
+    try {
+      e.preventDefault();
+      setError('');
+      setIsLoading(true);
+      const res = await login({ email, password });
+      setOtpHash(res?.otp_hash || '');
+      setIsLoading(false);
+      setStep('2fa');
+    } catch (err: any) {
+      console.log(err, "err");
+      console.log(err?.message, "err?.message");
+      setIsLoading(false);
+      console.log(err?.response?.data?.message, "err?.response?.data?.message");
+      setError(err?.response?.data?.message || 'An error occurred');
+    }
   };
 
-  const handle2FASubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    // For demo purposes, just redirect to dashboard
-    router.push('/dashboard');
+  const handle2FASubmit = async (e: React.FormEvent) => {
+    try {
+      setIsLoading(true);
+      e.preventDefault();
+      setError('');
+      const res = await verifyEmail({ otp_hash: otpHash, otp: twoFactorCode });
+      console.log(res.token, "res");
+      cookie().setCookie('token', res?.token);
+      // cookie().setCookie('userType', res?.user?.role);
+      cookie().setCookie('userData', JSON.stringify(res?.user));
+      setIsLoading(false);
+      router.push('/dashboard');
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(err?.response?.data?.message || 'An error occurred');
+    }
+
   };
 
   return (
@@ -98,7 +126,7 @@ export default function LoginPage() {
                 </Link>
               </div>
               <Button type="submit" className="w-full">
-                Sign in
+                {isLoading ? <Loader2 className="w-4 h-4 mr-2" /> : 'Sign in'}
               </Button>
             </form>
           ) : (
@@ -121,7 +149,7 @@ export default function LoginPage() {
                 />
               </div>
               <Button type="submit" className="w-full">
-                Verify
+                {isLoading ? <Loader2 className="w-4 h-4 mr-2" /> : 'Verify'}
               </Button>
               <div className="text-center text-sm">
                 <button

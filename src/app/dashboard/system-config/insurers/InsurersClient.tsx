@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import InsurerForm from "./InsurerForm";
 import type { Insurer } from "@/lib/types/insurer";
 import type { ClaimType } from "@/lib/types/claim-types";
+import { getInsurers } from "@/app/services/dashboard";
 
 type ModalState = { mode: "add" | "edit"; insurer: Insurer | null } | null;
 
@@ -82,6 +83,12 @@ export default function InsurersClient() {
       .join(", ");
   }
 
+  useEffect(() => {
+    getInsurers().then((res) => {
+      console.log(res, "res__");
+    });
+  }, []);
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -90,7 +97,7 @@ export default function InsurersClient() {
           Add Insurer
         </Button>
       </div>
-      
+
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
           <Input
@@ -101,7 +108,7 @@ export default function InsurersClient() {
           />
         </div>
       </div>
-      
+
       <Card className="overflow-x-auto">
         <div className="overflow-x-auto">
           <Table>
@@ -166,7 +173,7 @@ export default function InsurersClient() {
             </TableBody>
           </Table>
         </div>
-        
+
         {/* Mobile Insurers Cards */}
         <div className="sm:hidden space-y-3 p-4">
           {filtered.map((insurer) => (

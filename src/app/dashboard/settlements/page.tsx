@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NairaIcon } from '@/components/ui/naira-icon';
@@ -7,6 +7,7 @@ import CreateOffersTab from './create-offers/CreateOffersTab';
 import ApproveOffersTab from './approve-offers/ApproveOffersTab';
 import PresentOffersTab from './present-offers/PresentOffersTab';
 import ManageOffersTab from './manage-offers/ManageOffersTab';
+import { getSettlements, getSettlementStatistics } from '@/app/services/dashboard';
 
 const quickStats = [
   { title: 'Active Offers', value: '12', icon: NairaIcon, description: 'Currently open offers', trend: '+2', trendUp: true },
@@ -17,6 +18,16 @@ const quickStats = [
 
 export default function SettlementsPage() {
   const [activeTab, setActiveTab] = useState("create");
+
+  useEffect(() => {
+    console.log("fetching settlements__");
+    getSettlements().then((res) => {
+      console.log(res, "res__");
+    });
+    getSettlementStatistics().then((res) => {
+      console.log(res, "res__");
+    });
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto py-8">

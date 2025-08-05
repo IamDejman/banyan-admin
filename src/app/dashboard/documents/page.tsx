@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import {
   Calendar,
   AlertCircle
 } from 'lucide-react';
+import { getDocumentStatistics, getPendingDocuments } from '@/app/services/dashboard';
 
 
 const mockDocuments = [
@@ -210,6 +211,16 @@ export default function DocumentsPage() {
         return <FileText className="h-4 w-4 text-muted-foreground" />;
     }
   };
+
+  useEffect(() => {
+    console.log("fetching document statistics__");
+    getDocumentStatistics().then((res) => {
+      console.log(res, "res__");
+    });
+    getPendingDocuments().then((res) => {
+      console.log(res, "res__");
+    });
+  }, []);
 
   return (
     <div className="space-y-4 sm:space-y-6">

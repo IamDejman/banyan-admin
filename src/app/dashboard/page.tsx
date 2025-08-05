@@ -1,52 +1,21 @@
 'use client';
-
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { 
-  TrendingUp, 
-  FileText, 
-  User, 
-  AlertCircle, 
-  Clock 
+import {
+  TrendingUp,
+  FileText,
+  User,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { formatNairaCompact } from '@/lib/utils';
 import { NairaIcon } from '@/components/ui/naira-icon';
+import { getClaimsStatistics, getClaims, getDashboardMetrics } from '../services/dashboard';
+import { Metric } from '@/lib/types/analytics';
 
-const stats = [
-  {
-    title: 'Total Claims',
-    value: '1,234',
-    icon: FileText,
-    description: 'All time claims',
-    trend: '+12%',
-    trendUp: true,
-  },
-  {
-    title: 'Pending Review',
-    value: '42',
-    icon: Clock,
-    description: 'Requires attention',
-    trend: '-5%',
-    trendUp: false,
-  },
-  {
-    title: 'Approved',
-    value: '892',
-    icon: FileText,
-    description: 'This month',
-    trend: '+8%',
-    trendUp: true,
-  },
-  {
-    title: 'Settlements',
-    value: formatNairaCompact(156000000), // ₦156M
-    icon: NairaIcon,
-    description: 'Active settlements',
-    trend: '+15%',
-    trendUp: true,
-  },
-];
+
 
 const recentActivity = [
   {
@@ -138,6 +107,28 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function DashboardPage() {
+  const [metricsData, setMetricsData] = useState<Metric[]>([]);
+  const [dashboardStats, setDashboardStats] = useState({
+    total_claims: 0,
+    pending_review: 0,
+    approved: 0,
+    settled_claims: 0
+  });
+
+  useEffect(() => {
+    console.log("fetching metrics__");
+    getDashboardMetrics().then((res: any) => {
+      setDashboardStats(res);
+      console.log(res, "res__111");
+    });
+    // getClaimsStatistics ().then((res) => {
+    //   console.log(res, "res__");
+    // });
+    getClaims().then((res) => {
+      console.log(res, "res__");
+    });
+  }, []);
+  console.log(metricsData, "metricsData__");
   return (
     <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
       <div>
@@ -146,28 +137,81 @@ export default function DashboardPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{stat.title}</p>
-                  <p className="text-lg sm:text-2xl font-bold truncate">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground truncate">{stat.description}</p>
-                </div>
-                <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
-                  <stat.icon className="h-4 w-4 text-primary" />
-                </div>
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Total Claims</p>
+                <p className="text-lg sm:text-2xl font-bold truncate">{dashboardStats.total_claims}</p>
+                <p className="text-xs text-muted-foreground truncate">All time claims</p>
               </div>
-              <div className="flex items-center mt-2">
-                <TrendingUp className={`h-3 w-3 mr-1 ${stat.trendUp ? 'text-green-500' : 'text-red-500'}`} />
-                <span className={`text-xs ${stat.trendUp ? 'text-green-500' : 'text-red-500'}`}>
-                  {stat.trend}
-                </span>
+              <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                <FileText className="h-4 w-4 text-primary" />
               </div>
-            </CardContent>
-          </Card>
-        ))}
+            </div>
+            <div className="flex items-center mt-2">
+              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+              <span className="text-xs text-green-500">+1%</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Pending Review</p>
+                <p className="text-lg sm:text-2xl font-bold truncate">{dashboardStats.pending_review}</p>
+                <p className="text-xs text-muted-foreground truncate">Requires attention</p>
+              </div>
+              <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                <Clock className="h-4 w-4 text-primary" />
+              </div>
+            </div>
+            <div className="flex items-center mt-2">
+              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+              <span className="text-xs text-green-500">+1%</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Approved</p>
+                <p className="text-lg sm:text-2xl font-bold truncate">{dashboardStats.approved}</p>
+                <p className="text-xs text-muted-foreground truncate">This month</p>
+              </div>
+              <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                <FileText className="h-4 w-4 text-primary" />
+              </div>
+            </div>
+            <div className="flex items-center mt-2">
+              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+              <span className="text-xs text-green-500">+1%</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">Settlements</p>
+                <p className="text-lg sm:text-2xl font-bold truncate">{dashboardStats.settled_claims}</p>
+                <p className="text-xs text-muted-foreground truncate">Active settlements</p>
+              </div>
+              <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                <NairaIcon className="h-4 w-4 text-primary" />
+              </div>
+            </div>
+            <div className="flex items-center mt-2">
+              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+              <span className="text-xs text-green-500">+1%</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Activity */}
@@ -208,7 +252,7 @@ export default function DashboardPage() {
               </TableBody>
             </Table>
           </div>
-          
+
           {/* Mobile Activity Cards */}
           <div className="sm:hidden space-y-3 mt-4">
             {recentActivity.map((activity) => (

@@ -3,6 +3,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BarChart2, TrendingUp, Users, FileText, CheckCircle2 } from 'lucide-react';
+import { getDashboardMetrics } from '@/app/services/dashboard';
+import { Metric } from '@/lib/types/analytics';
+import { useEffect, useState } from 'react';
 
 const metrics = [
   { label: 'Total Claims', value: 128, icon: FileText },
@@ -27,6 +30,7 @@ const trends = [
 ];
 
 export default function DashboardPage() {
+ 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>

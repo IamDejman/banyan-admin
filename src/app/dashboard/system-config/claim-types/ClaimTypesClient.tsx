@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { X, Plus } from "lucide-react";
 import type { ClaimType } from "@/lib/types/claim-types";
+import { getClaimTypes } from "@/app/services/dashboard";
 
 const initialClaimTypes: ClaimType[] = [
   { 
@@ -73,6 +74,12 @@ export default function ClaimTypesClient() {
       ct.id === id ? { ...ct, status: ct.status === "active" ? "inactive" : "active" } : ct
     ));
   }
+
+  useEffect(() => {
+    getClaimTypes().then((res) => {
+      console.log(res, "res__");
+    });
+  }, []);
 
   return (
     <div className="space-y-4 sm:space-y-6">

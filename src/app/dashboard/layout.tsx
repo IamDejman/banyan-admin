@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/button';
 import { BanyanLogo } from '@/components/ui/banyan-logo';
 import { Menu, LogOut, X, AlertTriangle } from 'lucide-react';
+import cookie from '../utils/cookie';
 
 export default function DashboardLayout({
   children,
@@ -16,8 +17,8 @@ export default function DashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  
-  const adminName = 'Jane Doe';
+
+  const adminName = JSON.parse(cookie().getCookie('userData') || '{}')?.first_name + ' ' + JSON.parse(cookie().getCookie('userData') || '{}')?.last_name;
 
   // Handle mobile detection
   useEffect(() => {
@@ -53,11 +54,17 @@ export default function DashboardLayout({
     // Clear any stored authentication data
     localStorage.removeItem('authToken');
     sessionStorage.removeItem('authToken');
-    
+
     // Clear any user data
     localStorage.removeItem('userData');
     sessionStorage.removeItem('userData');
-    
+
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userPhone');
+    localStorage.removeItem('registrationData');
+    cookie().deleteCookie('token');
+    cookie().deleteCookie('user');
+
     // Close modal and redirect to login page
     setShowLogoutModal(false);
     router.push('/login');
@@ -66,6 +73,17 @@ export default function DashboardLayout({
   const cancelLogout = () => {
     setShowLogoutModal(false);
   };
+
+  useEffect(() => {
+    const token = cookie().getCookie('token');
+    // const userData = cookie().getCookie('userData');
+    // console.log(token, "token__11");
+    // console.log(JSON.parse(userData || '{}'), "userData__");
+
+    if (!token) {
+      router.push('/login');
+    }
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -95,27 +113,26 @@ export default function DashboardLayout({
           </button>
         </div>
       </nav>
-      
+
       <div className="flex flex-1 pt-14">
         {/* Sidebar */}
-        <div className={`transition-all duration-300 ${
-          isSidebarOpen 
-            ? 'w-64' 
-            : isMobile 
-              ? 'w-0' 
-              : 'w-20'
-        } flex-shrink-0 relative`}>
+        <div className={`transition-all duration-300 ${isSidebarOpen
+          ? 'w-64'
+          : isMobile
+            ? 'w-0'
+            : 'w-20'
+          } flex-shrink-0 relative`}>
           <Sidebar collapsed={!isSidebarOpen} />
         </div>
-        
+
         {/* Overlay for mobile */}
         {isSidebarOpen && isMobile && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 md:hidden"
             onClick={closeSidebar}
           />
         )}
-        
+
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           <main className="p-4 sm:p-6" onClick={closeSidebar}>{children}</main>
@@ -135,7 +152,7 @@ export default function DashboardLayout({
                 <p className="text-sm text-muted-foreground">Are you sure you want to logout?</p>
               </div>
             </div>
-            
+
             <div className="flex gap-3 justify-end">
               <Button
                 variant="outline"
