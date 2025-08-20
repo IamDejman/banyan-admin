@@ -10,7 +10,12 @@ import { Eye, Edit, RotateCcw } from "lucide-react";
 import PaymentProcessingForm from "./PaymentProcessingForm";
 import type { SettlementOffer, ClientResponse, PaymentDetails } from "@/lib/types/settlement";
 
-// Mock active offers with different statuses
+interface ManageOffersTabProps {
+  settlements: any[];
+  loading: boolean;
+}
+
+// Mock active offers with different statuses (fallback)
 const activeOffers: (SettlementOffer & { clientResponse?: ClientResponse })[] = [
   {
     id: "8",
@@ -98,47 +103,65 @@ const activeOffers: (SettlementOffer & { clientResponse?: ClientResponse })[] = 
     offerId: "OFF-010",
     claimId: "10",
     clientName: "Carol Smith",
-    claimType: "Health",
-    assessedAmount: 80000,
-    deductions: 0,
+    claimType: "Motor",
+    assessedAmount: 45000,
+    deductions: 2000,
     serviceFeePercentage: 10,
-    finalAmount: 72000,
+    finalAmount: 38700,
     paymentMethod: "BANK_TRANSFER",
     paymentTimeline: 7,
     offerValidityPeriod: 14,
     specialConditions: "",
-    status: "ACCEPTED",
+    status: "PAYMENT_PROCESSING",
     createdBy: "David L.",
-    createdAt: new Date("2024-01-05"),
-    approvedAt: new Date("2024-01-06"),
-    presentedAt: new Date("2024-01-07"),
-    expiresAt: new Date("2024-01-21"),
-    supportingDocuments: ["medical_report.pdf", "bills.pdf"],
+    createdAt: new Date("2024-01-07"),
+    approvedAt: new Date("2024-01-08"),
+    presentedAt: new Date("2024-01-09"),
+    expiresAt: new Date("2024-01-24"),
+    supportingDocuments: ["assessment_report.pdf", "vehicle_photos.pdf"],
     clientResponse: {
       responseType: "ACCEPTED",
-      responseDate: new Date("2024-01-14"),
+      responseDate: new Date("2024-01-11"),
       comments: "Client accepts the offer",
+    },
+    paymentDetails: {
+      paymentId: "PAY-003",
+      paymentDate: new Date("2024-01-12"),
+      paymentAmount: 38700,
+      paymentMethod: "BANK_TRANSFER",
+      transactionReference: "TXN987654321",
+      bankName: "Zenith Bank",
+      accountNumber: "0987654321",
+      accountName: "Carol Smith",
+      paymentStatus: "PROCESSING",
+      processedBy: "David L.",
+      processedAt: new Date("2024-01-12"),
+      paymentNotes: "Payment initiated",
+      receiptNumber: "RCP-003",
     },
   },
 ];
 
-export default function ManageOffersTab() {
+export default function ManageOffersTab({ settlements, loading }: ManageOffersTabProps) {
   const [offers, setOffers] = useState<(SettlementOffer & { clientResponse?: ClientResponse })[]>(activeOffers);
-  const [modal, setModal] = useState<{ mode: "payment-processing" | "view" | "manage"; offer?: typeof activeOffers[0] } | null>(null);
+  const [modal, setModal] = useState<{ mode: "view" | "edit" | "payment"; offer: SettlementOffer & { clientResponse?: ClientResponse } } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  // Use settlements data if available, otherwise fall back to mock data
+  const availableSettlements = settlements.length > 0 ? settlements : [];
+
   const filteredOffers = offers.filter((offer) => {
     const matchesSearch = offer.clientName.toLowerCase().includes(search.toLowerCase()) ||
-                         offer.offerId.toLowerCase().includes(search.toLowerCase());
+      offer.offerId.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" ||
-                         (statusFilter === "pending" && !offer.clientResponse) ||
-                         (statusFilter === "accepted" && offer.clientResponse?.responseType === "ACCEPTED") ||
-                         (statusFilter === "rejected" && offer.clientResponse?.responseType === "REJECTED") ||
-                         (statusFilter === "counter" && offer.clientResponse?.responseType === "COUNTER_OFFER") ||
-                         (statusFilter === "expired" && offer.expiresAt && new Date() > offer.expiresAt) ||
-                         (statusFilter === "payment_processing" && offer.status === "PAYMENT_PROCESSING") ||
-                         (statusFilter === "paid" && offer.status === "PAID");
+      (statusFilter === "pending" && !offer.clientResponse) ||
+      (statusFilter === "accepted" && offer.clientResponse?.responseType === "ACCEPTED") ||
+      (statusFilter === "rejected" && offer.clientResponse?.responseType === "REJECTED") ||
+      (statusFilter === "counter" && offer.clientResponse?.responseType === "COUNTER_OFFER") ||
+      (statusFilter === "expired" && offer.expiresAt && new Date() > offer.expiresAt) ||
+      (statusFilter === "payment_processing" && offer.status === "PAYMENT_PROCESSING") ||
+      (statusFilter === "paid" && offer.status === "PAID");
     return matchesSearch && matchesStatus;
   });
 
@@ -174,11 +197,11 @@ export default function ManageOffersTab() {
     if (offer.status === "CANCELLED") {
       return <Badge variant="destructive">Cancelled</Badge>;
     }
-    
+
     if (offer.expiresAt && new Date() > offer.expiresAt) {
       return <Badge variant="secondary">Expired</Badge>;
     }
-    
+
     if (offer.clientResponse) {
       switch (offer.clientResponse.responseType) {
         case "ACCEPTED":
@@ -189,13 +212,13 @@ export default function ManageOffersTab() {
           return <Badge variant="outline">Counter-Offered</Badge>;
       }
     }
-    
+
     return <Badge variant="secondary">Pending Response</Badge>;
   }
 
   function handleMarkExpired(offerId: string) {
-    setOffers(prev => prev.map(offer => 
-      offer.id === offerId 
+    setOffers(prev => prev.map(offer =>
+      offer.id === offerId
         ? { ...offer, status: "EXPIRED" as SettlementOffer["status"] }
         : offer
     ));
@@ -218,6 +241,25 @@ export default function ManageOffersTab() {
           <h2 className="text-2xl font-bold">Manage Offers</h2>
         </div>
       </div>
+
+      {/* Loading State */}
+      {loading && (
+        <Card className="p-6">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading settlements data...</p>
+          </div>
+        </Card>
+      )}
+
+      {/* Data Info */}
+      {/* {!loading && availableSettlements.length > 0 && (
+        <Card className="p-4">
+          <div className="text-muted-foreground">
+            Loaded {availableSettlements.length} settlements from API
+          </div>
+        </Card>
+      )} */}
 
       <div className="flex gap-4 items-center">
         <Input
@@ -449,8 +491,8 @@ export default function ManageOffersTab() {
                         </Button>
                       )}
                       {modal.offer.clientResponse?.responseType === "ACCEPTED" && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="justify-start"
                           onClick={() => modal.offer && handlePaymentProcessing(modal.offer)}
                         >

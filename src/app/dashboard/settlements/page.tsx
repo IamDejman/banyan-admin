@@ -9,25 +9,176 @@ import PresentOffersTab from './present-offers/PresentOffersTab';
 import ManageOffersTab from './manage-offers/ManageOffersTab';
 import { getSettlements, getSettlementStatistics } from '@/app/services/dashboard';
 
-const quickStats = [
-  { title: 'Active Offers', value: '12', icon: NairaIcon, description: 'Currently open offers', trend: '+2', trendUp: true },
-  { title: 'Pending Approval', value: '5', icon: NairaIcon, description: 'Awaiting review', trend: '-1', trendUp: false },
-  { title: 'Ready to Present', value: '8', icon: NairaIcon, description: 'Approved offers', trend: '+3', trendUp: true },
-  { title: 'Total Settled', value: '₦2.5M', icon: NairaIcon, description: 'This month', trend: '+15%', trendUp: true },
-];
+interface SettlementStatistics {
+  active_offers: number;
+  active_offers_percentage: number;
+  pending_approval: number;
+  pending_approval_percentage: number;
+  ready_to_present: number;
+  ready_to_present_percentage: number;
+  total_settled: number;
+  total_settled_percentage: number;
+}
+
+interface Settlement {
+  id: number;
+  claim_type: string;
+  client: string;
+  claim_id: number;
+  calculation_breakdown: any;
+  offer_modifications: any;
+  fee_structure: any;
+  offer_amount: string;
+  offer_terms: any;
+  expiry_period: string;
+  status: string;
+  approval_notes: string | null;
+  rejection_reason: string | null;
+  offer_acceptance_notes: string | null;
+  offer_acceptance_status: string | null;
+  offer_acceptance_reason: string | null;
+  approved_by: string | null;
+  rejected_by: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  created_at: string;
+  updated_at: string;
+  assessed_claim_value: string;
+  deductions: string;
+  service_fee_percentage: string;
+  payment_method: string;
+  payment_timeline: string;
+  offer_validity_period: string;
+  supporting_documents: string[];
+  special_conditions: string;
+}
+
+interface SettlementsResponse {
+  data: Settlement[];
+  links: {
+    first: string;
+    last: string;
+    prev: string | null;
+    next: string | null;
+  };
+  meta: {
+    current_page: number;
+    from: number;
+    last_page: number;
+    links: Array<{
+      url: string | null;
+      label: string;
+      active: boolean;
+    }>;
+    path: string;
+    per_page: number;
+    to: number;
+    total: number;
+  };
+}
 
 export default function SettlementsPage() {
   const [activeTab, setActiveTab] = useState("create");
+  const [statistics, setStatistics] = useState<SettlementStatistics | null>(null);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [settlementsLoading, setSettlementsLoading] = useState(true);
 
   useEffect(() => {
     console.log("fetching settlements__");
-    getSettlements().then((res) => {
-      console.log(res, "res__");
+    getSettlements().then((res: any) => {
+      // console.log(res, "settlements res__");
+      // Handle the nested data structure from the API response
+      let settlementsData: Settlement[] = [];
+      if (res?.data?.data && Array.isArray(res.data.data)) {
+        settlementsData = res.data.data;
+      } else if (Array.isArray(res)) {
+        settlementsData = res;
+      }
+      console.log(settlementsData, "settlementsData__");
+
+      // Fill missing data with "N/A" for required fields
+      const processedSettlements = settlementsData.map(settlement => ({
+        ...settlement,
+        calculation_breakdown: settlement.calculation_breakdown || "N/A",
+        offer_modifications: settlement.offer_modifications || "N/A",
+        fee_structure: settlement.fee_structure || "N/A",
+        offer_terms: settlement.offer_terms || "N/A",
+        approval_notes: settlement.approval_notes || "N/A",
+        rejection_reason: settlement.rejection_reason || "N/A",
+        offer_acceptance_notes: settlement.offer_acceptance_notes || "N/A",
+        offer_acceptance_status: settlement.offer_acceptance_status || "N/A",
+        offer_acceptance_reason: settlement.offer_acceptance_reason || "N/A",
+        approved_by: settlement.approved_by || "N/A",
+        rejected_by: settlement.rejected_by || "N/A",
+        approved_at: settlement.approved_at || "N/A",
+        rejected_at: settlement.rejected_at || "N/A",
+        supporting_documents: settlement.supporting_documents || [],
+        special_conditions: settlement.special_conditions || "N/A"
+      }));
+
+      setSettlements(processedSettlements);
+      setSettlementsLoading(false);
+    }).catch((error) => {
+      console.error("Error fetching settlements:", error);
+      setSettlementsLoading(false);
     });
+
     getSettlementStatistics().then((res) => {
-      console.log(res, "res__");
+      console.log(res, "statistics__");
+      // Handle the response - it might be an array with the first element being the data
+      const statsData = Array.isArray(res) ? res[0] : res;
+      setStatistics(statsData as SettlementStatistics);
+      setLoading(false);
+    }).catch((error) => {
+      console.error("Error fetching settlement statistics:", error);
+      setLoading(false);
     });
   }, []);
+
+  // Filter settlements by status for different tabs
+  const getSettlementsByStatus = (status: string) => {
+    return settlements.filter(settlement => settlement.status === status);
+  };
+
+  const getSettlementsByStatuses = (statuses: string[]) => {
+    return settlements.filter(settlement => statuses.includes(settlement.status));
+  };
+
+  const quickStats = statistics ? [
+    {
+      title: 'Active Offers',
+      value: statistics.active_offers.toString(),
+      icon: NairaIcon,
+      description: 'Currently open offers',
+      trend: `${statistics.active_offers_percentage >= 0 ? '+' : ''}${statistics.active_offers_percentage}%`,
+      trendUp: statistics.active_offers_percentage >= 0
+    },
+    {
+      title: 'Pending Approval',
+      value: statistics.pending_approval.toString(),
+      icon: NairaIcon,
+      description: 'Awaiting review',
+      trend: `${statistics.pending_approval_percentage >= 0 ? '+' : ''}${statistics.pending_approval_percentage}%`,
+      trendUp: statistics.pending_approval_percentage >= 0
+    },
+    {
+      title: 'Ready to Present',
+      value: statistics.ready_to_present.toString(),
+      icon: NairaIcon,
+      description: 'Approved offers',
+      trend: `${statistics.ready_to_present_percentage >= 0 ? '+' : ''}${statistics.ready_to_present_percentage}%`,
+      trendUp: statistics.ready_to_present_percentage >= 0
+    },
+    {
+      title: 'Total Settled',
+      value: `₦${statistics.total_settled.toLocaleString()}`,
+      icon: NairaIcon,
+      description: 'This month',
+      trend: `${statistics.total_settled_percentage >= 0 ? '+' : ''}${statistics.total_settled_percentage}%`,
+      trendUp: statistics.total_settled_percentage >= 0
+    },
+  ] : [];
 
   return (
     <div className="max-w-7xl mx-auto py-8">
@@ -37,26 +188,45 @@ export default function SettlementsPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {quickStats.map((stat, index) => (
-          <Card key={index} className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.description}</p>
+        {loading ? (
+          // Loading skeleton
+          Array.from({ length: 4 }).map((_, index) => (
+            <Card key={index} className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  <div className="h-8 bg-gray-200 rounded w-16"></div>
+                  <div className="h-3 bg-gray-200 rounded w-32"></div>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-gray-200"></div>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <stat.icon className="h-6 w-6 text-primary" />
+              <div className="mt-4">
+                <div className="h-4 bg-gray-200 rounded w-20"></div>
               </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm">
-              <span className={`font-medium ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>
-                {stat.trend}
-              </span>
-              <span className="text-muted-foreground ml-1">from last month</span>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          ))
+        ) : (
+          quickStats.map((stat, index) => (
+            <Card key={index} className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                  <p className="text-2xl font-bold">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <stat.icon className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center text-sm">
+                <span className={`font-medium ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>
+                  {stat.trend}
+                </span>
+                <span className="text-muted-foreground ml-1">from last month</span>
+              </div>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Main Tabs */}
@@ -70,19 +240,42 @@ export default function SettlementsPage() {
           </TabsList>
 
           <TabsContent value="create" className="mt-6">
-            <CreateOffersTab />
+            <CreateOffersTab
+              refetch={() => {
+                getSettlements().then((res: any) => {
+                  let latestSettlements: Settlement[] = [];
+                  if (res?.data?.data && Array.isArray(res.data.data)) {
+                    latestSettlements = res.data.data;
+                  } else if (Array.isArray(res)) {
+                    latestSettlements = res;
+                  }
+                  setSettlements(latestSettlements);
+                });
+              }}
+              settlements={settlements}
+              loading={settlementsLoading}
+            />
           </TabsContent>
 
           <TabsContent value="approve" className="mt-6">
-            <ApproveOffersTab />
+            <ApproveOffersTab
+              settlements={getSettlementsByStatuses(['submitted', 'pending_approval'])}
+              loading={settlementsLoading}
+            />
           </TabsContent>
 
           <TabsContent value="present" className="mt-6">
-            <PresentOffersTab />
+            <PresentOffersTab
+              settlements={getSettlementsByStatuses(['approved', 'ready_to_present'])}
+              loading={settlementsLoading}
+            />
           </TabsContent>
 
           <TabsContent value="manage" className="mt-6">
-            <ManageOffersTab />
+            <ManageOffersTab
+              settlements={settlements}
+              loading={settlementsLoading}
+            />
           </TabsContent>
         </Tabs>
       </Card>

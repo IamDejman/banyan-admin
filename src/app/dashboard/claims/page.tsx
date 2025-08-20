@@ -10,145 +10,24 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip } from '@/components/ui/tooltip';
-import { 
-  Clock, 
-  FileText, 
-  Search, 
+import {
+  Clock,
+  FileText,
+  Search,
   User,
   Download,
   Eye,
   CheckSquare,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import Link from 'next/link';
-import { getClaims, getClaimsStatistics, } from '@/app/services/dashboard';
+import { getClaims, getClaimsStatistics, approveClaim } from '@/app/services/dashboard';
+import { toast } from '@/components/ui/use-toast';
 
-
-const mockClaims = [
-  {
-    id: 'CLM-001',
-    clientName: 'John Smith',
-    submissionDate: '2024-01-15',
-    claimType: 'Property Damage',
-    documentStatus: 85,
-    status: 'Pending Review',
-    estimatedValue: 25000,
-  },
-  {
-    id: 'CLM-002',
-    clientName: 'Sarah Johnson',
-    submissionDate: '2024-01-14',
-    claimType: 'Auto Accident',
-    documentStatus: 60,
-    status: 'Pending Review',
-    estimatedValue: 15000,
-  },
-  {
-    id: 'CLM-003',
-    clientName: 'Mike Wilson',
-    submissionDate: '2024-01-13',
-    claimType: 'Medical',
-    documentStatus: 100,
-    status: 'Pending Review',
-    estimatedValue: 8000,
-  },
-  {
-    id: 'CLM-004',
-    clientName: 'Lisa Brown',
-    submissionDate: '2024-01-12',
-    claimType: 'Property Damage',
-    documentStatus: 45,
-    status: 'Pending Review',
-    estimatedValue: 35000,
-  },
-  {
-    id: 'CLM-005',
-    clientName: 'David Lee',
-    submissionDate: '2024-01-11',
-    claimType: 'Auto Accident',
-    documentStatus: 90,
-    status: 'Pending Review',
-    estimatedValue: 12000,
-  },
-];
-
-const settledClaims = [
-  {
-    id: 'CLM-006',
-    clientName: 'Emma Wilson',
-    submissionDate: '2024-01-10',
-    claimType: 'Property Damage',
-    documentStatus: 100,
-    status: 'Completed',
-    settlementDate: '2024-01-20',
-    settlementAmount: 28000,
-    estimatedValue: 30000,
-  },
-  {
-    id: 'CLM-007',
-    clientName: 'James Brown',
-    submissionDate: '2024-01-09',
-    claimType: 'Auto Accident',
-    documentStatus: 100,
-    status: 'Completed',
-    settlementDate: '2024-01-18',
-    settlementAmount: 13500,
-    estimatedValue: 14000,
-  },
-  {
-    id: 'CLM-008',
-    clientName: 'Maria Garcia',
-    submissionDate: '2024-01-08',
-    claimType: 'Medical',
-    documentStatus: 100,
-    status: 'Completed',
-    settlementDate: '2024-01-17',
-    settlementAmount: 7500,
-    estimatedValue: 8000,
-  },
-];
-
-const quickStats = [
-  {
-    title: 'Total Pending Claims',
-    value: '42',
-    icon: Clock,
-    description: 'Requires review',
-    trend: '+5 from yesterday',
-    trendUp: true,
-  },
-  {
-    title: 'Average Review Time',
-    value: '2.3 days',
-    icon: Clock,
-    description: 'Last 30 days',
-    trend: '-0.5 days',
-    trendUp: false,
-  },
-  {
-    title: 'Document Completion',
-    value: '78%',
-    icon: FileText,
-    description: 'Average across claims',
-    trend: '+3%',
-    trendUp: true,
-  },
-  {
-    title: 'Settled Claims',
-    value: '156',
-    icon: CheckSquare,
-    description: 'This month',
-    trend: '+12',
-    trendUp: true,
-  },
-];
-
-const claimTypes = [
-  { label: 'Property Damage', value: 'property', count: 15 },
-  { label: 'Auto Accident', value: 'auto', count: 12 },
-  { label: 'Medical', value: 'medical', count: 8 },
-  { label: 'Liability', value: 'liability', count: 7 },
-];
 
 export default function ClaimsReviewPage() {
   const [filters, setFilters] = useState({
@@ -157,27 +36,59 @@ export default function ClaimsReviewPage() {
     documentStatus: 'all',
     startDate: '',
     endDate: '',
+    search: '',
   });
   const [activeTab, setActiveTab] = useState('pending');
-  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; claim: typeof mockClaims[0] | null }>({ isOpen: false, claim: null });
-  const [approvedClaims, setApprovedClaims] = useState<typeof mockClaims>([]);
+  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; claim: any | null }>({ isOpen: false, claim: null });
+  const [approvedClaims, setApprovedClaims] = useState<any[]>([]);
+  const [statistics, setStatistics] = useState({
+    total_pending_claims: 0,
+    average_review_time: 0,
+    document_completion: 0,
+    settled_claim: 0,
+    propertydamage_claims: 0,
+    auto_accident_claims: 0,
+    medical_claims: 0,
+    liability: 0
+  });
+  const [claims, setClaims] = useState<any[]>([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+  });
+  const [loading, setLoading] = useState(false);
 
-  // Debug logging
-  console.log('Mock claims:', mockClaims);
-  console.log('Settled claims:', settledClaims);
-  console.log('Approved claims:', approvedClaims);
-
-  const handleApproveClaim = (claim: typeof mockClaims[0]) => {
+  const handleApproveClaim = (claim: any) => {
+    console.log("Approving claim:", claim);
     setApproveModal({ isOpen: true, claim });
   };
 
-  const confirmApprove = () => {
-    if (approveModal.claim) {
-      console.log("Approving claim:", approveModal.claim.id);
-      // In a real app, this would update the claim status
-      setApprovedClaims(prev => [...prev, approveModal.claim!]);
+  const confirmApprove = async () => {
+    try {
+      if (approveModal.claim) {
+        console.log("Approving claim:", approveModal.claim.claim_number);
+        const res = await approveClaim(approveModal.claim.id);
+        console.log(res, "res__111");
+        // In a real app, this would update the claim status
+        setApprovedClaims(prev => [...prev, approveModal.claim!]);
+        return toast({
+          title: "Claim approved successfully",
+          description: "The claim has been approved successfully",
+          variant: "default",
+        });
+      }
+      setApproveModal({ isOpen: false, claim: null });
+
+    } catch (error) {
+      toast({
+        title: "Failed to approve claim",
+        description: "The claim has not been approved",
+        variant: "destructive",
+      });
     }
-    setApproveModal({ isOpen: false, claim: null });
+
   };
 
   const cancelApprove = () => {
@@ -186,23 +97,184 @@ export default function ClaimsReviewPage() {
 
   const getStatusColor = (status: string) => {
     const colors = {
-      pending: "bg-yellow-100 text-yellow-800",
-      approved: "bg-green-100 text-green-800",
+      submitted: "bg-yellow-100 text-yellow-800",
+      completed: "bg-green-100 text-green-800",
       rejected: "bg-red-100 text-red-800",
       processing: "bg-blue-100 text-blue-800",
     };
     return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800";
   };
 
+  // Transform API claim data to table format
+  const transformClaimData = (claim: any) => {
+    const uploadedDocs = claim.documents?.filter((doc: any) => doc.document_uploaded) || [];
+    const totalDocs = claim.documents?.length || 0;
+    const documentStatus = totalDocs > 0 ? Math.round((uploadedDocs.length / totalDocs) * 100) : 0;
+
+    return {
+      id: claim.claim_number,
+      clientName: claim.client.first_name + ' ' + claim.client.last_name, // API doesn't provide client name
+      submissionDate: new Date(claim.submission_date).toLocaleDateString(),
+      claimType: claim.claim_type_details?.name || 'Unknown',
+      documentStatus,
+      status: claim.status === 'completed' ? 'Completed' : 'Pending Review',
+      estimatedValue: claim.estimated_value, // API doesn't provide estimated value
+      incidentLocation: claim.incident_location,
+      description: claim.description,
+      incidentDate: new Date(claim.incident_date).toLocaleDateString(),
+      originalClaim: claim, // Keep original data for filtering
+    };
+  };
+
+  // Transform settled claim data with settlement info
+  const transformSettledClaimData = (claim: any) => {
+    const baseData = transformClaimData(claim);
+    return {
+      ...baseData,
+      settlementDate: new Date(claim.submission_date).toLocaleDateString(), // Using submission date as settlement date
+      settlementAmount: 0, // API doesn't provide settlement amount
+    };
+  };
+
+  // Filter and search claims
+  const filterClaims = (claims: any[], searchTerm: string, claimTypeFilter: string) => {
+    return claims.filter(claim => {
+      const matchesSearch = searchTerm === '' ||
+        claim.claim_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        claim.incident_location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        claim.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        claim.claim_type_details?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesType = claimTypeFilter === 'all' ||
+        claim.claim_type_details?.name?.toLowerCase().includes(claimTypeFilter.toLowerCase());
+
+      return matchesSearch && matchesType;
+    });
+  };
+
+  // Apply filters and pagination
+  const getFilteredClaims = () => {
+    const filtered = filterClaims(claims, filters.search, filters.claimType);
+    const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
+    const endIndex = startIndex + pagination.itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  };
+
+  // Get filtered claims for display
+  const pendingClaims = getFilteredClaims().filter(claim => claim?.originalClaim?.status !== 'completed').map(transformClaimData);
+  const settledClaims = getFilteredClaims().filter(claim => claim?.originalClaim?.status === 'completed').map(transformSettledClaimData);
+
+  // Calculate total filtered items for pagination
+  const getTotalFilteredItems = () => {
+    const filtered = filterClaims(claims, filters.search, filters.claimType);
+    return filtered.length;
+  };
+
+  // Update pagination when filters or claims change
+  useEffect(() => {
+    const totalItems = getTotalFilteredItems();
+    const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
+    setPagination(prev => ({
+      ...prev,
+      totalItems,
+      totalPages,
+      currentPage: prev.currentPage > totalPages ? 1 : prev.currentPage,
+    }));
+  }, [claims, filters.search, filters.claimType]);
+
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    setPagination(prev => ({ ...prev, currentPage: page }));
+  };
+
+  // Handle search
+  const handleSearch = (value: string) => {
+    setFilters(prev => ({ ...prev, search: value }));
+    setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page
+  };
+
+  // Handle claim type filter
+  const handleClaimTypeFilter = (value: string) => {
+    setFilters(prev => ({ ...prev, claimType: value }));
+    setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page
+  };
+
+  // Fetch claims
+  const fetchClaims = async () => {
+    setLoading(true);
+    try {
+      const res: any = await getClaims();
+      console.log(res, "res__");
+      // Handle the nested data structure - res might be an array or object
+      const claimsData = Array.isArray(res)
+        ? (res[0]?.data?.data || res[0]?.data || res[0] || [])
+        : (res?.data?.data || res?.data || res || []);
+
+      setClaims(claimsData);
+    } catch (error) {
+      console.error('Error fetching claims:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     console.log("fetching claims statistics__");
-    getClaimsStatistics ().then((res) => {
-      console.log(res, "res__");
+    getClaimsStatistics().then((res) => {
+      console.log(res, "res__111");
+      // Handle the response - it might be an array with the first element being the data
+      const statsData = Array.isArray(res) ? res[0] : res;
+      setStatistics(statsData as typeof statistics);
     });
-    getClaims().then((res) => {
-      console.log(res, "res__");
-    });
+    fetchClaims();
   }, []);
+
+  // Remove the automatic refetch - filtering will be client-side only
+
+  // Generate quickStats from API response
+  const quickStats = [
+    {
+      title: 'Total Pending Claims',
+      value: statistics.total_pending_claims.toString(),
+      icon: Clock,
+      description: 'Requires review',
+      trend: '+1%',
+      trendUp: true,
+    },
+    {
+      title: 'Average Review Time',
+      value: `${statistics.average_review_time} days`,
+      icon: Clock,
+      description: 'Last 30 days',
+      trend: '+1%',
+      trendUp: true,
+    },
+    {
+      title: 'Document Completion',
+      value: `${statistics.document_completion}%`,
+      icon: FileText,
+      description: 'Average across claims',
+      trend: '+1%',
+      trendUp: true,
+    },
+    {
+      title: 'Settled Claims',
+      value: statistics.settled_claim.toString(),
+      icon: CheckSquare,
+      description: 'This month',
+      trend: '+1%',
+      trendUp: true,
+    },
+  ];
+
+  // Generate claimTypes from API response
+  const claimTypes = [
+    { label: 'Property Damage', value: 'property', count: statistics.propertydamage_claims },
+    { label: 'Auto Accident', value: 'auto', count: statistics.auto_accident_claims },
+    { label: 'Medical', value: 'medical', count: statistics.medical_claims },
+    { label: 'Liability', value: 'liability', count: statistics.liability },
+  ];
+
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -286,20 +358,12 @@ export default function ClaimsReviewPage() {
                     <Input
                       placeholder="Search claims..."
                       className="pl-8 w-full lg:w-64"
+                      value={filters.search}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      disabled={loading}
                     />
                   </div>
-                  <Select value={filters.dateRange} onValueChange={(value) => setFilters(prev => ({ ...prev, dateRange: value }))}>
-                    <SelectTrigger className="w-full lg:w-40">
-                      <SelectValue placeholder="Date Range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="week">This Week</SelectItem>
-                      <SelectItem value="month">This Month</SelectItem>
-                      <SelectItem value="all">All Time</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={filters.claimType} onValueChange={(value) => setFilters(prev => ({ ...prev, claimType: value }))}>
+                  <Select value={filters.claimType} onValueChange={handleClaimTypeFilter}>
                     <SelectTrigger className="w-full lg:w-40">
                       <SelectValue placeholder="Claim Type" />
                     </SelectTrigger>
@@ -333,7 +397,16 @@ export default function ClaimsReviewPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockClaims.length === 0 ? (
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="text-center">
+                            <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                            <p className="text-sm text-muted-foreground">Loading claims...</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : pendingClaims.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-8">
                           <div className="text-center">
@@ -343,7 +416,7 @@ export default function ClaimsReviewPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      mockClaims.map((claim) => (
+                      pendingClaims.map((claim) => (
                         <TableRow key={claim.id}>
                           <TableCell className="font-medium text-xs sm:text-sm">{claim.id}</TableCell>
                           <TableCell className="hidden sm:table-cell">{claim.clientName}</TableCell>
@@ -368,15 +441,19 @@ export default function ClaimsReviewPage() {
                                   <Eye className="h-4 w-4" />
                                 </Link>
                               </Button>
-                              <Tooltip content="Approve Claim">
+                              {/* <Tooltip content="Approve Claim">
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleApproveClaim(claim)}
+                                  onClick={() => {
+                                    // navigate to document page
+                                    navigate.push(`/dashboard/claims/${claim.id}/documents`);
+                                  }}
+                                // onClick={() => handleApproveClaim(claim)}
                                 >
                                   <CheckSquare className="h-4 w-4" />
                                 </Button>
-                              </Tooltip>
+                              </Tooltip> */}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -385,55 +462,133 @@ export default function ClaimsReviewPage() {
                   </TableBody>
                 </Table>
               </div>
-              
+
               {/* Mobile Claims Cards */}
               <div className="sm:hidden space-y-3 p-4">
-                {mockClaims.map((claim) => (
-                  <div key={claim.id} className="border rounded-lg p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{claim.id}</span>
-                      <Badge className={getStatusColor(claim.status)}>
-                        {claim.status}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Client:</span>
-                        <span>{claim.clientName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Type:</span>
-                        <span>{claim.claimType}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Value:</span>
-                        <span>₦{claim.estimatedValue.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-2">
-                      <Button variant="ghost" size="sm" asChild className="flex-1">
-                        <Link href={`/dashboard/claims/${claim.id}`}>
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Link>
-                      </Button>
-                      <Tooltip content="Approve Claim">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleApproveClaim(claim)}
-                          className="flex-1"
-                        >
-                          <CheckSquare className="h-4 w-4 mr-1" />
-                          Approve
-                        </Button>
-                      </Tooltip>
-                    </div>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Loading claims...</p>
                   </div>
-                ))}
+                ) : pendingClaims.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No pending claims found</p>
+                  </div>
+                ) : (
+                  pendingClaims.map((claim) => (
+                    <div key={claim.id} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{claim.id}</span>
+                        <Badge className={getStatusColor(claim.status)}>
+                          {claim.status}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Client:</span>
+                          <span>{claim.clientName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Type:</span>
+                          <span>{claim.claimType}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Value:</span>
+                          <span>₦{claim.estimatedValue.toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pt-2">
+                        <Button variant="ghost" size="sm" asChild className="flex-1">
+                          <Link href={`/dashboard/claims/${claim.id}`}>
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Link>
+                        </Button>
+                        <Tooltip content="Approve Claim">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleApproveClaim(claim)}
+                            className="flex-1"
+                          >
+                            <CheckSquare className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
+
+          {/* Pagination Controls */}
+          {!loading && pendingClaims.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
+                    {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
+                    {pagination.totalItems} results
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(1)}
+                      disabled={pagination.currentPage === 1}
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.currentPage - 1)}
+                      disabled={pagination.currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                        const page = Math.max(1, Math.min(pagination.totalPages - 4, pagination.currentPage - 2)) + i;
+                        if (page > pagination.totalPages) return null;
+                        return (
+                          <Button
+                            key={page}
+                            variant={pagination.currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageChange(page)}
+                            className="w-8 h-8"
+                          >
+                            {page}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.currentPage + 1)}
+                      disabled={pagination.currentPage === pagination.totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.totalPages)}
+                      disabled={pagination.currentPage === pagination.totalPages}
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Settled Claims Tab */}
@@ -456,7 +611,16 @@ export default function ClaimsReviewPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {settledClaims.length === 0 ? (
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="text-center">
+                            <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                            <p className="text-sm text-muted-foreground">Loading settled claims...</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : settledClaims.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-8">
                           <div className="text-center">
@@ -486,9 +650,9 @@ export default function ClaimsReviewPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1 sm:gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 asChild
                                 title="View Claim Details"
                               >
@@ -504,48 +668,126 @@ export default function ClaimsReviewPage() {
                   </TableBody>
                 </Table>
               </div>
-              
+
               {/* Mobile Settled Claims Cards */}
               <div className="sm:hidden space-y-3 p-4">
-                {settledClaims.map((claim) => (
-                  <div key={claim.id} className="border rounded-lg p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{claim.id}</span>
-                      <Badge className={getStatusColor(claim.status)}>
-                        {claim.status}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Client:</span>
-                        <span>{claim.clientName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Type:</span>
-                        <span>{claim.claimType}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Settlement:</span>
-                        <span>₦{claim.settlementAmount.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Date:</span>
-                        <span>{claim.settlementDate}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-2">
-                      <Button variant="ghost" size="sm" asChild className="flex-1">
-                        <Link href={`/dashboard/claims/${claim.id}`}>
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Link>
-                      </Button>
-                    </div>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Loading settled claims...</p>
                   </div>
-                ))}
+                ) : settledClaims.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No settled claims found</p>
+                  </div>
+                ) : (
+                  settledClaims.map((claim) => (
+                    <div key={claim.id} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{claim.id}</span>
+                        <Badge className={getStatusColor(claim.status)}>
+                          {claim.status}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Client:</span>
+                          <span>{claim.clientName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Type:</span>
+                          <span>{claim.claimType}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Settlement:</span>
+                          <span>₦{claim.settlementAmount.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Date:</span>
+                          <span>{claim.settlementDate}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pt-2">
+                        <Button variant="ghost" size="sm" asChild className="flex-1">
+                          <Link href={`/dashboard/claims/${claim.id}`}>
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
+
+          {/* Pagination Controls for Settled Claims */}
+          {!loading && settledClaims.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
+                    {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
+                    {pagination.totalItems} results
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(1)}
+                      disabled={pagination.currentPage === 1}
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.currentPage - 1)}
+                      disabled={pagination.currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                        const page = Math.max(1, Math.min(pagination.totalPages - 4, pagination.currentPage - 2)) + i;
+                        if (page > pagination.totalPages) return null;
+                        return (
+                          <Button
+                            key={page}
+                            variant={pagination.currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageChange(page)}
+                            className="w-8 h-8"
+                          >
+                            {page}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.currentPage + 1)}
+                      disabled={pagination.currentPage === pagination.totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.totalPages)}
+                      disabled={pagination.currentPage === pagination.totalPages}
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -563,7 +805,7 @@ export default function ClaimsReviewPage() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Are you sure you want to approve this claim?</p>
@@ -586,7 +828,7 @@ export default function ClaimsReviewPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex gap-2 sm:gap-3">
                 <Button
                   variant="outline"

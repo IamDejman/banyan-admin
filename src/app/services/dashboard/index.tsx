@@ -76,6 +76,8 @@ export const getClaims = (): Promise<any[]> => Http.get(`/admin/claims`);
 export const getClaimById = (id: string): Promise<any[]> => Http.get(`/admin/claims/${id}`);
 
 export const getDocumentStatistics = (): Promise<any[]> => Http.get(`/admin/claims/document-statistics`);
+export const listDocuments = (): Promise<any[]> => Http.get(`/admin/claims/documents`);
+export const updateDocument = (document_id: string, status: "approve" | "reject"): Promise<any[]> => Http.patch(`/admin/claims/update-document-status`, { document_id, status });
 
 export const getPendingDocuments = (): Promise<any[]> => Http.get(`/admin/claims/pending-documents`);
 
@@ -86,6 +88,15 @@ export const getSettlementById = (id: string): Promise<any[]> => Http.get(`/admi
 
 
 export const getSettlementStatistics = (): Promise<any[]> => Http.get(`/admin/claims/settlement-statistics`);
+
+export const createSettlementOffer = (payload: any): Promise<any[]> => Http.post(`/admin/claim-offers/store`, payload);
+
+export const approveSettlementOffer = (payload: any): Promise<any[]> => Http.post(`/admin/claim-offers/approve-offer`, payload);
+
+export const rejectSettlementOffer = (payload: any): Promise<any[]> => Http.post(`/admin/claim-offers/reject-offer`, payload);
+
+// approve claim
+export const approveClaim = (id: string): Promise<any[]> => Http.post(`/admin/claims/approve/${id}`);
 
 
 

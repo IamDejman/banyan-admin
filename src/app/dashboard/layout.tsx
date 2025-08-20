@@ -17,8 +17,8 @@ export default function DashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [adminName, setAdminName] = useState<any>('');
 
-  const adminName = JSON.parse(cookie().getCookie('userData') || '{}')?.first_name + ' ' + JSON.parse(cookie().getCookie('userData') || '{}')?.last_name;
 
   // Handle mobile detection
   useEffect(() => {
@@ -76,9 +76,10 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const token = cookie().getCookie('token');
-    // const userData = cookie().getCookie('userData');
+    const userData = cookie().getCookie('userData');
     // console.log(token, "token__11");
     // console.log(JSON.parse(userData || '{}'), "userData__");
+    setAdminName(JSON.parse(userData || '{}')?.first_name + ' ' + JSON.parse(userData || '{}')?.last_name);
 
     if (!token) {
       router.push('/login');

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { X, Upload, FileText } from "lucide-react";
 import type { SettlementOffer, ClaimForSettlement } from "@/lib/types/settlement";
+import { getClaims, } from '@/app/services/dashboard';
 
 interface SettlementOfferFormProps {
   approvedClaims: ClaimForSettlement[];
@@ -23,7 +24,8 @@ export default function SettlementOfferForm({
   onSubmit,
   onCancel,
 }: SettlementOfferFormProps) {
-  const [selectedClaimId, setSelectedClaimId] = useState(existingOffer?.claimId || "");
+  console.log(existingOffer, "existingOffer__");
+  const [selectedClaimId, setSelectedClaimId] = useState<string>(existingOffer?.claimId || "");
   const [assessedAmount, setAssessedAmount] = useState(existingOffer?.assessedAmount || 0);
   const [deductions, setDeductions] = useState(existingOffer?.deductions || 0);
   const [serviceFeePercentage, setServiceFeePercentage] = useState(existingOffer?.serviceFeePercentage || 0);
@@ -34,8 +36,46 @@ export default function SettlementOfferForm({
   const [specialConditions, setSpecialConditions] = useState(existingOffer?.specialConditions || "");
   const [supportingDocuments, setSupportingDocuments] = useState<string[]>(existingOffer?.supportingDocuments || []);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [claims, setClaims] = useState<any[]>([]);
+  const [selectedClaim, setSelectedClaim] = useState<any>(null);
 
-  const selectedClaim = approvedClaims.find(claim => claim.id === selectedClaimId);
+  console.log(selectedClaim, "selectedClaim__");
+  // Handle claim selection change
+  const handleClaimSelection = (value: string) => {
+    console.log("Claim selection changed to:", value);
+    console.log("Previous selectedClaimId:", selectedClaimId);
+    console.log("Available claims:", claims);
+
+    if (value) {
+      setSelectedClaimId(value);
+      console.log("selectedClaimId set to:", value);
+    } else {
+      console.log("No value provided to handleClaimSelection");
+    }
+  };
+
+  // Find and set selected claim when selectedClaimId or claims change
+  useEffect(() => {
+    console.log("useEffect triggered - selectedClaimId:", selectedClaimId, "claims length:", claims.length);
+
+    if (selectedClaimId && claims.length > 0) {
+      const foundClaim = claims.find(claim => claim.id == selectedClaimId);
+      console.log("Found claim:", foundClaim);
+
+      if (foundClaim) {
+        setSelectedClaim(foundClaim);
+        // setAssessedAmount(foundClaim?.estimated_value || 0);
+        // setDeductions(0);
+        // setServiceFeePercentage(10); // Default 10%
+        // setFinalAmount(foundClaim?.estimated_value || 0);
+        // setPaymentMethod(existingOffer?.paymentMethod || "BANK_TRANSFER");
+        // setPaymentTimeline(existingOffer?.paymentTimeline || 7);
+      } else {
+        console.log("Claim not found for ID:", selectedClaimId);
+        setSelectedClaim(null);
+      }
+    }
+  }, [selectedClaimId, claims, existingOffer?.paymentMethod, existingOffer?.paymentTimeline]);
 
   // Calculate final amount when inputs change
   useEffect(() => {
@@ -46,14 +86,35 @@ export default function SettlementOfferForm({
     }
   }, [assessedAmount, deductions, serviceFeePercentage]);
 
-  // Auto-populate when claim is selected
+  // Fetch claims data
   useEffect(() => {
-    if (selectedClaim && !existingOffer) {
-      setAssessedAmount(selectedClaim.assessedAmount);
-      setDeductions(0);
-      setServiceFeePercentage(10); // Default 10%
-    }
-  }, [selectedClaim, existingOffer]);
+    getClaims().then((res: any) => {
+      console.log("Raw claims response:", res);
+
+      let claimsData: any[] = [];
+
+      if (Array.isArray(res)) {
+        claimsData = res[0]?.data?.data || res[0]?.data || res[0] || [];
+      } else if (res && typeof res === 'object') {
+        claimsData = res.data?.data || res.data || res || [];
+      }
+
+      console.log("Processed claims data:", claimsData);
+      setClaims(claimsData);
+
+      // If we have an existing offer, try to find the claim
+      if (existingOffer?.claimId && claimsData.length > 0) {
+        const existingClaim = claimsData.find(claim => claim.id === existingOffer.claimId);
+        if (existingClaim) {
+          setSelectedClaim(existingClaim);
+        }
+      }
+    }).catch((error) => {
+      console.error("Error fetching claims:", error);
+      setClaims([]);
+    });
+  }, [existingOffer?.claimId]);
+
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,6 +150,8 @@ export default function SettlementOfferForm({
       supportingDocuments,
     };
 
+    console.log(offerData, "offerData__");
+
     onSubmit(offerData);
   }
 
@@ -110,19 +173,32 @@ export default function SettlementOfferForm({
         {/* Claim Selection */}
         <div>
           <Label htmlFor="claim">Claim Selection *</Label>
-          <Select value={selectedClaimId} onValueChange={setSelectedClaimId}>
+          <Select
+            value={selectedClaimId || ""}
+            onValueChange={handleClaimSelection}
+          >
             <SelectTrigger className={errors.claimId ? "border-red-500" : ""}>
-              <SelectValue placeholder="Select an approved claim" />
+              <SelectValue placeholder="Select an approved claim">
+                {selectedClaimId && selectedClaim ? selectedClaim.claim_number +
+                  " - " + selectedClaim.client?.first_name +
+                  " " + selectedClaim.client?.last_name +
+                  " (" + selectedClaim.claim_type_details?.name + ")"
+                  : "Select an approved claim"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {approvedClaims.map((claim) => (
+              {claims.map((claim) => (
                 <SelectItem key={claim.id} value={claim.id}>
-                  {claim.claimNumber} - {claim.clientName} ({claim.claimType})
+                  {claim.claim_number} - {claim.client?.first_name} {claim.client?.last_name} ({claim.claim_type_details?.name})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {errors.claimId && <p className="text-red-500 text-sm mt-1">{errors.claimId}</p>}
+          {/* Debug info */}
+          <p className="text-xs text-gray-500 mt-1">
+            Selected Claim ID: {selectedClaimId || 'None'} | Claims loaded: {claims.length}
+          </p>
         </div>
 
         {/* Client Details (Auto-populated) */}
@@ -130,15 +206,15 @@ export default function SettlementOfferForm({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
             <div>
               <Label className="text-sm font-medium">Client Name</Label>
-              <p className="text-sm">{selectedClaim.clientName}</p>
+              <p className="text-sm">{selectedClaim?.client?.first_name} {selectedClaim?.client?.last_name}</p>
             </div>
             <div>
               <Label className="text-sm font-medium">Claim Type</Label>
-              <p className="text-sm">{selectedClaim.claimType}</p>
+              <p className="text-sm">{selectedClaim?.claim_type_details?.name}</p>
             </div>
             <div>
               <Label className="text-sm font-medium">Assessed Amount</Label>
-              <p className="text-sm">₦{selectedClaim.assessedAmount.toLocaleString()}</p>
+              <p className="text-sm">₦{selectedClaim?.estimated_value.toLocaleString()}</p>
             </div>
           </div>
         )}
@@ -146,13 +222,13 @@ export default function SettlementOfferForm({
         {/* Offer Calculation */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Offer Calculation</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="assessedAmount">Assessed Claim Value *</Label>
               <Input
                 id="assessedAmount"
-                type="number"
+                type="text"
                 value={assessedAmount}
                 onChange={(e) => setAssessedAmount(Number(e.target.value))}
                 className={errors.assessedAmount ? "border-red-500" : ""}
@@ -165,7 +241,7 @@ export default function SettlementOfferForm({
               <Label htmlFor="deductions">Deductions (if any)</Label>
               <Input
                 id="deductions"
-                type="number"
+                type="text"
                 value={deductions}
                 onChange={(e) => setDeductions(Number(e.target.value))}
                 className={errors.deductions ? "border-red-500" : ""}
@@ -178,7 +254,7 @@ export default function SettlementOfferForm({
               <Label htmlFor="serviceFee">Service Fee Percentage *</Label>
               <Input
                 id="serviceFee"
-                type="number"
+                type="text"
                 value={serviceFeePercentage}
                 onChange={(e) => setServiceFeePercentage(Number(e.target.value))}
                 className={errors.serviceFeePercentage ? "border-red-500" : ""}
@@ -191,7 +267,7 @@ export default function SettlementOfferForm({
               <Label htmlFor="finalAmount">Final Offer Amount</Label>
               <Input
                 id="finalAmount"
-                type="number"
+                type="text"
                 value={finalAmount}
                 readOnly
                 className="bg-muted"
@@ -205,7 +281,7 @@ export default function SettlementOfferForm({
         {/* Offer Terms */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Offer Terms</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="paymentMethod">Payment Method *</Label>
@@ -268,7 +344,7 @@ export default function SettlementOfferForm({
         {/* Supporting Documents */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Supporting Documents</h3>
-          
+
           <div>
             <Label htmlFor="documents">Upload Documents</Label>
             <div className="flex items-center gap-2">

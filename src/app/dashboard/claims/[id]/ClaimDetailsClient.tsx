@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  User, 
-  Calendar, 
-  FileText, 
+import {
+  User,
+  Calendar,
+  FileText,
   DollarSign,
   CheckCircle,
   AlertCircle,
@@ -18,46 +18,131 @@ import {
   Eye,
   Edit
 } from 'lucide-react';
+import { getClaimById, getClaims } from '@/app/services/dashboard';
 
 interface ClaimDetailsClientProps {
   claimId: string;
 }
 
-// Mock claim data
-const mockClaimData = {
-  id: 'CLM-001',
-  clientName: 'John Smith',
-  clientEmail: 'john.smith@email.com',
-  clientPhone: '+234 801 234 5678',
-  submissionDate: '2024-01-15',
-  claimType: 'Property Damage',
-  status: 'Pending Review',
-  documentStatus: 85,
-  estimatedValue: 25000,
-  description: 'Water damage to living room ceiling and walls due to roof leak during heavy rainfall.',
-  documents: [
-    { id: 'doc1', name: 'Property Photos', type: 'image', size: '2.3 MB', uploaded: '2024-01-15' },
-    { id: 'doc2', name: 'Damage Assessment Report', type: 'pdf', size: '1.1 MB', uploaded: '2024-01-15' },
-    { id: 'doc3', name: 'Insurance Policy', type: 'pdf', size: '3.2 MB', uploaded: '2024-01-14' },
-  ],
-  timeline: [
-    { date: '2024-01-15', action: 'Claim Submitted', description: 'Initial claim filed by client' },
-    { date: '2024-01-15', action: 'Documents Uploaded', description: 'Supporting documents provided' },
-    { date: '2024-01-16', action: 'Under Review', description: 'Claim assigned for review' },
-  ]
-};
-
 export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [claimData, setClaimData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchClaimData = async () => {
+      setLoading(true);
+      try {
+        const res: any = await getClaims();
+        console.log(res, "res__");
+        // Handle the nested data structure - res might be an array or object
+        const claimsData = Array.isArray(res)
+          ? (res[0]?.data?.data || res[0]?.data || res[0] || [])
+          : (res?.data?.data || res?.data || res || []);
+
+        const claim = claimsData.find((claim: any) => claim.claim_number === claimId);
+        console.log(claim, "claim__111");
+        setClaimData(claim);
+      } catch (error) {
+        console.error('Error fetching claim data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClaimData();
+  }, [claimId]);
+
+  console.log(claimData, "claim__111");
 
   function getStatusColor(status: string) {
     const colors = {
-      pending: "bg-yellow-100 text-yellow-800",
-      approved: "bg-green-100 text-green-800",
+      submitted: "bg-yellow-100 text-yellow-800",
+      completed: "bg-green-100 text-green-800",
       rejected: "bg-red-100 text-red-800",
       processing: "bg-blue-100 text-blue-800",
     };
     return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800";
+  }
+
+  // Transform claim data for display
+  const transformClaimData = (claim: any) => {
+    if (!claim) return null;
+
+    const uploadedDocs = claim.documents?.filter((doc: any) => doc.document_uploaded) || [];
+    const totalDocs = claim.documents?.length || 0;
+    const documentStatus = totalDocs > 0 ? Math.round((uploadedDocs.length / totalDocs) * 100) : 0;
+
+    // Calculate days since submission
+    const submissionDate = new Date(claim.submission_date);
+    const today = new Date();
+    const daysSinceSubmission = Math.floor((today.getTime() - submissionDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    return {
+      id: claim.claim_number,
+      clientName: claim.client.first_name + ' ' + claim.client.last_name, // API doesn't provide client name
+      clientEmail: claim.client.email,
+      clientPhone: claim.client.phone,
+      submissionDate: submissionDate.toLocaleDateString(),
+      claimType: claim.claim_type_details?.name || 'Unknown',
+      status: claim.status === 'completed' ? 'Completed' : 'Pending Review',
+      documentStatus,
+      estimatedValue: claim.estimated_value, // API doesn't provide estimated value
+      description: claim.description || 'No description provided',
+      incidentLocation: claim.incident_location,
+      incidentDate: new Date(claim.incident_date).toLocaleDateString(),
+      documents: claim.documents?.map((doc: any) => ({
+        id: doc.id,
+        name: doc.document_type,
+        type: 'pdf',
+        size: 'N/A',
+        uploadedDate: new Date(doc.created_at).toLocaleDateString(),
+        isUploaded: doc.document_uploaded,
+        document_url: doc.document_url,
+      })) || [],
+      timeline: claim.claim_history?.map((history: any) => ({
+        date: new Date(history.created_at).toLocaleDateString(),
+        action: history.description,
+        description: `Status: ${history.status}`,
+      })) || [],
+      daysSinceSubmission,
+    };
+  };
+
+  const transformedClaim = transformClaimData(claimData);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Claim Details</h1>
+            <p className="text-muted-foreground">Claim ID: {claimId}</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Loading claim details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!transformedClaim) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Claim Details</h1>
+            <p className="text-muted-foreground">Claim ID: {claimId}</p>
+          </div>
+        </div>
+        <div className="text-center py-8">
+          <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Claim not found</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -88,8 +173,8 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <Badge className={getStatusColor(mockClaimData.status)}>
-              {mockClaimData.status}
+            <Badge className={getStatusColor(claimData?.status || 'submitted')}>
+              {transformedClaim.status}
             </Badge>
           </CardContent>
         </Card>
@@ -99,8 +184,8 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockClaimData.documentStatus}%</div>
-            <Progress value={mockClaimData.documentStatus} className="h-2 mt-2" />
+            <div className="text-2xl font-bold">{transformedClaim.documentStatus}%</div>
+            <Progress value={transformedClaim.documentStatus} className="h-2 mt-2" />
           </CardContent>
         </Card>
         <Card>
@@ -109,7 +194,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦{mockClaimData.estimatedValue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₦{transformedClaim.estimatedValue.toLocaleString()}</div>
           </CardContent>
         </Card>
         <Card>
@@ -118,7 +203,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
+            <div className="text-2xl font-bold">{transformedClaim.daysSinceSubmission}</div>
           </CardContent>
         </Card>
       </div>
@@ -143,9 +228,9 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">{mockClaimData.clientName}</p>
-                    <p className="text-sm text-muted-foreground">{mockClaimData.clientEmail}</p>
-                    <p className="text-sm text-muted-foreground">{mockClaimData.clientPhone}</p>
+                    <p className="font-medium">{transformedClaim.clientName}</p>
+                    <p className="text-sm text-muted-foreground">{transformedClaim.clientEmail}</p>
+                    <p className="text-sm text-muted-foreground">{transformedClaim.clientPhone}</p>
                   </div>
                 </div>
               </CardContent>
@@ -159,15 +244,23 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium">Claim Type:</span>
-                    <span className="text-sm">{mockClaimData.claimType}</span>
+                    <span className="text-sm">{transformedClaim.claimType}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm font-medium">Submission Date:</span>
-                    <span className="text-sm">{mockClaimData.submissionDate}</span>
+                    <span className="text-sm">{transformedClaim.submissionDate}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Incident Date:</span>
+                    <span className="text-sm">{transformedClaim.incidentDate}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Incident Location:</span>
+                    <span className="text-sm">{transformedClaim.incidentLocation}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm font-medium">Estimated Value:</span>
-                    <span className="text-sm">₦{mockClaimData.estimatedValue.toLocaleString()}</span>
+                    <span className="text-sm">₦{transformedClaim.estimatedValue.toLocaleString()}</span>
                   </div>
                 </div>
               </CardContent>
@@ -179,7 +272,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
               <CardTitle>Description</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">{mockClaimData.description}</p>
+              <p className="text-sm text-muted-foreground">{transformedClaim.description}</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -192,27 +285,34 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockClaimData.documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{doc.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {doc.type.toUpperCase()} • {doc.size} • Uploaded {doc.uploaded}
-                        </p>
+                {transformedClaim.documents.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
+                  </div>
+                ) : (
+                  transformedClaim.documents.map((doc: any) => (
+                    <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">{doc.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {doc.type.toUpperCase()} • {doc.size} • Uploaded {doc.uploadedDate}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button onClick={() => window.open(doc.document_url, '_blank')} variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button onClick={() => window.open(doc.document_url, '_blank')} variant="ghost" size="sm">
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -226,21 +326,28 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockClaimData.timeline.map((event, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-3 h-3 bg-primary rounded-full"></div>
-                      {index < mockClaimData.timeline.length - 1 && (
-                        <div className="w-0.5 h-8 bg-gray-200 mt-1"></div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{event.action}</p>
-                      <p className="text-sm text-muted-foreground">{event.description}</p>
-                      <p className="text-xs text-muted-foreground">{event.date}</p>
-                    </div>
+                {transformedClaim.timeline.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No timeline events found</p>
                   </div>
-                ))}
+                ) : (
+                  transformedClaim.timeline.map((event: any, index: number) => (
+                    <div key={index} className="flex items-start gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className="w-3 h-3 bg-primary rounded-full"></div>
+                        {index < transformedClaim.timeline.length - 1 && (
+                          <div className="w-0.5 h-8 bg-gray-200 mt-1"></div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{event.action}</p>
+                        <p className="text-sm text-muted-foreground">{event.description}</p>
+                        <p className="text-xs text-muted-foreground">{event.date}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

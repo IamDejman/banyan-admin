@@ -9,7 +9,12 @@ import { Eye, Edit, Send, Mail, Phone, Calendar } from "lucide-react";
 import type { SettlementOffer, PresentationSetup } from "@/lib/types/settlement";
 import PresentationSetupForm from "./PresentationSetupForm";
 
-// Mock approved offers ready for presentation
+interface PresentOffersTabProps {
+  settlements: any[];
+  loading: boolean;
+}
+
+// Mock approved offers ready for presentation (fallback)
 const readyOffers: (SettlementOffer & { presentation?: PresentationSetup })[] = [
   {
     id: "6",
@@ -80,10 +85,13 @@ const readyOffers: (SettlementOffer & { presentation?: PresentationSetup })[] = 
   },
 ];
 
-export default function PresentOffersTab() {
+export default function PresentOffersTab({ settlements, loading }: PresentOffersTabProps) {
   const [offers, setOffers] = useState<(SettlementOffer & { presentation?: PresentationSetup })[]>(readyOffers);
   const [modal, setModal] = useState<{ mode: "setup" | "view" | "edit"; offer: SettlementOffer & { presentation?: PresentationSetup } } | null>(null);
   const [search, setSearch] = useState("");
+
+  // Use settlements data if available, otherwise fall back to mock data
+  const availableSettlements = settlements.length > 0 ? settlements : [];
 
   const filteredOffers = offers.filter((offer) =>
     offer.clientName.toLowerCase().includes(search.toLowerCase()) ||
@@ -91,8 +99,8 @@ export default function PresentOffersTab() {
   );
 
   function handlePresentationSetup(offerId: string, setup: PresentationSetup) {
-    setOffers(prev => prev.map(offer => 
-      offer.id === offerId 
+    setOffers(prev => prev.map(offer =>
+      offer.id === offerId
         ? { ...offer, presentation: setup }
         : offer
     ));
@@ -150,6 +158,25 @@ export default function PresentOffersTab() {
           <p className="text-muted-foreground">Send approved offers to clients</p>
         </div>
       </div>
+
+      {/* Loading State */}
+      {loading && (
+        <Card className="p-6">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading settlements data...</p>
+          </div>
+        </Card>
+      )}
+
+      {/* Data Info */}
+      {/* {!loading && availableSettlements.length > 0 && (
+        <Card className="p-4">
+          <div className="text-sm text-muted-foreground">
+            Loaded {availableSettlements.length} settlements from API
+          </div>
+        </Card>
+      )} */}
 
       <div className="flex gap-4 items-center">
         <Input

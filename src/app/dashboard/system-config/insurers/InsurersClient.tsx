@@ -13,30 +13,21 @@ import { getInsurers } from "@/app/services/dashboard";
 
 type ModalState = { mode: "add" | "edit"; insurer: Insurer | null } | null;
 
-const initialInsurers: Insurer[] = [
-  {
-    id: "1",
-    name: "Acme Insurance",
-    logo: null,
-    contact_email: "contact@acme.com",
-    contact_phone: "+1234567890",
-    address: "123 Main St, Lagos",
-    supported_claim_types: ["1", "2"],
-    special_instructions: "",
-    status: true,
-  },
-  {
-    id: "2",
-    name: "Beta Insure",
-    logo: null,
-    contact_email: "info@beta.com",
-    contact_phone: "+2348012345678",
-    address: "456 Side Rd, Abuja",
-    supported_claim_types: ["3"],
-    special_instructions: "",
-    status: false,
-  },
-];
+// API response type
+type ApiInsurer = {
+  id: number;
+  name: string;
+  code: string;
+  logo: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  address: string | null;
+  active: number;
+  supported_claim_types: string;
+  special_instructions: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
 
 // Mock claim types for the dropdown
 const claimTypes: ClaimType[] = [
@@ -46,14 +37,40 @@ const claimTypes: ClaimType[] = [
 ];
 
 export default function InsurersClient() {
-  const [insurers, setInsurers] = useState<Insurer[]>(initialInsurers);
+  const [insurers, setInsurers] = useState<Insurer[]>([]);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalState>(null);
+  const [loading, setLoading] = useState(true);
 
   const filtered = insurers.filter((i) =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
     i.contact_email.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Transform API data to match Insurer type
+  const transformApiData = (apiInsurer: ApiInsurer): Insurer => {
+    let supportedClaimTypes: string[] = [];
+    try {
+      if (apiInsurer.supported_claim_types) {
+        supportedClaimTypes = JSON.parse(apiInsurer.supported_claim_types);
+      }
+    } catch (error) {
+      console.error('Error parsing supported_claim_types:', error);
+      supportedClaimTypes = [];
+    }
+
+    return {
+      id: apiInsurer.id.toString(),
+      name: apiInsurer.name || "N/A",
+      logo: apiInsurer.logo,
+      contact_email: apiInsurer.contact_email || "N/A",
+      contact_phone: apiInsurer.contact_phone || "N/A",
+      address: apiInsurer.address || "N/A",
+      supported_claim_types: supportedClaimTypes,
+      special_instructions: apiInsurer.special_instructions || "N/A",
+      status: apiInsurer.active === 1,
+    };
+  };
 
   function handleAdd(newInsurer: Omit<Insurer, "id">) {
     setInsurers((prev) => [
@@ -77,17 +94,39 @@ export default function InsurersClient() {
   }
 
   function getClaimTypeNames(claimTypeIds: string[]): string {
-    return claimTypeIds
-      .map(id => claimTypes.find(ct => ct.id === id)?.name)
-      .filter(Boolean)
-      .join(", ");
+    if (claimTypeIds.length === 0) return "N/A";
+    return claimTypeIds.join(", ");
   }
 
   useEffect(() => {
-    getInsurers().then((res) => {
-      console.log(res, "res__");
+    setLoading(true);
+    getInsurers().then((res: any) => {
+      if (res && res.data) {
+        const transformedInsurers = res.data.map(transformApiData);
+        setInsurers(transformedInsurers);
+      }
+      setLoading(false);
+    }).catch((error) => {
+      console.error('Error fetching insurers:', error);
+      setLoading(false);
     });
   }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h2 className="text-xl sm:text-2xl font-bold">Insurers</h2>
+          <Button onClick={() => setModal({ mode: "add", insurer: null })}>
+            Add Insurer
+          </Button>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <p className="text-muted-foreground">Loading insurers...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">

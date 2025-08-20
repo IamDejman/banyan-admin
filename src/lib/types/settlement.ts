@@ -92,6 +92,7 @@ export type ClaimForSettlement = {
   id: string;
   claimNumber: string;
   clientName: string;
+  client?: string;
   claimType: string;
   assessedAmount: number;
   status: 'APPROVED' | 'ASSESSED';

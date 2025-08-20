@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -8,83 +8,33 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, CheckSquare, X } from "lucide-react";
 import type { SettlementOffer } from "@/lib/types/settlement";
+import { approveSettlementOffer, rejectSettlementOffer } from "@/app/services/dashboard";
+import { useToast } from "@/components/ui/use-toast";
 
-// Mock pending offers for approval
-const pendingOffers: SettlementOffer[] = [
-  {
-    id: "1",
-    offerId: "OFF-001",
-    claimId: "1",
-    clientName: "John Doe",
-    claimType: "Motor",
-    assessedAmount: 50000,
-    deductions: 5000,
-    serviceFeePercentage: 10,
-    finalAmount: 40000,
-    paymentMethod: "BANK_TRANSFER",
-    paymentTimeline: 7,
-    offerValidityPeriod: 14,
-    specialConditions: "Payment within 7 days for 5% discount",
-    status: "SUBMITTED",
-    createdBy: "Sarah K.",
-    createdAt: new Date("2024-01-10"),
-    submittedAt: new Date("2024-01-10"),
-    expiresAt: new Date("2024-01-24"),
-    supportingDocuments: ["assessment_report.pdf", "settlement_breakdown.pdf"],
-  },
-  {
-    id: "2",
-    offerId: "OFF-002",
-    claimId: "2",
-    clientName: "ABC Ltd",
-    claimType: "Property",
-    assessedAmount: 150000,
-    deductions: 15000,
-    serviceFeePercentage: 8,
-    finalAmount: 123000,
-    paymentMethod: "CHEQUE",
-    paymentTimeline: 14,
-    offerValidityPeriod: 21,
-    specialConditions: "",
-    status: "SUBMITTED",
-    createdBy: "Mike T.",
-    createdAt: new Date("2024-01-09"),
-    submittedAt: new Date("2024-01-09"),
-    expiresAt: new Date("2024-01-30"),
-    supportingDocuments: ["assessment_report.pdf", "photos.zip"],
-  },
-  {
-    id: "3",
-    offerId: "OFF-003",
-    claimId: "CLM-003",
-    clientName: "Lisa Brown",
-    claimType: "Property",
-    assessedAmount: 85000,
-    deductions: 5000,
-    serviceFeePercentage: 8,
-    finalAmount: 82800,
-    paymentMethod: "BANK_TRANSFER",
-    paymentTimeline: 10,
-    offerValidityPeriod: 14,
-    specialConditions: "Early payment discount available",
-    status: "SUBMITTED",
-    createdBy: "David L.",
-    createdAt: new Date("2024-01-08"),
-    submittedAt: new Date("2024-01-08"),
-    expiresAt: new Date("2024-01-22"),
-    supportingDocuments: ["medical_report.pdf", "bills.pdf"],
-  },
-];
+interface ApproveOffersTabProps {
+  settlements: any[];
+  loading: boolean;
+}
 
-export default function ApproveOffersTab() {
-  const [offers, setOffers] = useState<SettlementOffer[]>(pendingOffers);
+
+
+export default function ApproveOffersTab({ settlements, loading }: ApproveOffersTabProps) {
+  // Use settlements data if available, otherwise fall back to mock data
+  const availableSettlements = settlements.length > 0 ? settlements : [];
+  const [offers, setOffers] = useState<SettlementOffer[]>(availableSettlements);
   const [modal, setModal] = useState<{ mode: "view" | "approve" | "reject"; offer: SettlementOffer } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { toast } = useToast();
+
+  // useEffect(() => {
+  //   setOffers(availableSettlements);
+  // }, [availableSettlements]);
 
   const filteredOffers = offers.filter((offer) => {
-    const matchesSearch = offer.clientName.toLowerCase().includes(search.toLowerCase()) ||
-                         offer.offerId.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = offer.client.toLowerCase().includes(search.toLowerCase()) ||
+      offer.id.toLowerCase().includes(search.toLowerCase()) ||
+      offer.claim_type.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || offer.status.toLowerCase() === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -97,21 +47,43 @@ export default function ApproveOffersTab() {
     return `${days} days`;
   }
 
-  function handleApprove(offerId: string) {
-    setOffers(prev => prev.map(offer => 
-      offer.id === offerId 
-        ? { ...offer, status: "APPROVED", approvedAt: new Date() }
-        : offer
-    ));
+  async function handleApprove(offerId: string) {
+    try {
+      const response = await approveSettlementOffer({ id: offerId, approval_notes: "Approved by admin" });
+      console.log(response, "response__");
+      toast({
+        title: "Offer approved successfully",
+        description: "Offer approved successfully",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error(error, "error__");
+      toast({
+        title: "Error approving offer",
+        description: "Error approving offer",
+        variant: "destructive",
+      });
+    }
     setModal(null);
   }
 
-  function handleReject(offerId: string, reason: string) {
-    setOffers(prev => prev.map(offer => 
-      offer.id === offerId 
-        ? { ...offer, status: "REJECTED", rejectionReason: reason }
-        : offer
-    ));
+  async function handleReject(offerId: string, reason: string) {
+    try {
+      const response = await rejectSettlementOffer({ id: offerId, rejection_reason: reason });
+      console.log(response, "response__");
+      toast({
+        title: "Offer rejected successfully",
+        description: "Offer rejected successfully",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error(error, "error__");
+      toast({
+        title: "Error rejecting offer",
+        description: "Error rejecting offer",
+        variant: "destructive",
+      });
+    }
     setModal(null);
   }
 
@@ -121,7 +93,7 @@ export default function ApproveOffersTab() {
       APPROVED: { label: "Approved", variant: "default" as const },
       REJECTED: { label: "Rejected", variant: "destructive" as const },
     };
-    
+
     const badgeConfig = config[status as keyof typeof config] || config.SUBMITTED;
     return <Badge variant={badgeConfig.variant}>{badgeConfig.label}</Badge>;
   }
@@ -133,6 +105,25 @@ export default function ApproveOffersTab() {
           <h2 className="text-2xl font-bold">Approve Offers</h2>
         </div>
       </div>
+
+      {/* Loading State */}
+      {loading && (
+        <Card className="p-6">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading settlements data...</p>
+          </div>
+        </Card>
+      )}
+
+      {/* Data Info */}
+      {!loading && availableSettlements.length > 0 && (
+        <Card className="p-4">
+          <div className="text-sm text-muted-foreground">
+            Loaded {availableSettlements.length} settlements from API
+          </div>
+        </Card>
+      )}
 
       <div className="flex gap-4 items-center">
         <Input
@@ -181,14 +172,15 @@ export default function ApproveOffersTab() {
               )}
               {filteredOffers.map((offer) => (
                 <TableRow key={offer.id}>
-                  <TableCell className="font-medium">{offer.offerId}</TableCell>
-                  <TableCell>{offer.clientName}</TableCell>
-                  <TableCell>₦{offer.finalAmount.toLocaleString()}</TableCell>
+                  <TableCell className="font-medium">{offer.id}</TableCell>
+                  <TableCell>{offer.client}</TableCell>
+                  <TableCell>₦{offer.offer_amount}</TableCell>
                   <TableCell>{getStatusBadge(offer.status)}</TableCell>
                   <TableCell>
-                    {offer.expiresAt ? getDaysLeft(offer.expiresAt) : "N/A"}
+                    {offer.expiry_period ? getDaysLeft(new Date(offer.expiry_period)) : "N/A"}
                   </TableCell>
-                  <TableCell>{offer.createdBy}</TableCell>
+                  <TableCell>{offer?.created_at ? new Date(offer.created_at).toLocaleDateString() : "N/A"}</TableCell>
+
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -199,7 +191,7 @@ export default function ApproveOffersTab() {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      {offer.status === "SUBMITTED" && (
+                      {offer.status === "submitted" && (
                         <>
                           <Button
                             size="sm"
@@ -246,61 +238,62 @@ export default function ApproveOffersTab() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="font-medium">Offer ID:</span> {modal.offer.offerId}
+                      <span className="font-medium">Offer ID:</span> {modal.offer.id}
                     </div>
                     <div>
-                      <span className="font-medium">Client:</span> {modal.offer.clientName}
+                      <span className="font-medium">Client:</span> {modal.offer.client}
                     </div>
                     <div>
-                      <span className="font-medium">Claim Type:</span> {modal.offer.claimType}
+                      <span className="font-medium">Claim Type:</span> {modal.offer.claim_type}
                     </div>
                     <div>
-                      <span className="font-medium">Assessed Amount:</span> ₦{modal.offer.assessedAmount.toLocaleString()}
+                      <span className="font-medium">Assessed Amount:</span> ₦{modal.offer.assessed_claim_value}
                     </div>
                     <div>
-                      <span className="font-medium">Deductions:</span> ₦{modal.offer.deductions.toLocaleString()}
+                      <span className="font-medium">Deductions:</span> ₦{modal.offer.deductions}
                     </div>
                     <div>
-                      <span className="font-medium">Service Fee:</span> {modal.offer.serviceFeePercentage}%
+                      <span className="font-medium">Service Fee:</span> {modal.offer.service_fee_percentage}%
                     </div>
                     <div>
-                      <span className="font-medium">Final Amount:</span> ₦{modal.offer.finalAmount.toLocaleString()}
+                      <span className="font-medium">Final Amount:</span> ₦{modal.offer.offer_amount}
                     </div>
                     <div>
-                      <span className="font-medium">Payment Method:</span> {modal.offer.paymentMethod.replace('_', ' ')}
+                      <span className="font-medium">Payment Method:</span> {modal.offer.payment_method.replace('_', ' ')}
                     </div>
                     <div>
-                      <span className="font-medium">Payment Timeline:</span> {modal.offer.paymentTimeline} days
+                      <span className="font-medium">Payment Timeline:</span> {modal.offer.payment_timeline} days
                     </div>
                     <div>
-                      <span className="font-medium">Offer Validity:</span> {modal.offer.offerValidityPeriod} days
+                      <span className="font-medium">Offer Validity:</span> {modal.offer.offer_validity_period} days
                     </div>
                     <div>
-                      <span className="font-medium">Expires:</span> {modal.offer.expiresAt?.toLocaleDateString()}
+                      <span className="font-medium">Expires:</span>
+                      {modal.offer.expiry_period ? getDaysLeft(new Date(modal.offer.expiry_period)) : "N/A"}
                     </div>
                   </div>
-                  
-                  {modal.offer.specialConditions && (
+
+                  {modal?.offer?.special_conditions && (
                     <div>
                       <span className="font-medium">Special Conditions:</span>
-                      <p className="mt-1 text-sm text-muted-foreground">{modal.offer.specialConditions}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{modal.offer.special_conditions}</p>
                     </div>
                   )}
-                  
+
                   <div>
                     <span className="font-medium">Supporting Documents:</span>
                     <div className="flex gap-2 mt-1">
-                      {modal.offer.supportingDocuments.map((doc) => (
+                      {modal?.offer?.supporting_documents.map((doc) => (
                         <Badge key={doc} variant="outline">{doc}</Badge>
                       ))}
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" onClick={() => setModal(null)}>
                       Close
                     </Button>
-                    {modal.offer.status === "SUBMITTED" && (
+                    {modal.offer.status === "submitted" && (
                       <>
                         <Button onClick={() => handleApprove(modal.offer.id)}>
                           Approve Offer
@@ -323,20 +316,20 @@ export default function ApproveOffersTab() {
                     <h4 className="font-medium text-green-800 mb-2">Offer Summary</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="font-medium">Client:</span> {modal.offer.clientName}
+                        <span className="font-medium">Client:</span> {modal.offer.client}
                       </div>
                       <div>
-                        <span className="font-medium">Amount:</span> ₦{modal.offer.finalAmount.toLocaleString()}
+                        <span className="font-medium">Amount:</span> ₦{modal.offer.offer_amount}
                       </div>
                       <div>
-                        <span className="font-medium">Payment Method:</span> {modal.offer.paymentMethod.replace('_', ' ')}
+                        <span className="font-medium">Payment Method:</span> {modal.offer.payment_method.replace('_', ' ')}
                       </div>
                       <div>
-                        <span className="font-medium">Timeline:</span> {modal.offer.paymentTimeline} days
+                        <span className="font-medium">Timeline:</span> {modal.offer.payment_timeline} days
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" onClick={() => setModal(null)}>
                       Cancel
@@ -357,29 +350,29 @@ export default function ApproveOffersTab() {
                     <h4 className="font-medium text-red-800 mb-2">Offer Summary</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="font-medium">Client:</span> {modal.offer.clientName}
+                        <span className="font-medium">Client:</span> {modal?.offer?.client}
                       </div>
                       <div>
-                        <span className="font-medium">Amount:</span> ₦{modal.offer.finalAmount.toLocaleString()}
+                        <span className="font-medium">Amount:</span> ₦{modal?.offer?.offer_amount}
                       </div>
                       <div>
-                        <span className="font-medium">Payment Method:</span> {modal.offer.paymentMethod.replace('_', ' ')}
+                        <span className="font-medium">Payment Method:</span> {modal?.offer?.payment_method.replace('_', ' ')}
                       </div>
                       <div>
-                        <span className="font-medium">Timeline:</span> {modal.offer.paymentTimeline} days
+                        <span className="font-medium">Timeline:</span> {modal?.offer?.payment_timeline} days
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium">Rejection Reason</label>
-                    <textarea 
-                      className="w-full p-2 border rounded-md mt-1" 
+                    <textarea
+                      className="w-full p-2 border rounded-md mt-1"
                       rows={3}
                       placeholder="Enter rejection reason..."
                     ></textarea>
                   </div>
-                  
+
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" onClick={() => setModal(null)}>
                       Cancel

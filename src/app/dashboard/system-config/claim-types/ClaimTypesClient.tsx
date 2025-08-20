@@ -13,39 +13,13 @@ import { X, Plus } from "lucide-react";
 import type { ClaimType } from "@/lib/types/claim-types";
 import { getClaimTypes } from "@/app/services/dashboard";
 
-const initialClaimTypes: ClaimType[] = [
-  { 
-    id: "1", 
-    name: "Auto", 
-    description: "Automobile insurance claims including accidents, theft, and damage",
-    required_documents: ["Driver's License", "Police Report", "Vehicle Registration", "Insurance Policy"],
-    processing_time_estimate: "5-7 days",
-    status: "active"
-  },
-  { 
-    id: "2", 
-    name: "Property", 
-    description: "Property damage claims for homes, buildings, and personal property",
-    required_documents: ["Photos of Damage", "Repair Estimates", "Property Insurance Policy", "Police Report"],
-    processing_time_estimate: "7-10 days",
-    status: "active"
-  },
-  { 
-    id: "3", 
-    name: "Health", 
-    description: "Health insurance claims for medical expenses and treatments",
-    required_documents: ["Medical Records", "Hospital Bills", "Prescription Receipts", "Insurance Card"],
-    processing_time_estimate: "3-5 days",
-    status: "active"
-  },
-];
-
 type ModalState = { mode: "add" | "edit"; claimType: ClaimType | null } | null;
 
 export default function ClaimTypesClient() {
-  const [claimTypes, setClaimTypes] = useState<ClaimType[]>(initialClaimTypes);
+  const [claimTypes, setClaimTypes] = useState<ClaimType[]>([]);
   const [modal, setModal] = useState<ModalState>(null);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const filtered = claimTypes.filter((ct) =>
     ct.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -65,21 +39,64 @@ export default function ClaimTypesClient() {
     setModal(null);
   }
 
-  function handleDelete(id: string) {
+  function handleDelete(id: string | number) {
     setClaimTypes(prev => prev.filter(ct => ct.id !== id));
   }
 
-  function handleStatusToggle(id: string) {
-    setClaimTypes(prev => prev.map(ct => 
-      ct.id === id ? { ...ct, status: ct.status === "active" ? "inactive" : "active" } : ct
+  function handleStatusToggle(id: string | number) {
+    setClaimTypes(prev => prev.map(ct =>
+      ct.id === id ? { ...ct, active: ct.active === 1 ? 0 : 1 } : ct
     ));
   }
 
+  // Helper function to format data for display
+  function formatData(value: any, type: 'documents' | 'text' = 'text'): string {
+    if (value === null || value === undefined || value === '') {
+      return 'N/A';
+    }
+
+    if (type === 'documents' && Array.isArray(value)) {
+      return value.length > 0 ? value.join(', ') : 'N/A';
+    }
+
+    return String(value);
+  }
+
+  // Helper function to get status text
+  function getStatusText(active: number): string {
+    return active === 1 ? 'Active' : 'Inactive';
+  }
+
   useEffect(() => {
-    getClaimTypes().then((res) => {
-      console.log(res, "res__");
+    setLoading(true);
+    getClaimTypes().then((res: any) => {
+      if (res && res.data) {
+        // Map API response to component format
+        const mappedData = res.data.map((item: any) => ({
+          ...item,
+          status: item.active === 1 ? "active" : "inactive" // For UI compatibility
+        }));
+        setClaimTypes(mappedData);
+      }
+      setLoading(false);
+    }).catch((error) => {
+      console.error('Error fetching claim types:', error);
+      setLoading(false);
     });
   }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h2 className="text-xl sm:text-2xl font-bold">Claim Types</h2>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Loading claim types...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -89,7 +106,7 @@ export default function ClaimTypesClient() {
           Add Claim Type
         </Button>
       </div>
-      
+
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
           <Input
@@ -107,6 +124,7 @@ export default function ClaimTypesClient() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-20 sm:w-auto">Name</TableHead>
+                <TableHead className="hidden sm:table-cell">Code</TableHead>
                 <TableHead className="hidden sm:table-cell">Description</TableHead>
                 <TableHead className="hidden lg:table-cell">Required Documents</TableHead>
                 <TableHead className="hidden md:table-cell">Processing Time</TableHead>
@@ -117,7 +135,7 @@ export default function ClaimTypesClient() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <div className="text-center">
                       <X className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">No claim types found</p>
@@ -129,24 +147,31 @@ export default function ClaimTypesClient() {
                   <TableRow key={claimType.id}>
                     <TableCell className="font-medium text-sm sm:text-base">{claimType.name}</TableCell>
                     <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
+                      {claimType.code}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
                       {claimType.description}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       <div className="flex flex-wrap gap-1">
-                        {claimType.required_documents.map((doc, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {doc}
-                          </Badge>
-                        ))}
+                        {claimType.required_documents && claimType.required_documents.length > 0 ? (
+                          claimType.required_documents.map((doc, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {doc}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground text-xs">N/A</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-xs sm:text-sm">
-                      {claimType.processing_time_estimate}
+                      {formatData(claimType.processing_time_estimate)}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       <div className="flex items-center gap-2">
-                        <Switch checked={claimType.status === "active"} onCheckedChange={() => handleStatusToggle(claimType.id)} />
-                        <span className="text-xs">{claimType.status === "active" ? "Active" : "Inactive"}</span>
+                        <Switch checked={claimType.active === 1} onCheckedChange={() => handleStatusToggle(claimType.id)} />
+                        <span className="text-xs">{getStatusText(claimType.active)}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -165,7 +190,7 @@ export default function ClaimTypesClient() {
             </TableBody>
           </Table>
         </div>
-        
+
         {/* Mobile Claim Types Cards */}
         <div className="sm:hidden space-y-3 p-4">
           {filtered.map((claimType) => (
@@ -173,22 +198,30 @@ export default function ClaimTypesClient() {
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm">{claimType.name}</span>
                 <div className="flex items-center gap-2">
-                  <Switch checked={claimType.status === "active"} onCheckedChange={() => handleStatusToggle(claimType.id)} />
-                  <span className="text-xs">{claimType.status === "active" ? "Active" : "Inactive"}</span>
+                  <Switch checked={claimType.active === 1} onCheckedChange={() => handleStatusToggle(claimType.id)} />
+                  <span className="text-xs">{getStatusText(claimType.active)}</span>
                 </div>
               </div>
               <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Code:</span>
+                  <span className="text-right">{claimType.code}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Description:</span>
                   <span className="text-right">{claimType.description}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Processing:</span>
-                  <span>{claimType.processing_time_estimate}</span>
+                  <span>{formatData(claimType.processing_time_estimate)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Documents:</span>
-                  <span className="text-right">{claimType.required_documents.length} required</span>
+                  <span className="text-right">
+                    {claimType.required_documents && claimType.required_documents.length > 0
+                      ? `${claimType.required_documents.length} required`
+                      : 'N/A'}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-2 pt-2">
@@ -208,7 +241,7 @@ export default function ClaimTypesClient() {
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
           <div className="bg-white rounded shadow-lg p-6 w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
             <Button size="icon" variant="ghost" className="absolute top-2 right-2" onClick={() => setModal(null)}>&times;</Button>
-            
+
             {modal.mode === "add" && (
               <>
                 <h3 className="text-lg font-semibold mb-4">Add Claim Type</h3>
@@ -219,7 +252,7 @@ export default function ClaimTypesClient() {
                 />
               </>
             )}
-            
+
             {modal.mode === "edit" && (
               <>
                 <h3 className="text-lg font-semibold mb-4">Edit Claim Type</h3>
@@ -245,10 +278,12 @@ interface ClaimTypeFormProps {
 
 function ClaimTypeForm({ claimType, onSubmit, onCancel }: ClaimTypeFormProps) {
   const [name, setName] = useState(claimType?.name || "");
+  const [code, setCode] = useState(claimType?.code || "");
+  const [tracking_prefix, setTrackingPrefix] = useState(claimType?.tracking_prefix || "");
   const [description, setDescription] = useState(claimType?.description || "");
   const [required_documents, setRequiredDocuments] = useState<string[]>(claimType?.required_documents || []);
   const [processing_time_estimate, setProcessingTimeEstimate] = useState(claimType?.processing_time_estimate || "");
-  const [status, setStatus] = useState<"active" | "inactive">(claimType?.status || "active");
+  const [active, setActive] = useState<number>(claimType?.active ?? 1);
   const [newDocument, setNewDocument] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -256,10 +291,11 @@ function ClaimTypeForm({ claimType, onSubmit, onCancel }: ClaimTypeFormProps) {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
     if (!name.trim()) newErrors.name = "Name is required";
+    if (!code.trim()) newErrors.code = "Code is required";
+    if (!tracking_prefix.trim()) newErrors.tracking_prefix = "Tracking prefix is required";
     if (!description.trim()) newErrors.description = "Description is required";
-    if (required_documents.length === 0) newErrors.required_documents = "At least one required document is needed";
     if (!processing_time_estimate.trim()) newErrors.processing_time_estimate = "Processing time estimate is required";
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -267,10 +303,14 @@ function ClaimTypeForm({ claimType, onSubmit, onCancel }: ClaimTypeFormProps) {
 
     onSubmit({
       name: name.trim(),
+      code: code.trim(),
+      tracking_prefix: tracking_prefix.trim(),
       description: description.trim(),
-      required_documents,
+      required_documents: required_documents.length > 0 ? required_documents : null,
       processing_time_estimate: processing_time_estimate.trim(),
-      status,
+      active,
+      created_at: null,
+      updated_at: null,
     });
   }
 
@@ -302,6 +342,30 @@ function ClaimTypeForm({ claimType, onSubmit, onCancel }: ClaimTypeFormProps) {
           </div>
 
           <div>
+            <Label htmlFor="code">Code *</Label>
+            <Input
+              id="code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="e.g., MOTOR"
+              className={errors.code ? "border-red-500" : ""}
+            />
+            {errors.code && <p className="text-red-500 text-sm mt-1">{errors.code}</p>}
+          </div>
+
+          <div>
+            <Label htmlFor="tracking_prefix">Tracking Prefix *</Label>
+            <Input
+              id="tracking_prefix"
+              value={tracking_prefix}
+              onChange={(e) => setTrackingPrefix(e.target.value)}
+              placeholder="e.g., MTR"
+              className={errors.tracking_prefix ? "border-red-500" : ""}
+            />
+            {errors.tracking_prefix && <p className="text-red-500 text-sm mt-1">{errors.tracking_prefix}</p>}
+          </div>
+
+          <div>
             <Label htmlFor="processing_time_estimate">Processing Time Estimate *</Label>
             <Input
               id="processing_time_estimate"
@@ -314,14 +378,14 @@ function ClaimTypeForm({ claimType, onSubmit, onCancel }: ClaimTypeFormProps) {
           </div>
 
           <div>
-            <Label htmlFor="status">Status *</Label>
-            <Select value={status} onValueChange={(value: "active" | "inactive") => setStatus(value)}>
+            <Label htmlFor="active">Status *</Label>
+            <Select value={active.toString()} onValueChange={(value) => setActive(parseInt(value))}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="1">Active</SelectItem>
+                <SelectItem value="0">Inactive</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -340,7 +404,7 @@ function ClaimTypeForm({ claimType, onSubmit, onCancel }: ClaimTypeFormProps) {
           </div>
 
           <div className="md:col-span-2">
-            <Label>Required Documents *</Label>
+            <Label>Required Documents (Optional)</Label>
             <div className="space-y-2">
               <div className="flex gap-2">
                 <Input
@@ -353,7 +417,7 @@ function ClaimTypeForm({ claimType, onSubmit, onCancel }: ClaimTypeFormProps) {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               {required_documents.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {required_documents.map((doc, index) => (
@@ -369,10 +433,6 @@ function ClaimTypeForm({ claimType, onSubmit, onCancel }: ClaimTypeFormProps) {
                     </Badge>
                   ))}
                 </div>
-              )}
-              
-              {errors.required_documents && (
-                <p className="text-red-500 text-sm">{errors.required_documents}</p>
               )}
             </div>
           </div>
