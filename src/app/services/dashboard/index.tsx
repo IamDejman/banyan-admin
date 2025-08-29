@@ -1,5 +1,7 @@
 import { Http } from "../../utils/http";
 import { Metric, Benchmark, Prediction, Report, ReportFilter, ReportLayout, ReportWidget, TrendData, AnalyticsData, AnalyticsTrend } from "@/lib/types/analytics";
+import { Settlement, SettlementsResponse, SettlementStatistics } from "@/lib/types/settlement";
+
 
 
 
@@ -81,7 +83,15 @@ export const updateDocument = (document_id: string, status: "approve" | "reject"
 
 export const getPendingDocuments = (): Promise<any[]> => Http.get(`/admin/claims/pending-documents`);
 
-export const getSettlements = (): Promise<any[]> => Http.get(`/admin/claims/settlements`);
+export const getSettlements = (optionalParams?: any): Promise<SettlementsResponse> => {
+    if (optionalParams && optionalParams !== "all") {
+        return Http.get(`/admin/claims/settlements?status=${optionalParams}`);
+    }
+    return Http.get(`/admin/claims/settlements`);
+}
+
+
+export const updateSettlementOffer = (payload: any): Promise<any[]> => Http.post(`/admin/claim-offers/present-offer`, payload);
 
 
 export const getSettlementById = (id: string): Promise<any[]> => Http.get(`/admin/claims/settlements/${id}`);

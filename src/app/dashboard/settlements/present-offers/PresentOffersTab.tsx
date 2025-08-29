@@ -8,108 +8,78 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, Edit, Send, Mail, Phone, Calendar } from "lucide-react";
 import type { SettlementOffer, PresentationSetup } from "@/lib/types/settlement";
 import PresentationSetupForm from "./PresentationSetupForm";
+import { Settlement, SettlementStatistics, SettlementsResponse } from "@/lib/types/settlement";
+import { updateSettlementOffer } from "@/app/services/dashboard";
+import { useToast } from "@/components/ui/use-toast";
+
 
 interface PresentOffersTabProps {
   settlements: any[];
   loading: boolean;
 }
 
-// Mock approved offers ready for presentation (fallback)
-const readyOffers: (SettlementOffer & { presentation?: PresentationSetup })[] = [
-  {
-    id: "6",
-    offerId: "OFF-006",
-    claimId: "6",
-    clientName: "Bob Wilson",
-    claimType: "Motor",
-    assessedAmount: 90000,
-    deductions: 5000,
-    serviceFeePercentage: 10,
-    finalAmount: 76000,
-    paymentMethod: "BANK_TRANSFER",
-    paymentTimeline: 7,
-    offerValidityPeriod: 14,
-    specialConditions: "Payment within 7 days for 5% discount",
-    status: "APPROVED",
-    createdBy: "Sarah K.",
-    createdAt: new Date("2024-01-15"),
-    approvedAt: new Date("2024-01-16"),
-    supportingDocuments: ["assessment_report.pdf", "settlement_breakdown.pdf"],
-    presentation: {
-      contactMethod: "EMAIL",
-      presentationPackage: {
-        settlementLetter: true,
-        paymentBreakdown: true,
-        termsAndConditions: true,
-        acceptanceForm: true,
-        bankDetailsForm: false,
-      },
-      customMessage: "We are pleased to present your settlement offer.",
-      subjectLine: "Settlement Offer - Claim CLM-006",
-      deliveryStatus: "PENDING",
-    },
-  },
-  {
-    id: "7",
-    offerId: "OFF-007",
-    claimId: "7",
-    clientName: "DEF Ltd",
-    claimType: "Property",
-    assessedAmount: 180000,
-    deductions: 20000,
-    serviceFeePercentage: 8,
-    finalAmount: 145600,
-    paymentMethod: "CHEQUE",
-    paymentTimeline: 14,
-    offerValidityPeriod: 21,
-    specialConditions: "",
-    status: "APPROVED",
-    createdBy: "Mike T.",
-    createdAt: new Date("2024-01-14"),
-    approvedAt: new Date("2024-01-15"),
-    supportingDocuments: ["assessment_report.pdf", "property_photos.pdf"],
-    presentation: {
-      contactMethod: "SMS",
-      presentationPackage: {
-        settlementLetter: true,
-        paymentBreakdown: true,
-        termsAndConditions: true,
-        acceptanceForm: true,
-        bankDetailsForm: true,
-      },
-      customMessage: "Your settlement offer is ready for review.",
-      subjectLine: "Settlement Offer - Claim CLM-007",
-      deliveryStatus: "SENT",
-      sentAt: new Date("2024-01-16"),
-    },
-  },
-];
+
 
 export default function PresentOffersTab({ settlements, loading }: PresentOffersTabProps) {
-  const [offers, setOffers] = useState<(SettlementOffer & { presentation?: PresentationSetup })[]>(readyOffers);
-  const [modal, setModal] = useState<{ mode: "setup" | "view" | "edit"; offer: SettlementOffer & { presentation?: PresentationSetup } } | null>(null);
-  const [search, setSearch] = useState("");
-
-  // Use settlements data if available, otherwise fall back to mock data
   const availableSettlements = settlements.length > 0 ? settlements : [];
 
+  const [offers, setOffers] = useState<Settlement[]>(availableSettlements);
+  const [modal, setModal] = useState<{ mode: "setup" | "view" | "edit"; offer: Settlement } | null>(null);
+  const [search, setSearch] = useState("");
+  const { toast } = useToast();
+  // Use settlements data if available, otherwise fall back to mock data
+
   const filteredOffers = offers.filter((offer) =>
-    offer.clientName.toLowerCase().includes(search.toLowerCase()) ||
-    offer.offerId.toLowerCase().includes(search.toLowerCase())
+    offer.client.toLowerCase().includes(search.toLowerCase()) ||
+    offer.id.toString().toLowerCase().includes(search.toLowerCase())
   );
 
-  function handlePresentationSetup(offerId: string, setup: PresentationSetup) {
-    setOffers(prev => prev.map(offer =>
-      offer.id === offerId
-        ? { ...offer, presentation: setup }
-        : offer
-    ));
-    setModal(null);
+  async function handlePresentationSetup(offerId: string, setup: PresentationSetup) {
+
+    console.log(offerId, setup, "offerId, setup__");
+    const contactMethod = setup.contactMethod === "PHONE_CALL" ? "phone" : setup.contactMethod === "PHYSICAL_DELIVERY" ? "physical" : setup.contactMethod === "EMAIL" ? "email" : "sms";
+    const payload = {
+      claim_offer_id: offerId,
+      contact_method: contactMethod,
+      settlement_offer: setup.presentationPackage.settlementLetter,
+      payment_breakdown: setup.presentationPackage.paymentBreakdown,
+      terms_and_condition: setup.presentationPackage.termsAndConditions,
+      bank_details_form: setup.presentationPackage.bankDetailsForm,
+      acceptance_form: setup.presentationPackage.acceptanceForm,
+      status: setup.isDraft ? "draft" : "sent",
+      tracking_number: setup.trackingNumber,
+      scheduled_send_date: setup.scheduledSendDate
+    }
+    console.log(payload, "payload__");
+    try {
+      const response = await updateSettlementOffer(payload);
+      console.log(response, "response__");
+      toast({
+        title: "Presentation setup updated successfully",
+        description: "Presentation setup updated successfully",
+        variant: "default",
+      });
+      setModal(null);
+    } catch (error) {
+      toast({
+        title: "Error updating presentation setup",
+        description: "Error updating presentation setup",
+        variant: "destructive",
+      });
+      console.error(error, "error__");
+      setModal(null);
+    }
+    // setOffers(prev => prev.map(offer =>
+    //   offer.id === Number(offerId)
+    //     ? { ...offer, presentation: setup }
+    //     : offer
+    // ));
+    // setModal(null);
   }
 
   function handleSendOffer(offerId: string) {
     setOffers(prev => prev.map(offer => {
-      if (offer.id === offerId && offer.presentation) {
+      if (offer.id === Number(offerId) && offer.presentation) {
         return {
           ...offer,
           presentation: {
@@ -213,19 +183,19 @@ export default function PresentOffersTab({ settlements, loading }: PresentOffers
               )}
               {filteredOffers.map((offer) => (
                 <TableRow key={offer.id}>
-                  <TableCell className="font-medium">{offer.offerId}</TableCell>
-                  <TableCell>{offer.clientName}</TableCell>
-                  <TableCell>₦{offer.finalAmount.toLocaleString()}</TableCell>
+                  <TableCell className="font-medium">{offer.id}</TableCell>
+                  <TableCell>{offer.client}</TableCell>
+                  <TableCell>₦{offer.offer_amount}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {getContactMethodIcon(offer.presentation?.contactMethod || "EMAIL")}
+                      {getContactMethodIcon(offer.payment_method || "EMAIL")}
                       <span className="text-sm">
-                        {offer.presentation?.contactMethod?.replace('_', ' ') || "Not Set"}
+                        {offer.payment_method?.replace('_', ' ') || "Not Set"}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    {offer.presentation ? getStatusBadge(offer.presentation.deliveryStatus) : <Badge variant="secondary">Not Set</Badge>}
+                    {offer.send_status ? getStatusBadge(offer.send_status.toUpperCase()) : <Badge variant="secondary">Not Set</Badge>}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -237,26 +207,26 @@ export default function PresentOffersTab({ settlements, loading }: PresentOffers
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      {(!offer.presentation || offer.presentation.deliveryStatus === "PENDING") && (
+                      {(!offer.send_status || offer.send_status.toUpperCase() === "PENDING") && (
                         <>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setModal({ mode: offer.presentation ? "edit" : "setup", offer })}
+                            onClick={() => setModal({ mode: offer.send_status ? "edit" : "setup", offer })}
                             title="Setup Presentation"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          {offer.presentation && (
+                          {/* {offer.send_status.toUpperCase() !== "SENT" && (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleSendOffer(offer.id)}
+                              onClick={() => handleSendOffer(offer.id.toString())}
                               title="Send Offer"
                             >
                               <Send className="h-4 w-4" />
                             </Button>
-                          )}
+                          )} */}
                         </>
                       )}
                     </div>
@@ -286,20 +256,20 @@ export default function PresentOffersTab({ settlements, loading }: PresentOffers
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="font-medium">Offer ID:</span> {modal.offer.offerId}
+                      <span className="font-medium">Offer ID:</span> {modal.offer.id}
                     </div>
                     <div>
-                      <span className="font-medium">Client:</span> {modal.offer.clientName}
+                      <span className="font-medium">Client:</span> {modal.offer.client}
                     </div>
                     <div>
-                      <span className="font-medium">Amount:</span> ₦{modal.offer.finalAmount.toLocaleString()}
+                      <span className="font-medium">Amount:</span> ₦{modal.offer.offer_amount}
                     </div>
                     <div>
-                      <span className="font-medium">Contact Method:</span> {modal.offer.presentation?.contactMethod?.replace('_', ' ') || "Not Set"}
+                      <span className="font-medium">Contact Method:</span> {modal.offer.payment_method?.replace('_', ' ') || "Not Set"}
                     </div>
                   </div>
 
-                  {modal.offer.presentation && (
+                  {modal.offer.send_status.toUpperCase() !== "SENT" && (
                     <>
                       <div className="border-t pt-4">
                         <h4 className="font-medium mb-2">Presentation Package</h4>
@@ -315,13 +285,13 @@ export default function PresentOffersTab({ settlements, loading }: PresentOffers
                       <div className="border-t pt-4">
                         <h4 className="font-medium mb-2">Custom Message</h4>
                         <p className="text-sm bg-muted/50 p-3 rounded">
-                          {modal.offer.presentation.customMessage || "No custom message"}
+                          {modal.offer.special_conditions || "No custom message"}
                         </p>
                       </div>
 
                       <div className="border-t pt-4">
                         <h4 className="font-medium mb-2">Subject Line</h4>
-                        <p className="text-sm">{modal.offer.presentation.subjectLine}</p>
+                        <p className="text-sm">{modal.offer.subject_line}</p>
                       </div>
                     </>
                   )}
@@ -330,9 +300,9 @@ export default function PresentOffersTab({ settlements, loading }: PresentOffers
                     <Button variant="outline" onClick={() => setModal(null)}>
                       Close
                     </Button>
-                    {(!modal.offer.presentation || modal.offer.presentation.deliveryStatus === "PENDING") && (
-                      <Button onClick={() => setModal({ mode: modal.offer.presentation ? "edit" : "setup", offer: modal.offer })}>
-                        {modal.offer.presentation ? "Edit Setup" : "Setup Presentation"}
+                    {(!modal.offer.send_status || modal.offer.send_status.toUpperCase() === "PENDING") && (
+                      <Button onClick={() => setModal({ mode: modal.offer.send_status ? "edit" : "setup", offer: modal.offer })}>
+                        {modal.offer.send_status ? "Edit Setup" : "Setup Presentation"}
                       </Button>
                     )}
                   </div>
@@ -347,8 +317,7 @@ export default function PresentOffersTab({ settlements, loading }: PresentOffers
                 </h3>
                 <PresentationSetupForm
                   offer={modal.offer}
-                  existingSetup={modal.offer.presentation}
-                  onSubmit={(setup) => handlePresentationSetup(modal.offer.id, setup)}
+                  onSubmit={(setup) => handlePresentationSetup(modal.offer.id.toString(), setup)}
                   onCancel={() => setModal(null)}
                 />
               </>

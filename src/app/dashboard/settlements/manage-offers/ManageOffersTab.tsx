@@ -8,160 +8,37 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, Edit, RotateCcw } from "lucide-react";
 import PaymentProcessingForm from "./PaymentProcessingForm";
-import type { SettlementOffer, ClientResponse, PaymentDetails } from "@/lib/types/settlement";
+import type {  ClientResponse, PaymentDetails } from "@/lib/types/settlement";
+import { Settlement, SettlementStatistics, SettlementsResponse } from "@/lib/types/settlement";
 
 interface ManageOffersTabProps {
   settlements: any[];
   loading: boolean;
 }
 
-// Mock active offers with different statuses (fallback)
-const activeOffers: (SettlementOffer & { clientResponse?: ClientResponse })[] = [
-  {
-    id: "8",
-    offerId: "OFF-008",
-    claimId: "8",
-    clientName: "Alice Johnson",
-    claimType: "Motor",
-    assessedAmount: 60000,
-    deductions: 3000,
-    serviceFeePercentage: 10,
-    finalAmount: 51000,
-    paymentMethod: "BANK_TRANSFER",
-    paymentTimeline: 7,
-    offerValidityPeriod: 14,
-    specialConditions: "Payment within 7 days for 5% discount",
-    status: "PAYMENT_PROCESSING",
-    createdBy: "Sarah K.",
-    createdAt: new Date("2024-01-10"),
-    approvedAt: new Date("2024-01-12"),
-    presentedAt: new Date("2024-01-13"),
-    expiresAt: new Date("2024-01-27"),
-    supportingDocuments: ["assessment_report.pdf", "settlement_breakdown.pdf"],
-    clientResponse: {
-      responseType: "ACCEPTED",
-      responseDate: new Date("2024-01-14"),
-      comments: "Client accepts the offer",
-    },
-    paymentDetails: {
-      paymentId: "PAY-001",
-      paymentDate: new Date("2024-01-15"),
-      paymentAmount: 51000,
-      paymentMethod: "BANK_TRANSFER",
-      transactionReference: "TXN123456789",
-      bankName: "First Bank of Nigeria",
-      accountNumber: "1234567890",
-      accountName: "Alice Johnson",
-      paymentStatus: "PROCESSING",
-      processedBy: "Sarah K.",
-      processedAt: new Date("2024-01-15"),
-      paymentNotes: "Payment initiated",
-      receiptNumber: "RCP-001",
-    },
-  },
-  {
-    id: "9",
-    offerId: "OFF-009",
-    claimId: "9",
-    clientName: "GHI Co",
-    claimType: "Property",
-    assessedAmount: 120000,
-    deductions: 15000,
-    serviceFeePercentage: 8,
-    finalAmount: 95400,
-    paymentMethod: "CHEQUE",
-    paymentTimeline: 14,
-    offerValidityPeriod: 21,
-    specialConditions: "",
-    status: "PAID",
-    createdBy: "Mike T.",
-    createdAt: new Date("2024-01-08"),
-    approvedAt: new Date("2024-01-09"),
-    presentedAt: new Date("2024-01-10"),
-    expiresAt: new Date("2024-01-31"),
-    supportingDocuments: ["assessment_report.pdf", "property_photos.pdf"],
-    clientResponse: {
-      responseType: "ACCEPTED",
-      responseDate: new Date("2024-01-12"),
-      comments: "Client accepts the offer",
-    },
-    paymentDetails: {
-      paymentId: "PAY-002",
-      paymentDate: new Date("2024-01-13"),
-      paymentAmount: 95400,
-      paymentMethod: "CHEQUE",
-      transactionReference: "CHQ987654321",
-      paymentStatus: "COMPLETED",
-      processedBy: "Mike T.",
-      processedAt: new Date("2024-01-13"),
-      paymentNotes: "Cheque cleared successfully",
-      receiptNumber: "RCP-002",
-    },
-  },
-  {
-    id: "10",
-    offerId: "OFF-010",
-    claimId: "10",
-    clientName: "Carol Smith",
-    claimType: "Motor",
-    assessedAmount: 45000,
-    deductions: 2000,
-    serviceFeePercentage: 10,
-    finalAmount: 38700,
-    paymentMethod: "BANK_TRANSFER",
-    paymentTimeline: 7,
-    offerValidityPeriod: 14,
-    specialConditions: "",
-    status: "PAYMENT_PROCESSING",
-    createdBy: "David L.",
-    createdAt: new Date("2024-01-07"),
-    approvedAt: new Date("2024-01-08"),
-    presentedAt: new Date("2024-01-09"),
-    expiresAt: new Date("2024-01-24"),
-    supportingDocuments: ["assessment_report.pdf", "vehicle_photos.pdf"],
-    clientResponse: {
-      responseType: "ACCEPTED",
-      responseDate: new Date("2024-01-11"),
-      comments: "Client accepts the offer",
-    },
-    paymentDetails: {
-      paymentId: "PAY-003",
-      paymentDate: new Date("2024-01-12"),
-      paymentAmount: 38700,
-      paymentMethod: "BANK_TRANSFER",
-      transactionReference: "TXN987654321",
-      bankName: "Zenith Bank",
-      accountNumber: "0987654321",
-      accountName: "Carol Smith",
-      paymentStatus: "PROCESSING",
-      processedBy: "David L.",
-      processedAt: new Date("2024-01-12"),
-      paymentNotes: "Payment initiated",
-      receiptNumber: "RCP-003",
-    },
-  },
-];
+
 
 export default function ManageOffersTab({ settlements, loading }: ManageOffersTabProps) {
-  const [offers, setOffers] = useState<(SettlementOffer & { clientResponse?: ClientResponse })[]>(activeOffers);
-  const [modal, setModal] = useState<{ mode: "view" | "edit" | "payment"; offer: SettlementOffer & { clientResponse?: ClientResponse } } | null>(null);
+  const availableSettlements = settlements.length > 0 ? settlements : [];
+
+  const [offers, setOffers] = useState<Settlement[]>(availableSettlements);
+  const [modal, setModal] = useState<{ mode: "view" | "edit" | "payment"; offer: Settlement } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Use settlements data if available, otherwise fall back to mock data
-  const availableSettlements = settlements.length > 0 ? settlements : [];
 
   const filteredOffers = offers.filter((offer) => {
-    const matchesSearch = offer.clientName.toLowerCase().includes(search.toLowerCase()) ||
-      offer.offerId.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = offer.client.toLowerCase().includes(search.toLowerCase()) ||
+      offer.id.toString().toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" ||
-      (statusFilter === "pending" && !offer.clientResponse) ||
-      (statusFilter === "accepted" && offer.clientResponse?.responseType === "ACCEPTED") ||
-      (statusFilter === "rejected" && offer.clientResponse?.responseType === "REJECTED") ||
-      (statusFilter === "counter" && offer.clientResponse?.responseType === "COUNTER_OFFER") ||
-      (statusFilter === "expired" && offer.expiresAt && new Date() > offer.expiresAt) ||
-      (statusFilter === "payment_processing" && offer.status === "PAYMENT_PROCESSING") ||
-      (statusFilter === "paid" && offer.status === "PAID");
+      (statusFilter === "pending" && !offer.send_status) ||
+      (statusFilter === "accepted" && offer.send_status === "sent") ||
+      (statusFilter === "rejected" && offer.send_status === "rejected") ||
+      (statusFilter === "counter" && offer.send_status === "counter_offered") ||
+      (statusFilter === "expired" && offer.expired) ||
+      (statusFilter === "payment_processing" && offer.send_status === "payment_processing") ||
+      (statusFilter === "paid" && offer.send_status === "paid"); 
     return matchesSearch && matchesStatus;
   });
 
@@ -173,20 +50,20 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
     return `${days} days`;
   }
 
-  function getLastContact(offer: SettlementOffer & { clientResponse?: ClientResponse }) {
+  function getLastContact(offer: Settlement & { clientResponse?: ClientResponse }) {
     if (offer.clientResponse) {
       const days = Math.floor((new Date().getTime() - offer.clientResponse.responseDate.getTime()) / (1000 * 60 * 60 * 24));
       if (days === 0) return "Today";
       if (days === 1) return "Yesterday";
       return `${days} days ago`;
     }
-    const days = Math.floor((new Date().getTime() - offer.presentedAt!.getTime()) / (1000 * 60 * 60 * 24));
+    const days = Math.floor((new Date().getTime() - new Date(offer.presented_at!).getTime()) / (1000 * 60 * 60 * 24));
     if (days === 0) return "Today";
     if (days === 1) return "Yesterday";
     return `${days} days ago`;
   }
 
-  function getStatusBadge(offer: SettlementOffer & { clientResponse?: ClientResponse }) {
+  function getStatusBadge(offer: Settlement) {
     // Check for payment-related statuses first
     if (offer.status === "PAYMENT_PROCESSING") {
       return <Badge variant="secondary">Payment Processing</Badge>;
@@ -198,12 +75,12 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
       return <Badge variant="destructive">Cancelled</Badge>;
     }
 
-    if (offer.expiresAt && new Date() > offer.expiresAt) {
+    if (offer.expiry_period && new Date() > new Date(offer.expiry_period)) {
       return <Badge variant="secondary">Expired</Badge>;
     }
 
-    if (offer.clientResponse) {
-      switch (offer.clientResponse.responseType) {
+    if (offer?.client_response) {
+      switch (offer.client_response.responseType) {
         case "ACCEPTED":
           return <Badge variant="default">Accepted</Badge>;
         case "REJECTED":
@@ -218,13 +95,13 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
 
   function handleMarkExpired(offerId: string) {
     setOffers(prev => prev.map(offer =>
-      offer.id === offerId
-        ? { ...offer, status: "EXPIRED" as SettlementOffer["status"] }
+      offer.id === Number(offerId)
+        ? { ...offer, expired: true }
         : offer
     ));
   }
 
-  function handlePaymentProcessing(offer: typeof activeOffers[0]) {
+  function handlePaymentProcessing(offer: Settlement) {
     setModal({ mode: "payment-processing", offer });
   }
 
@@ -312,12 +189,12 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
               )}
               {filteredOffers.map((offer) => (
                 <TableRow key={offer.id}>
-                  <TableCell className="font-medium">{offer.offerId}</TableCell>
-                  <TableCell>{offer.clientName}</TableCell>
-                  <TableCell>₦{offer.finalAmount.toLocaleString()}</TableCell>
+                  <TableCell className="font-medium">{offer.id}</TableCell>
+                  <TableCell>{offer.client}</TableCell>
+                  <TableCell>₦{offer.offer_amount}</TableCell>
                   <TableCell>{getStatusBadge(offer)}</TableCell>
                   <TableCell>
-                    {offer.expiresAt ? getDaysLeft(offer.expiresAt) : "N/A"}
+                    {offer.expired ? getDaysLeft(new Date(offer.expiry_period)) : "N/A"}
                   </TableCell>
                   <TableCell>{getLastContact(offer)}</TableCell>
                   <TableCell>
@@ -338,17 +215,17 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      {!offer.clientResponse && offer.expiresAt && new Date() > offer.expiresAt && (
+                      {!offer.client_response && offer.expiry_period && new Date() > new Date(offer.expiry_period) && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleMarkExpired(offer.id)}
+                          onClick={() => handleMarkExpired(offer.id.toString())}
                           title="Mark as Expired"
                         >
                           <RotateCcw className="h-4 w-4" />
                         </Button>
                       )}
-                      {offer.clientResponse?.responseType === "ACCEPTED" && offer.status !== "PAYMENT_PROCESSING" && offer.status !== "PAID" && (
+                      {offer.client_response?.responseType === "ACCEPTED" && offer.status !== "PAYMENT_PROCESSING" && offer.status !== "PAID" && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -395,43 +272,43 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="font-medium">Offer ID:</span> {modal.offer.offerId}
+                      <span className="font-medium">Offer ID:</span> {modal.offer.id}
                     </div>
                     <div>
-                      <span className="font-medium">Client:</span> {modal.offer.clientName}
+                      <span className="font-medium">Client:</span> {modal.offer.client}
                     </div>
                     <div>
-                      <span className="font-medium">Amount:</span> ₦{modal.offer.finalAmount.toLocaleString()}
+                      <span className="font-medium">Amount:</span> ₦{modal.offer.offer_amount}
                     </div>
                     <div>
                       <span className="font-medium">Status:</span> {getStatusBadge(modal.offer)}
                     </div>
                     <div>
-                      <span className="font-medium">Expires:</span> {modal.offer.expiresAt?.toLocaleDateString()}
+                      <span className="font-medium">Expires:</span> {modal.offer.expiry_period ? new Date(modal.offer.expiry_period).toLocaleDateString() : "N/A"}
                     </div>
                     <div>
-                      <span className="font-medium">Days Left:</span> {modal.offer.expiresAt ? getDaysLeft(modal.offer.expiresAt) : "N/A"}
+                      <span className="font-medium">Days Left:</span> {modal.offer.expiry_period ? getDaysLeft(new Date(modal.offer.expiry_period)) : "N/A"}
                     </div>
                   </div>
 
-                  {modal.offer.clientResponse && (
+                  {modal.offer.client_response && (
                     <div className="border-t pt-4">
                       <h4 className="font-medium mb-2">Client Response</h4>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="font-medium">Response Type:</span> {modal.offer.clientResponse.responseType}
+                          <span className="font-medium">Response Type:</span> {modal.offer.client_response.responseType}
                         </div>
                         <div>
-                          <span className="font-medium">Response Date:</span> {modal.offer.clientResponse.responseDate.toLocaleDateString()}
+                          <span className="font-medium">Response Date:</span> {modal.offer.client_response.responseDate.toLocaleDateString()}
                         </div>
-                        {modal.offer.clientResponse.counterOfferAmount && (
+                        {modal.offer.client_response.counterOfferAmount && (
                           <div>
-                            <span className="font-medium">Counter Offer:</span> ₦{modal.offer.clientResponse.counterOfferAmount.toLocaleString()}
+                            <span className="font-medium">Counter Offer:</span> ₦{modal.offer.client_response.counterOfferAmount.toLocaleString()}
                           </div>
                         )}
-                        {modal.offer.clientResponse.comments && (
+                        {modal.offer.client_response.comments && (
                           <div className="md:col-span-2">
-                            <span className="font-medium">Comments:</span> {modal.offer.clientResponse.comments}
+                            <span className="font-medium">Comments:</span> {modal.offer.client_response.comments}
                           </div>
                         )}
                       </div>
@@ -456,13 +333,13 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="font-medium">Offer ID:</span> {modal.offer.offerId}
+                      <span className="font-medium">Offer ID:</span> {modal.offer.id}
                     </div>
                     <div>
-                      <span className="font-medium">Client:</span> {modal.offer.clientName}
+                      <span className="font-medium">Client:</span> {modal.offer.client}
                     </div>
                     <div>
-                      <span className="font-medium">Amount:</span> ₦{modal.offer.finalAmount.toLocaleString()}
+                      <span className="font-medium">Amount:</span> ₦{modal.offer.offer_amount}
                     </div>
                     <div>
                       <span className="font-medium">Status:</span> {getStatusBadge(modal.offer)}
@@ -484,13 +361,13 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
                         <RotateCcw className="h-4 w-4 mr-2" />
                         Extend Deadline
                       </Button>
-                      {modal.offer.clientResponse?.responseType === "COUNTER_OFFER" && (
+                      {modal.offer.client_response?.responseType === "COUNTER_OFFER" && (
                         <Button variant="outline" className="justify-start">
                           <Edit className="h-4 w-4 mr-2" />
                           Respond to Counter-Offer
                         </Button>
                       )}
-                      {modal.offer.clientResponse?.responseType === "ACCEPTED" && (
+                        {modal.offer.client_response?.responseType === "ACCEPTED" && (
                         <Button
                           variant="outline"
                           className="justify-start"

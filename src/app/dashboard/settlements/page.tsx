@@ -8,85 +8,40 @@ import ApproveOffersTab from './approve-offers/ApproveOffersTab';
 import PresentOffersTab from './present-offers/PresentOffersTab';
 import ManageOffersTab from './manage-offers/ManageOffersTab';
 import { getSettlements, getSettlementStatistics } from '@/app/services/dashboard';
+import { Settlement, SettlementStatistics, SettlementsResponse } from "@/lib/types/settlement";
 
-interface SettlementStatistics {
-  active_offers: number;
-  active_offers_percentage: number;
-  pending_approval: number;
-  pending_approval_percentage: number;
-  ready_to_present: number;
-  ready_to_present_percentage: number;
-  total_settled: number;
-  total_settled_percentage: number;
-}
 
-interface Settlement {
-  id: number;
-  claim_type: string;
-  client: string;
-  claim_id: number;
-  calculation_breakdown: any;
-  offer_modifications: any;
-  fee_structure: any;
-  offer_amount: string;
-  offer_terms: any;
-  expiry_period: string;
-  status: string;
-  approval_notes: string | null;
-  rejection_reason: string | null;
-  offer_acceptance_notes: string | null;
-  offer_acceptance_status: string | null;
-  offer_acceptance_reason: string | null;
-  approved_by: string | null;
-  rejected_by: string | null;
-  approved_at: string | null;
-  rejected_at: string | null;
-  created_at: string;
-  updated_at: string;
-  assessed_claim_value: string;
-  deductions: string;
-  service_fee_percentage: string;
-  payment_method: string;
-  payment_timeline: string;
-  offer_validity_period: string;
-  supporting_documents: string[];
-  special_conditions: string;
-}
 
-interface SettlementsResponse {
-  data: Settlement[];
-  links: {
-    first: string;
-    last: string;
-    prev: string | null;
-    next: string | null;
-  };
-  meta: {
-    current_page: number;
-    from: number;
-    last_page: number;
-    links: Array<{
-      url: string | null;
-      label: string;
-      active: boolean;
-    }>;
-    path: string;
-    per_page: number;
-    to: number;
-    total: number;
-  };
-}
+
+
 
 export default function SettlementsPage() {
   const [activeTab, setActiveTab] = useState("create");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [statistics, setStatistics] = useState<SettlementStatistics | null>(null);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [settlementsLoading, setSettlementsLoading] = useState(true);
 
   useEffect(() => {
+    if (activeTab === "create") {
+      setFilterStatus("all");
+      handleReloadData("all");
+    } else if (activeTab === "approve") {
+      setFilterStatus("all");
+      handleReloadData("all");
+    } else if (activeTab === "present") {
+      setFilterStatus("approved");
+      handleReloadData("approved");
+    } else if (activeTab === "manage") {
+      setFilterStatus("all");
+      handleReloadData("all");
+    }
+  }, [activeTab]);
+
+  const handleReloadData = (status?: string) => {
     console.log("fetching settlements__");
-    getSettlements().then((res: any) => {
+    getSettlements(status || filterStatus).then((res: SettlementsResponse) => {
       // console.log(res, "settlements res__");
       // Handle the nested data structure from the API response
       let settlementsData: Settlement[] = [];
@@ -117,7 +72,7 @@ export default function SettlementsPage() {
         special_conditions: settlement.special_conditions || "N/A"
       }));
 
-      setSettlements(processedSettlements);
+      setSettlements(processedSettlements as unknown as Settlement[]);
       setSettlementsLoading(false);
     }).catch((error) => {
       console.error("Error fetching settlements:", error);
@@ -134,6 +89,10 @@ export default function SettlementsPage() {
       console.error("Error fetching settlement statistics:", error);
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    handleReloadData(filterStatus);
   }, []);
 
   // Filter settlements by status for different tabs
@@ -242,7 +201,7 @@ export default function SettlementsPage() {
           <TabsContent value="create" className="mt-6">
             <CreateOffersTab
               refetch={() => {
-                getSettlements().then((res: any) => {
+                getSettlements("all").then((res: SettlementsResponse) => {
                   let latestSettlements: Settlement[] = [];
                   if (res?.data?.data && Array.isArray(res.data.data)) {
                     latestSettlements = res.data.data;

@@ -18,7 +18,82 @@ import {
   Eye,
   Edit
 } from 'lucide-react';
-import { getClaimById, getClaims } from '@/app/services/dashboard';
+import { getClaims } from '@/app/services/dashboard';
+import { ApiError } from '@/lib/types/settlement';
+
+// Define proper types for API response data
+interface ApiClaimDocument {
+  id: string;
+  document_type: string;
+  document_uploaded: boolean;
+  created_at: string;
+  document_url: string;
+}
+
+interface ApiClaimHistory {
+  created_at: string;
+  description: string;
+  status: string;
+}
+
+interface ApiClaimClient {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+}
+
+interface ApiClaimTypeDetails {
+  name: string;
+}
+
+interface ApiClaim {
+  claim_number: string;
+  client: ApiClaimClient;
+  submission_date: string;
+  claim_type_details: ApiClaimTypeDetails;
+  status: string;
+  estimated_value: number;
+  description: string;
+  incident_location: string;
+  incident_date: string;
+  documents: ApiClaimDocument[];
+  claim_history: ApiClaimHistory[];
+}
+
+interface TransformedClaimDocument {
+  id: string;
+  name: string;
+  type: string;
+  size: string;
+  uploadedDate: string;
+  isUploaded: boolean;
+  document_url: string;
+}
+
+interface TransformedClaimTimeline {
+  date: string;
+  action: string;
+  description: string;
+}
+
+interface TransformedClaimData {
+  id: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  submissionDate: string;
+  claimType: string;
+  status: string;
+  documentStatus: number;
+  estimatedValue: number;
+  description: string;
+  incidentLocation: string;
+  incidentDate: string;
+  documents: TransformedClaimDocument[];
+  timeline: TransformedClaimTimeline[];
+  daysSinceSubmission: number;
+}
 
 interface ClaimDetailsClientProps {
   claimId: string;
@@ -26,25 +101,51 @@ interface ClaimDetailsClientProps {
 
 export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps) {
   const [activeTab, setActiveTab] = useState('overview');
-  const [claimData, setClaimData] = useState<any>(null);
+  const [claimData, setClaimData] = useState<ApiClaim | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchClaimData = async () => {
       setLoading(true);
       try {
-        const res: any = await getClaims();
+        const res: unknown = await getClaims();
         console.log(res, "res__");
-        // Handle the nested data structure - res might be an array or object
-        const claimsData = Array.isArray(res)
-          ? (res[0]?.data?.data || res[0]?.data || res[0] || [])
-          : (res?.data?.data || res?.data || res || []);
 
-        const claim = claimsData.find((claim: any) => claim.claim_number === claimId);
+        // Helper function to safely extract claims data
+        const extractClaimsData = (response: unknown): ApiClaim[] => {
+          if (Array.isArray(response)) {
+            // If response is an array, try to get data from first element
+            const firstItem = response[0];
+            if (firstItem && typeof firstItem === 'object' && firstItem !== null) {
+              if ('data' in firstItem && firstItem.data) {
+                if (Array.isArray(firstItem.data)) {
+                  return firstItem.data;
+                } else if (typeof firstItem.data === 'object' && firstItem.data !== null && 'data' in firstItem.data) {
+                  return Array.isArray(firstItem.data.data) ? firstItem.data.data : [];
+                }
+              }
+            }
+            return [];
+          } else if (response && typeof response === 'object' && response !== null) {
+            // If response is an object, try to extract data
+            if ('data' in response && response.data) {
+              if (Array.isArray(response.data)) {
+                return response.data;
+              } else if (typeof response.data === 'object' && response.data !== null && 'data' in response.data) {
+                return Array.isArray(response.data.data) ? response.data.data : [];
+              }
+            }
+          }
+          return [];
+        };
+
+        const claimsData = extractClaimsData(res);
+        const claim = claimsData.find((claim: ApiClaim) => claim.claim_number === claimId);
         console.log(claim, "claim__111");
-        setClaimData(claim);
-      } catch (error) {
-        console.error('Error fetching claim data:', error);
+        setClaimData(claim || null);
+      } catch (err: unknown) {
+        const error = err as ApiError;
+        console.error('Error fetching claim data:', error?.response?.data?.message);
       } finally {
         setLoading(false);
       }
@@ -66,10 +167,10 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
   }
 
   // Transform claim data for display
-  const transformClaimData = (claim: any) => {
+  const transformClaimData = (claim: ApiClaim | null): TransformedClaimData | null => {
     if (!claim) return null;
 
-    const uploadedDocs = claim.documents?.filter((doc: any) => doc.document_uploaded) || [];
+    const uploadedDocs = claim.documents?.filter((doc: ApiClaimDocument) => doc.document_uploaded) || [];
     const totalDocs = claim.documents?.length || 0;
     const documentStatus = totalDocs > 0 ? Math.round((uploadedDocs.length / totalDocs) * 100) : 0;
 
@@ -91,7 +192,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
       description: claim.description || 'No description provided',
       incidentLocation: claim.incident_location,
       incidentDate: new Date(claim.incident_date).toLocaleDateString(),
-      documents: claim.documents?.map((doc: any) => ({
+      documents: claim.documents?.map((doc: ApiClaimDocument): TransformedClaimDocument => ({
         id: doc.id,
         name: doc.document_type,
         type: 'pdf',
@@ -100,7 +201,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
         isUploaded: doc.document_uploaded,
         document_url: doc.document_url,
       })) || [],
-      timeline: claim.claim_history?.map((history: any) => ({
+      timeline: claim.claim_history?.map((history: ApiClaimHistory): TransformedClaimTimeline => ({
         date: new Date(history.created_at).toLocaleDateString(),
         action: history.description,
         description: `Status: ${history.status}`,
@@ -291,7 +392,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
                     <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
                   </div>
                 ) : (
-                  transformedClaim.documents.map((doc: any) => (
+                  transformedClaim.documents.map((doc: TransformedClaimDocument) => (
                     <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <FileText className="h-5 w-5 text-muted-foreground" />
@@ -332,7 +433,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
                     <p className="text-sm text-muted-foreground">No timeline events found</p>
                   </div>
                 ) : (
-                  transformedClaim.timeline.map((event: any, index: number) => (
+                  transformedClaim.timeline.map((event: TransformedClaimTimeline, index: number) => (
                     <div key={index} className="flex items-start gap-3">
                       <div className="flex flex-col items-center">
                         <div className="w-3 h-3 bg-primary rounded-full"></div>

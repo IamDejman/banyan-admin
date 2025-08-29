@@ -14,6 +14,17 @@ import { login, verifyEmail } from '@/app/services/auth';
 import { Loader2 } from 'lucide-react';
 import cookie from '@/app/utils/cookie';
 
+// Define proper error types for Axios errors
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+      statusCode?: number;
+    };
+    status?: number;
+  };
+  message?: string;
+}
 
 export default function LoginPage() {
   const [step, setStep] = useState<'credentials' | '2fa'>('credentials');
@@ -25,6 +36,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     try {
       e.preventDefault();
@@ -34,12 +46,13 @@ export default function LoginPage() {
       setOtpHash(res?.otp_hash || '');
       setIsLoading(false);
       setStep('2fa');
-    } catch (err: any) {
-      console.log(err, "err");
-      console.log(err?.message, "err?.message");
+    } catch (err: unknown) {
+      const error = err as ApiError;
+      console.log(error, "err");
+      console.log(error?.message, "err?.message");
       setIsLoading(false);
-      console.log(err?.response?.data?.message, "err?.response?.data?.message");
-      setError(err?.response?.data?.message || 'An error occurred');
+      console.log(error?.response?.data?.message, "err?.response?.data?.message");
+      setError(error?.response?.data?.message || 'An error occurred');
     }
   };
 
@@ -55,11 +68,11 @@ export default function LoginPage() {
       cookie().setCookie('userData', JSON.stringify(res?.user));
       setIsLoading(false);
       router.push('/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as ApiError;
       setIsLoading(false);
-      setError(err?.response?.data?.message || 'An error occurred');
+      setError(error?.response?.data?.message || 'An error occurred');
     }
-
   };
 
   return (

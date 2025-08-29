@@ -7,41 +7,37 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
-import type { SettlementOffer, PresentationSetup } from "@/lib/types/settlement";
+import type { SettlementOffer, PresentationSetup, Settlement } from "@/lib/types/settlement";
 
 interface PresentationSetupFormProps {
-  offer: SettlementOffer;
-  existingSetup?: PresentationSetup;
+  offer: Settlement;
   onSubmit: (setup: PresentationSetup) => void;
   onCancel: () => void;
 }
 
 export default function PresentationSetupForm({
   offer,
-  existingSetup,
   onSubmit,
   onCancel,
 }: PresentationSetupFormProps) {
   const [contactMethod, setContactMethod] = useState<PresentationSetup["contactMethod"]>(
-    existingSetup?.contactMethod || "EMAIL"
+    "EMAIL"
   );
   const [presentationPackage, setPresentationPackage] = useState({
-    settlementLetter: existingSetup?.presentationPackage.settlementLetter ?? true,
-    paymentBreakdown: existingSetup?.presentationPackage.paymentBreakdown ?? true,
-    termsAndConditions: existingSetup?.presentationPackage.termsAndConditions ?? true,
-    acceptanceForm: existingSetup?.presentationPackage.acceptanceForm ?? true,
-    bankDetailsForm: existingSetup?.presentationPackage.bankDetailsForm ?? false,
+    settlementLetter: true,
+    paymentBreakdown: true,
+    termsAndConditions: true,
+    acceptanceForm: true,
+    bankDetailsForm: false,
   });
-  const [customMessage, setCustomMessage] = useState(existingSetup?.customMessage || "");
-  const [subjectLine, setSubjectLine] = useState(
-    existingSetup?.subjectLine || `Settlement Offer - Claim ${offer.offerId}`
-  );
+  const [customMessage, setCustomMessage] = useState("");
+  const [subjectLine, setSubjectLine] = useState( `Settlement Offer - Claim ${offer.claim_type}`);
   const [scheduledSendDate, setScheduledSendDate] = useState<string>("");
-  const [trackingNumber, setTrackingNumber] = useState(existingSetup?.trackingNumber || "");
+  const [trackingNumber, setTrackingNumber] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit(isDraft: boolean) {
+    // e.preventDefault();
     const newErrors: Record<string, string> = {};
 
     if (!contactMethod) {
@@ -65,6 +61,7 @@ export default function PresentationSetupForm({
       scheduledSendDate: scheduledSendDate ? new Date(scheduledSendDate) : undefined,
       trackingNumber: trackingNumber.trim() || undefined,
       deliveryStatus: "PENDING",
+      isDraft: isDraft,
     };
 
     onSubmit(setup);
@@ -79,7 +76,7 @@ export default function PresentationSetupForm({
 
   return (
     <Card className="p-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
         {/* Client Contact Method */}
         <div>
           <Label className="text-base font-medium">Client Contact Method *</Label>
@@ -244,10 +241,10 @@ export default function PresentationSetupForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" variant="outline">
+          <Button type="submit" variant="outline" onClick={() => handleSubmit(true)}>
             Save Draft
           </Button>
-          <Button type="submit">
+          <Button type="submit" onClick={() => handleSubmit(false)}>
             Send Offer
           </Button>
         </div>

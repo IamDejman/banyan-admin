@@ -11,6 +11,9 @@ import type { SettlementOffer } from "@/lib/types/settlement";
 import { approveSettlementOffer, rejectSettlementOffer } from "@/app/services/dashboard";
 import { useToast } from "@/components/ui/use-toast";
 
+import { Settlement, SettlementStatistics, SettlementsResponse } from "@/lib/types/settlement";
+
+
 interface ApproveOffersTabProps {
   settlements: any[];
   loading: boolean;
@@ -21,19 +24,17 @@ interface ApproveOffersTabProps {
 export default function ApproveOffersTab({ settlements, loading }: ApproveOffersTabProps) {
   // Use settlements data if available, otherwise fall back to mock data
   const availableSettlements = settlements.length > 0 ? settlements : [];
-  const [offers, setOffers] = useState<SettlementOffer[]>(availableSettlements);
+  const [offers, setOffers] = useState<Settlement[]>(availableSettlements);
   const [modal, setModal] = useState<{ mode: "view" | "approve" | "reject"; offer: SettlementOffer } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
-  // useEffect(() => {
-  //   setOffers(availableSettlements);
-  // }, [availableSettlements]);
+
 
   const filteredOffers = offers.filter((offer) => {
     const matchesSearch = offer.client.toLowerCase().includes(search.toLowerCase()) ||
-      offer.id.toLowerCase().includes(search.toLowerCase()) ||
+      offer.id.toString().toLowerCase().includes(search.toLowerCase()) ||
       offer.claim_type.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || offer.status.toLowerCase() === statusFilter;
     return matchesSearch && matchesStatus;
