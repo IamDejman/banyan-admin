@@ -10,10 +10,8 @@ import {
   AlertCircle,
   Clock
 } from 'lucide-react';
-import { formatNairaCompact } from '@/lib/utils';
 import { NairaIcon } from '@/components/ui/naira-icon';
-import { getClaimsStatistics, getClaims, getDashboardMetrics } from '../services/dashboard';
-import { Metric } from '@/lib/types/analytics';
+import {  getClaims, getDashboardMetrics } from '../services/dashboard';
 
 
 
@@ -107,7 +105,6 @@ const getStatusBadge = (status: string) => {
 };
 
 export default function DashboardPage() {
-  const [metricsData, setMetricsData] = useState<Metric[]>([]);
   const [dashboardStats, setDashboardStats] = useState({
     total_claims: 0,
     pending_review: 0,
@@ -117,8 +114,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     console.log("fetching metrics__");
-    getDashboardMetrics().then((res: any) => {
-      setDashboardStats(res);
+    getDashboardMetrics().then((res: unknown) => {
+      setDashboardStats(res as { total_claims: number; pending_review: number; approved: number; settled_claims: number; });
       console.log(res, "res__111");
     });
     // getClaimsStatistics ().then((res) => {
@@ -128,7 +125,6 @@ export default function DashboardPage() {
       console.log(res, "res__");
     });
   }, []);
-  console.log(metricsData, "metricsData__");
   return (
     <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
       <div>

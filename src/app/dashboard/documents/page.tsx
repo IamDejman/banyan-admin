@@ -22,19 +22,49 @@ import {
 import { getDocumentStatistics, updateDocument, listDocuments } from '@/app/services/dashboard';
 import { useToast } from '@/components/ui/use-toast';
 
+// Define proper types for documents
+interface Document {
+  id: string | number;
+  document_type: string;
+  claim_id: string | number;
+  client: string;
+  document_uploaded: boolean;
+  file_type: string;
+  file_size?: string;
+  document_url?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface DocumentStats {
+  total_pending_documents: number;
+  total_pending_documents_percentage: number;
+  documents_by_claim_type: number;
+  documents_by_claim_type_percentage: number;
+  average_verification_time: number;
+  average_verification_time_percentage: number;
+  rejection_rate: number;
+  rejection_rate_percentage: number;
+}
+
+interface ModalState {
+  isOpen: boolean;
+  document: Document | null;
+}
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
-  const [viewModal, setViewModal] = useState<{ isOpen: boolean; document: any | null }>({ isOpen: false, document: null });
-  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; document: any | null }>({ isOpen: false, document: null });
-  const [rejectModal, setRejectModal] = useState<{ isOpen: boolean; document: any | null }>({ isOpen: false, document: null });
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [viewModal, setViewModal] = useState<ModalState>({ isOpen: false, document: null });
+  const [approveModal, setApproveModal] = useState<ModalState>({ isOpen: false, document: null });
+  const [rejectModal, setRejectModal] = useState<ModalState>({ isOpen: false, document: null });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [fileTypeFilter, setFileTypeFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [documentStats, setDocumentStats] = useState({
+  const [documentStats, setDocumentStats] = useState<DocumentStats>({
     total_pending_documents: 0,
     total_pending_documents_percentage: 0,
     documents_by_claim_type: 0,
@@ -45,7 +75,7 @@ export default function DocumentsPage() {
     rejection_rate_percentage: 0
   });
 
-  const filteredDocuments = documents.filter((doc) => {
+  const filteredDocuments = documents.filter((doc: Document) => {
     const matchesSearch =
       (doc.document_type || 'N/A').toLowerCase().includes(search.toLowerCase()) ||
       (doc.claim_id || 'N/A').toString().toLowerCase().includes(search.toLowerCase()) ||
@@ -57,17 +87,17 @@ export default function DocumentsPage() {
     return matchesSearch && matchesStatus && matchesFileType;
   });
 
-  const handleViewDocument = (doc: any) => {
+  const handleViewDocument = (doc: Document) => {
     setSelectedDocument(doc);
     setViewModal({ isOpen: true, document: doc });
   };
 
-  const handleApproveDocument = (doc: any) => {
+  const handleApproveDocument = (doc: Document) => {
     setSelectedDocument(doc);
     setApproveModal({ isOpen: true, document: doc });
   };
 
-  const handleRejectDocument = (doc: any) => {
+  const handleRejectDocument = (doc: Document) => {
     setSelectedDocument(doc);
     setRejectModal({ isOpen: true, document: doc });
   };
@@ -243,15 +273,15 @@ export default function DocumentsPage() {
         });
       }
     });
-    listDocuments().then((res: any) => {
+    listDocuments().then((res: unknown) => {
       console.log(res, "res__");
       // Handle the response - it might be an array with the first element being the data
       // or an object with a data property
-      let documentsData = [];
+      let documentsData: Document[] = [];
       if (Array.isArray(res)) {
-        documentsData = res;
+        documentsData = res as Document[];
       } else if (res && typeof res === 'object' && 'data' in res) {
-        documentsData = res.data || [];
+        documentsData = (res as { data?: Document[] }).data || [];
       }
       setDocuments(documentsData);
     });
@@ -413,7 +443,7 @@ export default function DocumentsPage() {
                       <TableCell className="hidden sm:table-cell">{doc.claim_id}</TableCell>
                       <TableCell className="hidden md:table-cell">{doc.client || "N/A"}</TableCell>
                       <TableCell className="hidden sm:table-cell">{doc.document_type}</TableCell>
-                      <TableCell className="hidden lg:table-cell">{getSubmissionDate(doc.created_at)}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{getSubmissionDate(doc.created_at || '')}</TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge className={getStatusColor(doc.document_uploaded)}>
                           {doc.document_uploaded ? "Uploaded" : "Pending Upload"}
@@ -426,11 +456,11 @@ export default function DocumentsPage() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="flex items-center gap-2">
-                          {getFileTypeIcon(doc.file_type)}
-                          <span className="text-xs uppercase">{getFileType(doc.file_type)}</span>
+                          {getFileTypeIcon(doc.file_type || null)}
+                          <span className="text-xs uppercase">{getFileType(doc.file_type || null)}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell text-xs">{getFileSize(doc.file_size)}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs">{getFileSize(doc.file_size || null)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 sm:gap-2">
                           <Button variant="ghost" size="sm" onClick={() => handleViewDocument(doc)}>
@@ -484,13 +514,13 @@ export default function DocumentsPage() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">File:</span>
                     <div className="flex items-center gap-1">
-                      {getFileTypeIcon(doc.file_type)}
-                      <span className="text-xs uppercase">{getFileType(doc.file_type)}</span>
+                      {getFileTypeIcon(doc.file_type || null)}
+                      <span className="text-xs uppercase">{getFileType(doc.file_type || null)}</span>
                     </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Size:</span>
-                    <span>{getFileSize(doc.file_size)}</span>
+                    <span>{getFileSize(doc.file_size || null)}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-2">
@@ -547,19 +577,19 @@ export default function DocumentsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">File Type:</span>
-                    <span>{getFileType(viewModal.document.file_type)}</span>
+                    <span>{getFileType(viewModal.document.file_type || null)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">File Size:</span>
-                    <span>{getFileSize(viewModal.document.file_size)}</span>
+                    <span>{getFileSize(viewModal.document.file_size || null)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Submission Date:</span>
-                    <span>{getSubmissionDate(viewModal.document.created_at)}</span>
+                    <span>{getSubmissionDate(viewModal.document.created_at || '')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Verification Time:</span>
-                    <span>{getVerificationTime(viewModal.document.created_at, viewModal.document.updated_at)}</span>
+                    <span>{getVerificationTime(viewModal.document.created_at || '', viewModal.document.updated_at || '')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Assigned To:</span>
@@ -575,7 +605,7 @@ export default function DocumentsPage() {
                   <div className="text-center">
                     <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
                     <p className="text-sm text-muted-foreground">Document will open in new tab</p>
-                    <p className="text-xs text-muted-foreground cursor-pointer" onClick={() => window.open(viewModal.document.document_url, '_blank')}>Click to view full document</p>
+                    <p className="text-xs text-muted-foreground cursor-pointer" onClick={() => window.open(viewModal.document?.document_url || '', '_blank')}>Click to view full document</p>
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -622,7 +652,7 @@ export default function DocumentsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">File Type:</span>
-                  <span className="text-sm">{getFileType(approveModal.document.file_type)}</span>
+                  <span className="text-sm">{getFileType(approveModal.document.file_type || null)}</span>
                 </div>
               </div>
 
@@ -668,7 +698,7 @@ export default function DocumentsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">File Type:</span>
-                  <span className="text-sm">{getFileType(rejectModal.document.file_type)}</span>
+                  <span className="text-sm">{getFileType(rejectModal.document.file_type || null)}</span>
                 </div>
               </div>
 

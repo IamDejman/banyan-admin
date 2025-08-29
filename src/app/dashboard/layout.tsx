@@ -17,7 +17,7 @@ export default function DashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [adminName, setAdminName] = useState<any>('');
+  const [adminName, setAdminName] = useState<string>('');
 
 
   // Handle mobile detection

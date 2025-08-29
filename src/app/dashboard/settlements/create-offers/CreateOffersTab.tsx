@@ -6,10 +6,11 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Eye, Edit, Trash2 } from "lucide-react";
-import type { SettlementOffer, ClaimForSettlement } from "@/lib/types/settlement";
+import type { SettlementOffer } from "@/lib/types/settlement";
 import SettlementOfferForm from "./SettlementOfferForm";
 import { createSettlementOffer } from "@/app/services/dashboard";
-import { useToast } from "@/components/ui/use-toast";
+import { Settlement, } from "@/lib/types/settlement";
+
 
 interface CreateOffersTabProps {
   settlements: any[];
@@ -18,52 +19,10 @@ interface CreateOffersTabProps {
 }
 
 
-// Mock settlement offers (fallback)
-const mockOffers: SettlementOffer[] = [
-  {
-    id: "1",
-    offerId: "OFF-001",
-    claimId: "1",
-    clientName: "John Doe",
-    claimType: "Motor",
-    assessedAmount: 50000,
-    deductions: 5000,
-    serviceFeePercentage: 10,
-    finalAmount: 45000,
-    paymentMethod: "BANK_TRANSFER",
-    paymentTimeline: 7,
-    offerValidityPeriod: 14,
-    specialConditions: "Payment within 7 days for 5% discount",
-    status: "DRAFT",
-    createdBy: "Sarah K.",
-    createdAt: new Date("2024-01-20"),
-    supportingDocuments: ["assessment_report.pdf", "supporting_evidence.pdf"],
-  },
-  {
-    id: "2",
-    offerId: "OFF-002",
-    claimId: "2",
-    clientName: "ABC Ltd",
-    claimType: "Fire",
-    assessedAmount: 200000,
-    deductions: 20000,
-    serviceFeePercentage: 8,
-    finalAmount: 184000,
-    paymentMethod: "CHEQUE",
-    paymentTimeline: 14,
-    offerValidityPeriod: 21,
-    specialConditions: "",
-    status: "SUBMITTED",
-    createdBy: "Mike T.",
-    createdAt: new Date("2024-01-19"),
-    submittedAt: new Date("2024-01-19"),
-    supportingDocuments: ["assessment_report.pdf", "settlement_breakdown.pdf"],
-  },
-];
 
 export default function CreateOffersTab({ settlements, loading, refetch }: CreateOffersTabProps) {
   const availableSettlements = settlements.length > 0 ? settlements : [];
-  const [offers, setOffers] = useState<SettlementOffer[]>(availableSettlements);
+  const [offers, setOffers] = useState<Settlement[]>(availableSettlements);
   const [modal, setModal] = useState<{ mode: "create" | "view" | "edit"; offer?: SettlementOffer } | null>(null);
   const [search, setSearch] = useState("");
 
@@ -83,7 +42,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
     offer.claim_type.toLowerCase().includes(search.toLowerCase())
   );
 
-  async function handleCreateOffer(newOffer: any) {
+  async function handleCreateOffer(newOffer: SettlementOffer) {
     try {
       console.log(newOffer, "newOffer__");
       const payload = {

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -11,11 +11,11 @@ import type { SettlementOffer } from "@/lib/types/settlement";
 import { approveSettlementOffer, rejectSettlementOffer } from "@/app/services/dashboard";
 import { useToast } from "@/components/ui/use-toast";
 
-import { Settlement, SettlementStatistics, SettlementsResponse } from "@/lib/types/settlement";
+import { Settlement } from "@/lib/types/settlement";
 
 
 interface ApproveOffersTabProps {
-  settlements: any[];
+  settlements: Settlement[];
   loading: boolean;
 }
 

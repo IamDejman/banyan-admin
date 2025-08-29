@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,79 @@ import Link from 'next/link';
 import { getClaims, getClaimsStatistics, approveClaim } from '@/app/services/dashboard';
 import { toast } from '@/components/ui/use-toast';
 
+// Define proper types for API response data
+interface ApiClaimDocument {
+  id: string;
+  document_uploaded: boolean;
+}
+
+interface ApiClaimClient {
+  first_name: string;
+  last_name: string;
+}
+
+interface ApiClaimTypeDetails {
+  name: string;
+}
+
+interface ApiClaim {
+  id: string;
+  claim_number: string;
+  client: ApiClaimClient;
+  submission_date: string;
+  claim_type_details: ApiClaimTypeDetails;
+  status: string;
+  estimated_value: number;
+  description: string;
+  incident_location: string;
+  incident_date: string;
+  documents: ApiClaimDocument[];
+}
+
+interface TransformedClaim {
+  id: string;
+  clientName: string;
+  submissionDate: string;
+  claimType: string;
+  documentStatus: number;
+  status: string;
+  estimatedValue: number;
+  incidentLocation: string;
+  description: string;
+  incidentDate: string;
+  originalClaim: ApiClaim;
+}
+
+interface TransformedSettledClaim extends TransformedClaim {
+  settlementDate: string;
+  settlementAmount: number;
+}
+
+interface Statistics {
+  total_pending_claims: number;
+  average_review_time: number;
+  document_completion: number;
+  settled_claim: number;
+  propertydamage_claims: number;
+  auto_accident_claims: number;
+  medical_claims: number;
+  liability: number;
+}
+
+interface QuickStat {
+  title: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  trend: string;
+  trendUp: boolean;
+}
+
+interface ClaimType {
+  label: string;
+  value: string;
+  count: number;
+}
 
 export default function ClaimsReviewPage() {
   const [filters, setFilters] = useState({
@@ -39,9 +112,8 @@ export default function ClaimsReviewPage() {
     search: '',
   });
   const [activeTab, setActiveTab] = useState('pending');
-  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; claim: any | null }>({ isOpen: false, claim: null });
-  const [approvedClaims, setApprovedClaims] = useState<any[]>([]);
-  const [statistics, setStatistics] = useState({
+  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; claim: TransformedClaim | null }>({ isOpen: false, claim: null });
+  const [statistics, setStatistics] = useState<Statistics>({
     total_pending_claims: 0,
     average_review_time: 0,
     document_completion: 0,
@@ -51,7 +123,7 @@ export default function ClaimsReviewPage() {
     medical_claims: 0,
     liability: 0
   });
-  const [claims, setClaims] = useState<any[]>([]);
+  const [claims, setClaims] = useState<ApiClaim[]>([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -60,7 +132,7 @@ export default function ClaimsReviewPage() {
   });
   const [loading, setLoading] = useState(false);
 
-  const handleApproveClaim = (claim: any) => {
+  const handleApproveClaim = (claim: TransformedClaim) => {
     console.log("Approving claim:", claim);
     setApproveModal({ isOpen: true, claim });
   };
@@ -68,11 +140,10 @@ export default function ClaimsReviewPage() {
   const confirmApprove = async () => {
     try {
       if (approveModal.claim) {
-        console.log("Approving claim:", approveModal.claim.claim_number);
+        console.log("Approving claim:", approveModal.claim.id);
         const res = await approveClaim(approveModal.claim.id);
         console.log(res, "res__111");
         // In a real app, this would update the claim status
-        setApprovedClaims(prev => [...prev, approveModal.claim!]);
         return toast({
           title: "Claim approved successfully",
           description: "The claim has been approved successfully",
@@ -81,14 +152,13 @@ export default function ClaimsReviewPage() {
       }
       setApproveModal({ isOpen: false, claim: null });
 
-    } catch (error) {
+    } catch {
       toast({
         title: "Failed to approve claim",
         description: "The claim has not been approved",
         variant: "destructive",
       });
     }
-
   };
 
   const cancelApprove = () => {
@@ -106,8 +176,8 @@ export default function ClaimsReviewPage() {
   };
 
   // Transform API claim data to table format
-  const transformClaimData = (claim: any) => {
-    const uploadedDocs = claim.documents?.filter((doc: any) => doc.document_uploaded) || [];
+  const transformClaimData = (claim: ApiClaim): TransformedClaim => {
+    const uploadedDocs = claim.documents?.filter((doc: ApiClaimDocument) => doc.document_uploaded) || [];
     const totalDocs = claim.documents?.length || 0;
     const documentStatus = totalDocs > 0 ? Math.round((uploadedDocs.length / totalDocs) * 100) : 0;
 
@@ -127,7 +197,7 @@ export default function ClaimsReviewPage() {
   };
 
   // Transform settled claim data with settlement info
-  const transformSettledClaimData = (claim: any) => {
+  const transformSettledClaimData = (claim: ApiClaim): TransformedSettledClaim => {
     const baseData = transformClaimData(claim);
     return {
       ...baseData,
@@ -137,7 +207,7 @@ export default function ClaimsReviewPage() {
   };
 
   // Filter and search claims
-  const filterClaims = (claims: any[], searchTerm: string, claimTypeFilter: string) => {
+  const filterClaims = (claims: ApiClaim[], searchTerm: string, claimTypeFilter: string): ApiClaim[] => {
     return claims.filter(claim => {
       const matchesSearch = searchTerm === '' ||
         claim.claim_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -153,7 +223,7 @@ export default function ClaimsReviewPage() {
   };
 
   // Apply filters and pagination
-  const getFilteredClaims = () => {
+  const getFilteredClaims = (): ApiClaim[] => {
     const filtered = filterClaims(claims, filters.search, filters.claimType);
     const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
     const endIndex = startIndex + pagination.itemsPerPage;
@@ -161,14 +231,14 @@ export default function ClaimsReviewPage() {
   };
 
   // Get filtered claims for display
-  const pendingClaims = getFilteredClaims().filter(claim => claim?.originalClaim?.status !== 'completed').map(transformClaimData);
-  const settledClaims = getFilteredClaims().filter(claim => claim?.originalClaim?.status === 'completed').map(transformSettledClaimData);
+  const pendingClaims = getFilteredClaims().filter(claim => claim?.status !== 'completed').map(transformClaimData);
+  const settledClaims = getFilteredClaims().filter(claim => claim?.status === 'completed').map(transformSettledClaimData);
 
   // Calculate total filtered items for pagination
-  const getTotalFilteredItems = () => {
+  const getTotalFilteredItems = useCallback((): number => {
     const filtered = filterClaims(claims, filters.search, filters.claimType);
     return filtered.length;
-  };
+  }, [claims, filters.search, filters.claimType]);
 
   // Update pagination when filters or claims change
   useEffect(() => {
@@ -180,7 +250,7 @@ export default function ClaimsReviewPage() {
       totalPages,
       currentPage: prev.currentPage > totalPages ? 1 : prev.currentPage,
     }));
-  }, [claims, filters.search, filters.claimType]);
+  }, [claims, filters.search, filters.claimType, pagination.itemsPerPage, getTotalFilteredItems]);
 
   // Handle pagination
   const handlePageChange = (page: number) => {
@@ -203,16 +273,41 @@ export default function ClaimsReviewPage() {
   const fetchClaims = async () => {
     setLoading(true);
     try {
-      const res: any = await getClaims();
+      const res: unknown = await getClaims();
       console.log(res, "res__");
-      // Handle the nested data structure - res might be an array or object
-      const claimsData = Array.isArray(res)
-        ? (res[0]?.data?.data || res[0]?.data || res[0] || [])
-        : (res?.data?.data || res?.data || res || []);
 
+      // Helper function to safely extract claims data
+      const extractClaimsData = (response: unknown): ApiClaim[] => {
+        if (Array.isArray(response)) {
+          // If response is an array, try to get data from first element
+          const firstItem = response[0];
+          if (firstItem && typeof firstItem === 'object' && firstItem !== null) {
+            if ('data' in firstItem && firstItem.data) {
+              if (Array.isArray(firstItem.data)) {
+                return firstItem.data;
+              } else if (typeof firstItem.data === 'object' && firstItem.data !== null && 'data' in firstItem.data) {
+                return Array.isArray(firstItem.data.data) ? firstItem.data.data : [];
+              }
+            }
+          }
+          return [];
+        } else if (response && typeof response === 'object' && response !== null) {
+          // If response is an object, try to extract data
+          if ('data' in response && response.data) {
+            if (Array.isArray(response.data)) {
+              return response.data;
+            } else if (typeof response.data === 'object' && response.data !== null && 'data' in response.data) {
+              return Array.isArray(response.data.data) ? response.data.data : [];
+            }
+          }
+        }
+        return [];
+      };
+
+      const claimsData = extractClaimsData(res);
       setClaims(claimsData);
-    } catch (error) {
-      console.error('Error fetching claims:', error);
+    } catch {
+      console.error('Error fetching claims');
     } finally {
       setLoading(false);
     }
@@ -224,7 +319,7 @@ export default function ClaimsReviewPage() {
       console.log(res, "res__111");
       // Handle the response - it might be an array with the first element being the data
       const statsData = Array.isArray(res) ? res[0] : res;
-      setStatistics(statsData as typeof statistics);
+      setStatistics(statsData as Statistics);
     });
     fetchClaims();
   }, []);
@@ -232,7 +327,7 @@ export default function ClaimsReviewPage() {
   // Remove the automatic refetch - filtering will be client-side only
 
   // Generate quickStats from API response
-  const quickStats = [
+  const quickStats: QuickStat[] = [
     {
       title: 'Total Pending Claims',
       value: statistics.total_pending_claims.toString(),
@@ -268,7 +363,7 @@ export default function ClaimsReviewPage() {
   ];
 
   // Generate claimTypes from API response
-  const claimTypes = [
+  const claimTypes: ClaimType[] = [
     { label: 'Property Damage', value: 'property', count: statistics.propertydamage_claims },
     { label: 'Auto Accident', value: 'auto', count: statistics.auto_accident_claims },
     { label: 'Medical', value: 'medical', count: statistics.medical_claims },
