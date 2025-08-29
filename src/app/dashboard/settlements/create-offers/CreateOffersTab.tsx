@@ -1,19 +1,34 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Edit, Trash2 } from "lucide-react";
-import type { SettlementOffer } from "@/lib/types/settlement";
+import { Plus, Eye, Edit } from "lucide-react";
 import SettlementOfferForm from "./SettlementOfferForm";
 import { createSettlementOffer } from "@/app/services/dashboard";
 import { Settlement, } from "@/lib/types/settlement";
 
+// Interface for the form data
+interface SettlementFormData {
+  claimId: string;
+  clientName: string;
+  claimType: string;
+  assessedAmount: number;
+  deductions: number;
+  serviceFeePercentage: number;
+  finalAmount: number;
+  paymentMethod: string;
+  paymentTimeline: number;
+  offerValidityPeriod: number;
+  specialConditions: string;
+  status: string;
+  supportingDocuments: string[];
+}
 
 interface CreateOffersTabProps {
-  settlements: any[];
+  settlements: Settlement[];
   loading: boolean;
   refetch: () => void;
 }
@@ -21,9 +36,9 @@ interface CreateOffersTabProps {
 
 
 export default function CreateOffersTab({ settlements, loading, refetch }: CreateOffersTabProps) {
-  const availableSettlements = settlements.length > 0 ? settlements : [];
+  const availableSettlements = useMemo(() => settlements.length > 0 ? settlements : [], [settlements]);
   const [offers, setOffers] = useState<Settlement[]>(availableSettlements);
-  const [modal, setModal] = useState<{ mode: "create" | "view" | "edit"; offer?: SettlementOffer } | null>(null);
+  const [modal, setModal] = useState<{ mode: "create" | "view" | "edit"; offer?: Settlement } | null>(null);
   const [search, setSearch] = useState("");
 
   console.log(availableSettlements, "availableSettlements__");
@@ -38,11 +53,11 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
   // const filteredOffers = offers
   const filteredOffers = offers.filter((offer) =>
     offer?.client.toLowerCase().includes(search.toLowerCase()) ||
-    offer.id.toLowerCase().includes(search.toLowerCase()) ||
+    offer.id.toString().toLowerCase().includes(search.toLowerCase()) ||
     offer.claim_type.toLowerCase().includes(search.toLowerCase())
   );
 
-  async function handleCreateOffer(newOffer: SettlementOffer) {
+  async function handleCreateOffer(newOffer: SettlementFormData) {
     try {
       console.log(newOffer, "newOffer__");
       const payload = {
@@ -69,20 +84,9 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
     }
   }
 
-  function handleUpdateOffer(updatedOffer: Omit<SettlementOffer, "id" | "offerId" | "createdAt" | "createdBy">) {
-    setOffers(prev => prev.map(offer =>
-      offer.id === modal?.offer?.id
-        ? { ...offer, ...updatedOffer, submittedAt: updatedOffer.status === "SUBMITTED" ? new Date() : offer.submittedAt }
-        : offer
-    ));
-    setModal(null);
-  }
 
-  function handleDeleteOffer(offerId: string) {
-    setOffers(prev => prev.filter(offer => offer.id !== offerId));
-  }
 
-  function getStatusBadge(status: SettlementOffer["status"]) {
+  function getStatusBadge(status: string) {
     console.log(status, "status__");
     const statusConfig = {
       DRAFT: { label: "Draft", variant: "secondary" as const },
@@ -186,14 +190,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteOffer(offer.id)}
-                            title="Delete Offer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+
                         </>
                       )}
                     </div>
@@ -221,7 +218,6 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
               <>
                 <h3 className="text-lg font-semibold mb-4">New Settlement Offer Form</h3>
                 <SettlementOfferForm
-                  approvedClaims={[]}
                   onSubmit={handleCreateOffer}
                   onCancel={() => setModal(null)}
                 />
@@ -301,17 +297,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
               </>
             )}
 
-            {modal.mode === "edit" && modal.offer && (
-              <>
-                <h3 className="text-lg font-semibold mb-4">Edit Settlement Offer</h3>
-                <SettlementOfferForm
-                  approvedClaims={[]}
-                  existingOffer={modal.offer}
-                  onSubmit={handleUpdateOffer}
-                  onCancel={() => setModal(null)}
-                />
-              </>
-            )}
+
           </div>
         </div>
       )}

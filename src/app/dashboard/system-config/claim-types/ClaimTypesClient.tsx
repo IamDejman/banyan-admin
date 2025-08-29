@@ -13,6 +13,11 @@ import { X, Plus } from "lucide-react";
 import type { ClaimType } from "@/lib/types/claim-types";
 import { getClaimTypes } from "@/app/services/dashboard";
 
+// Interface for the API response structure
+interface ClaimTypeApiResponse {
+  data?: ClaimType[];
+}
+
 type ModalState = { mode: "add" | "edit"; claimType: ClaimType | null } | null;
 
 export default function ClaimTypesClient() {
@@ -50,7 +55,7 @@ export default function ClaimTypesClient() {
   }
 
   // Helper function to format data for display
-  function formatData(value: any, type: 'documents' | 'text' = 'text'): string {
+  function formatData(value: unknown, type: 'documents' | 'text' = 'text'): string {
     if (value === null || value === undefined || value === '') {
       return 'N/A';
     }
@@ -69,14 +74,16 @@ export default function ClaimTypesClient() {
 
   useEffect(() => {
     setLoading(true);
-    getClaimTypes().then((res: any) => {
-      if (res && res.data) {
-        // Map API response to component format
-        const mappedData = res.data.map((item: any) => ({
-          ...item,
-          status: item.active === 1 ? "active" : "inactive" // For UI compatibility
-        }));
-        setClaimTypes(mappedData);
+    getClaimTypes().then((res: unknown) => {
+      if (res && typeof res === 'object' && 'data' in res) {
+        const response = res as ClaimTypeApiResponse;
+        if (response.data) {
+          // Map API response to component format
+          const mappedData = response.data.map((item: ClaimType) => ({
+            ...item
+          }));
+          setClaimTypes(mappedData);
+        }
       }
       setLoading(false);
     }).catch((error) => {

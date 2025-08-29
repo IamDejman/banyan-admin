@@ -76,7 +76,7 @@ export default function InsurerForm({ insurer, claimTypes, onSubmit, onCancel }:
     setSupportedClaimTypes(supported_claim_types.filter(id => id !== claimTypeId));
   }
 
-  const availableClaimTypes = claimTypes.filter(ct => !supported_claim_types.includes(ct.id));
+  const availableClaimTypes = claimTypes.filter(ct => !supported_claim_types.includes(ct.id.toString()));
 
   return (
     <Card className="p-6">
@@ -142,12 +142,12 @@ export default function InsurerForm({ insurer, claimTypes, onSubmit, onCancel }:
             />
             {logo && (
               <div className="mt-2">
-                <Image 
-                  src={logo} 
-                  alt="Logo preview" 
+                <Image
+                  src={logo}
+                  alt="Logo preview"
                   width={80}
                   height={80}
-                  className="h-20 w-auto object-contain" 
+                  className="h-20 w-auto object-contain"
                 />
               </div>
             )}
@@ -162,13 +162,13 @@ export default function InsurerForm({ insurer, claimTypes, onSubmit, onCancel }:
                 </SelectTrigger>
                 <SelectContent>
                   {availableClaimTypes.map((claimType) => (
-                    <SelectItem key={claimType.id} value={claimType.id}>
+                    <SelectItem key={claimType.id} value={claimType.id.toString()}>
                       {claimType.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              
+
               {supported_claim_types.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {supported_claim_types.map((claimTypeId) => {
@@ -188,7 +188,7 @@ export default function InsurerForm({ insurer, claimTypes, onSubmit, onCancel }:
                   })}
                 </div>
               )}
-              
+
               {errors.supported_claim_types && (
                 <p className="text-red-500 text-sm">{errors.supported_claim_types}</p>
               )}

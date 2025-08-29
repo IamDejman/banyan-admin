@@ -13,6 +13,11 @@ import { getInsurers } from "@/app/services/dashboard";
 
 type ModalState = { mode: "add" | "edit"; insurer: Insurer | null } | null;
 
+// Interface for the API response structure
+interface InsurersApiResponse {
+  data?: ApiInsurer[];
+}
+
 // API response type
 type ApiInsurer = {
   id: number;
@@ -31,9 +36,9 @@ type ApiInsurer = {
 
 // Mock claim types for the dropdown
 const claimTypes: ClaimType[] = [
-  { id: "1", name: "Auto", description: "Automobile insurance claims", required_documents: ["Driver's License", "Police Report"], processing_time_estimate: "5-7 days", status: "active" },
-  { id: "2", name: "Property", description: "Property damage claims", required_documents: ["Photos", "Repair Estimates"], processing_time_estimate: "7-10 days", status: "active" },
-  { id: "3", name: "Health", description: "Health insurance claims", required_documents: ["Medical Records", "Bills"], processing_time_estimate: "3-5 days", status: "active" },
+  { id: "1", name: "Auto", code: "AUTO", tracking_prefix: "AUT", description: "Automobile insurance claims", required_documents: ["Driver's License", "Police Report"], active: 1, processing_time_estimate: "5-7 days", created_at: null, updated_at: null },
+  { id: "2", name: "Property", code: "PROP", tracking_prefix: "PRO", description: "Property damage claims", required_documents: ["Photos", "Repair Estimates"], active: 1, processing_time_estimate: "7-10 days", created_at: null, updated_at: null },
+  { id: "3", name: "Health", code: "HLTH", tracking_prefix: "HLT", description: "Health insurance claims", required_documents: ["Medical Records", "Bills"], active: 1, processing_time_estimate: "3-5 days", created_at: null, updated_at: null },
 ];
 
 export default function InsurersClient() {
@@ -100,10 +105,13 @@ export default function InsurersClient() {
 
   useEffect(() => {
     setLoading(true);
-    getInsurers().then((res: any) => {
-      if (res && res.data) {
-        const transformedInsurers = res.data.map(transformApiData);
-        setInsurers(transformedInsurers);
+    getInsurers().then((res: unknown) => {
+      if (res && typeof res === 'object' && 'data' in res) {
+        const response = res as InsurersApiResponse;
+        if (response.data) {
+          const transformedInsurers = response.data.map(transformApiData);
+          setInsurers(transformedInsurers);
+        }
       }
       setLoading(false);
     }).catch((error) => {

@@ -1,5 +1,17 @@
-import axios from "axios";
+import axios, { InternalAxiosRequestConfig, AxiosResponse } from "axios";
 import cookie from "./cookie";
+
+// Interface for the error response
+interface ErrorResponse {
+  response?: {
+    status?: number;
+    data?: {
+      statusCode?: number;
+      message?: string;
+    };
+  };
+  message?: string;
+}
 
 const REACT_APP_API_BASEURL = "https://api.banyanclaims.com/api/v1";
 // const REACT_APP_API_BASEURL = "https://banyan.backend.ricive.com/api/v1";
@@ -14,7 +26,7 @@ export const Http = axios.create({
   },
 });
 
-Http.interceptors.request.use((config: any) => {
+Http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = cookie().getCookie("token");
   const userType = cookie().getCookie("userType");
   console.log(token, 'token______');
@@ -48,8 +60,8 @@ Http.interceptors.request.use((config: any) => {
 });
 
 Http.interceptors.response.use(
-  (response: any) => response.data,
-  (error: any) => {
+  (response: AxiosResponse) => response.data,
+  (error: ErrorResponse) => {
     if (error.response?.status) {
       if (
         error.response.status === 401 ||

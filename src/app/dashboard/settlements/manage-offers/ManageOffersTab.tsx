@@ -9,10 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Eye, Edit, RotateCcw } from "lucide-react";
 import PaymentProcessingForm from "./PaymentProcessingForm";
 import type {  ClientResponse, PaymentDetails } from "@/lib/types/settlement";
-import { Settlement, SettlementStatistics, SettlementsResponse } from "@/lib/types/settlement";
+import { Settlement } from "@/lib/types/settlement";
 
 interface ManageOffersTabProps {
-  settlements: any[];
+  settlements: Settlement[];
   loading: boolean;
 }
 
@@ -22,7 +22,7 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
   const availableSettlements = settlements.length > 0 ? settlements : [];
 
   const [offers, setOffers] = useState<Settlement[]>(availableSettlements);
-  const [modal, setModal] = useState<{ mode: "view" | "edit" | "payment"; offer: Settlement } | null>(null);
+  const [modal, setModal] = useState<{ mode: "view" | "edit" | "payment" | "manage" | "payment-processing"; offer: Settlement } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 

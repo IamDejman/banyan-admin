@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NairaIcon } from '@/components/ui/naira-icon';
@@ -23,23 +23,7 @@ export default function SettlementsPage() {
   const [loading, setLoading] = useState(true);
   const [settlementsLoading, setSettlementsLoading] = useState(true);
 
-  useEffect(() => {
-    if (activeTab === "create") {
-      setFilterStatus("all");
-      handleReloadData("all");
-    } else if (activeTab === "approve") {
-      setFilterStatus("all");
-      handleReloadData("all");
-    } else if (activeTab === "present") {
-      setFilterStatus("approved");
-      handleReloadData("approved");
-    } else if (activeTab === "manage") {
-      setFilterStatus("all");
-      handleReloadData("all");
-    }
-  }, [activeTab]);
-
-  const handleReloadData = (status?: string) => {
+  const handleReloadData = useCallback((status?: string) => {
     console.log("fetching settlements__");
     getSettlements(status || filterStatus).then((res: SettlementsResponse) => {
       // console.log(res, "settlements res__");
@@ -89,16 +73,29 @@ export default function SettlementsPage() {
       console.error("Error fetching settlement statistics:", error);
       setLoading(false);
     });
-  };
+  }, [filterStatus]);
+
+  useEffect(() => {
+    if (activeTab === "create") {
+      setFilterStatus("all");
+      handleReloadData("all");
+    } else if (activeTab === "approve") {
+      setFilterStatus("all");
+      handleReloadData("all");
+    } else if (activeTab === "present") {
+      setFilterStatus("approved");
+      handleReloadData("approved");
+    } else if (activeTab === "manage") {
+      setFilterStatus("all");
+      handleReloadData("all");
+    }
+  }, [activeTab, handleReloadData]);
 
   useEffect(() => {
     handleReloadData(filterStatus);
-  }, []);
+  }, [filterStatus, handleReloadData]);
 
-  // Filter settlements by status for different tabs
-  const getSettlementsByStatus = (status: string) => {
-    return settlements.filter(settlement => settlement.status === status);
-  };
+
 
   const getSettlementsByStatuses = (statuses: string[]) => {
     return settlements.filter(settlement => statuses.includes(settlement.status));

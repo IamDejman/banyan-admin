@@ -5,16 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Edit, Send, Mail, Phone, Calendar } from "lucide-react";
-import type { SettlementOffer, PresentationSetup } from "@/lib/types/settlement";
+import { Eye, Edit, Mail, Phone, Calendar } from "lucide-react";
+import type { PresentationSetup } from "@/lib/types/settlement";
 import PresentationSetupForm from "./PresentationSetupForm";
-import { Settlement, SettlementStatistics, SettlementsResponse } from "@/lib/types/settlement";
+import { Settlement } from "@/lib/types/settlement";
 import { updateSettlementOffer } from "@/app/services/dashboard";
 import { useToast } from "@/components/ui/use-toast";
 
-
 interface PresentOffersTabProps {
-  settlements: any[];
+  settlements: Settlement[];
   loading: boolean;
 }
 
@@ -23,7 +22,7 @@ interface PresentOffersTabProps {
 export default function PresentOffersTab({ settlements, loading }: PresentOffersTabProps) {
   const availableSettlements = settlements.length > 0 ? settlements : [];
 
-  const [offers, setOffers] = useState<Settlement[]>(availableSettlements);
+  const [offers] = useState<Settlement[]>(availableSettlements);
   const [modal, setModal] = useState<{ mode: "setup" | "view" | "edit"; offer: Settlement } | null>(null);
   const [search, setSearch] = useState("");
   const { toast } = useToast();
@@ -77,21 +76,7 @@ export default function PresentOffersTab({ settlements, loading }: PresentOffers
     // setModal(null);
   }
 
-  function handleSendOffer(offerId: string) {
-    setOffers(prev => prev.map(offer => {
-      if (offer.id === Number(offerId) && offer.presentation) {
-        return {
-          ...offer,
-          presentation: {
-            ...offer.presentation,
-            deliveryStatus: "SENT",
-            sentAt: new Date(),
-          },
-        };
-      }
-      return offer;
-    }));
-  }
+
 
   function getContactMethodIcon(method: string) {
     switch (method) {
@@ -291,7 +276,7 @@ export default function PresentOffersTab({ settlements, loading }: PresentOffers
 
                       <div className="border-t pt-4">
                         <h4 className="font-medium mb-2">Subject Line</h4>
-                        <p className="text-sm">{modal.offer.subject_line}</p>
+                        <p className="text-sm">Settlement Offer</p>
                       </div>
                     </>
                   )}

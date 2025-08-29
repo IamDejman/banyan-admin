@@ -8,23 +8,41 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { X, Upload, FileText } from "lucide-react";
-import type { SettlementOffer, ClaimForSettlement } from "@/lib/types/settlement";
+import type { SettlementOffer } from "@/lib/types/settlement";
 import { getClaims, } from '@/app/services/dashboard';
 
+// Interface for the actual claims data structure from API
+interface ApiClaim {
+  id: string;
+  claim_number: string;
+  client: {
+    first_name: string;
+    last_name: string;
+  };
+  claim_type_details: {
+    name: string;
+  };
+  estimated_value: number;
+}
+
+// Interface for the API response structure
+interface ClaimsApiResponse {
+  data?: {
+    data?: ApiClaim[];
+  };
+}
+
 interface SettlementOfferFormProps {
-  approvedClaims: ClaimForSettlement[];
   existingOffer?: SettlementOffer;
   onSubmit: (offer: Omit<SettlementOffer, "id" | "offerId" | "createdAt" | "createdBy">) => void;
   onCancel: () => void;
 }
 
 export default function SettlementOfferForm({
-  approvedClaims,
   existingOffer,
   onSubmit,
   onCancel,
 }: SettlementOfferFormProps) {
-  console.log(existingOffer, "existingOffer__");
   const [selectedClaimId, setSelectedClaimId] = useState<string>(existingOffer?.claimId || "");
   const [assessedAmount, setAssessedAmount] = useState(existingOffer?.assessedAmount || 0);
   const [deductions, setDeductions] = useState(existingOffer?.deductions || 0);
@@ -36,8 +54,8 @@ export default function SettlementOfferForm({
   const [specialConditions, setSpecialConditions] = useState(existingOffer?.specialConditions || "");
   const [supportingDocuments, setSupportingDocuments] = useState<string[]>(existingOffer?.supportingDocuments || []);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [claims, setClaims] = useState<any[]>([]);
-  const [selectedClaim, setSelectedClaim] = useState<any>(null);
+  const [claims, setClaims] = useState<ApiClaim[]>([]);
+  const [selectedClaim, setSelectedClaim] = useState<ApiClaim | null>(null);
 
   console.log(selectedClaim, "selectedClaim__");
   // Handle claim selection change
@@ -88,15 +106,17 @@ export default function SettlementOfferForm({
 
   // Fetch claims data
   useEffect(() => {
-    getClaims().then((res: any) => {
+    getClaims().then((res: unknown) => {
       console.log("Raw claims response:", res);
 
-      let claimsData: any[] = [];
+      let claimsData: ApiClaim[] = [];
 
       if (Array.isArray(res)) {
-        claimsData = res[0]?.data?.data || res[0]?.data || res[0] || [];
+        const firstItem = res[0] as ClaimsApiResponse;
+        claimsData = firstItem?.data?.data || [];
       } else if (res && typeof res === 'object') {
-        claimsData = res.data?.data || res.data || res || [];
+        const response = res as ClaimsApiResponse;
+        claimsData = response?.data?.data || [];
       }
 
       console.log("Processed claims data:", claimsData);
@@ -136,8 +156,8 @@ export default function SettlementOfferForm({
 
     const offerData = {
       claimId: selectedClaimId,
-      clientName: selectedClaim?.clientName || "",
-      claimType: selectedClaim?.claimType || "",
+      clientName: selectedClaim ? `${selectedClaim.client.first_name} ${selectedClaim.client.last_name}` : "",
+      claimType: selectedClaim?.claim_type_details?.name || "",
       assessedAmount,
       deductions,
       serviceFeePercentage,

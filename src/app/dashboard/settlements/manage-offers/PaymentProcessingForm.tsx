@@ -8,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, AlertCircle, Clock, XCircle } from "lucide-react";
-import type { SettlementOffer, PaymentDetails } from "@/lib/types/settlement";
+import type { Settlement, PaymentDetails } from "@/lib/types/settlement";
 
 interface PaymentProcessingFormProps {
-  offer: SettlementOffer;
+  offer: Settlement;
   onSubmit: (paymentDetails: PaymentDetails) => void;
   onCancel: () => void;
 }
@@ -21,7 +21,7 @@ export default function PaymentProcessingForm({
   onSubmit,
   onCancel,
 }: PaymentProcessingFormProps) {
-  const [paymentMethod, setPaymentMethod] = useState<PaymentDetails["paymentMethod"]>(offer.paymentMethod);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentDetails["paymentMethod"]>("BANK_TRANSFER");
   const [transactionReference, setTransactionReference] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
@@ -58,7 +58,7 @@ export default function PaymentProcessingForm({
     const paymentDetails: PaymentDetails = {
       paymentId: `PAY-${Date.now()}`,
       paymentDate: new Date(),
-      paymentAmount: offer.finalAmount,
+      paymentAmount: parseFloat(offer.offer_amount) || 0,
       paymentMethod,
       transactionReference: transactionReference.trim(),
       bankName: bankName.trim() || undefined,
@@ -95,16 +95,16 @@ export default function PaymentProcessingForm({
           <h3 className="text-lg font-semibold mb-3">Settlement Summary</h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="font-medium">Offer ID:</span> {offer.offerId}
+              <span className="font-medium">Offer ID:</span> {offer.id}
             </div>
             <div>
-              <span className="font-medium">Client:</span> {offer.clientName}
+              <span className="font-medium">Client:</span> {offer.client}
             </div>
             <div>
-              <span className="font-medium">Amount:</span> ₦{offer.finalAmount.toLocaleString()}
+              <span className="font-medium">Amount:</span> ₦{parseFloat(offer.offer_amount || '0').toLocaleString()}
             </div>
             <div>
-              <span className="font-medium">Payment Method:</span> {offer.paymentMethod.replace('_', ' ')}
+              <span className="font-medium">Payment Method:</span> {offer.payment_method.replace('_', ' ')}
             </div>
           </div>
         </div>
@@ -228,7 +228,7 @@ export default function PaymentProcessingForm({
           <div className="bg-muted/50 p-4 rounded-lg space-y-2">
             <div className="flex justify-between">
               <span>Settlement Amount:</span>
-              <span className="font-medium">₦{offer.finalAmount.toLocaleString()}</span>
+              <span className="font-medium">₦{parseFloat(offer.offer_amount || '0').toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span>Payment Method:</span>

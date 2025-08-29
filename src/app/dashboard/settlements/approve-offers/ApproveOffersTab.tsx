@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, CheckSquare, X } from "lucide-react";
-import type { SettlementOffer } from "@/lib/types/settlement";
+
 import { approveSettlementOffer, rejectSettlementOffer } from "@/app/services/dashboard";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -24,15 +24,14 @@ interface ApproveOffersTabProps {
 export default function ApproveOffersTab({ settlements, loading }: ApproveOffersTabProps) {
   // Use settlements data if available, otherwise fall back to mock data
   const availableSettlements = settlements.length > 0 ? settlements : [];
-  const [offers, setOffers] = useState<Settlement[]>(availableSettlements);
-  const [modal, setModal] = useState<{ mode: "view" | "approve" | "reject"; offer: SettlementOffer } | null>(null);
+  const [modal, setModal] = useState<{ mode: "view" | "approve" | "reject"; offer: Settlement } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
 
 
-  const filteredOffers = offers.filter((offer) => {
+  const filteredOffers = availableSettlements.filter((offer: Settlement) => {
     const matchesSearch = offer.client.toLowerCase().includes(search.toLowerCase()) ||
       offer.id.toString().toLowerCase().includes(search.toLowerCase()) ||
       offer.claim_type.toLowerCase().includes(search.toLowerCase());
@@ -48,9 +47,9 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
     return `${days} days`;
   }
 
-  async function handleApprove(offerId: string) {
+  async function handleApprove(offerId: number) {
     try {
-      const response = await approveSettlementOffer({ id: offerId, approval_notes: "Approved by admin" });
+      const response = await approveSettlementOffer({ id: offerId.toString(), approval_notes: "Approved by admin" });
       console.log(response, "response__");
       toast({
         title: "Offer approved successfully",
@@ -68,9 +67,9 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
     setModal(null);
   }
 
-  async function handleReject(offerId: string, reason: string) {
+  async function handleReject(offerId: number, reason: string) {
     try {
-      const response = await rejectSettlementOffer({ id: offerId, rejection_reason: reason });
+      const response = await rejectSettlementOffer({ id: offerId.toString(), rejection_reason: reason });
       console.log(response, "response__");
       toast({
         title: "Offer rejected successfully",

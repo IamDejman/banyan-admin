@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
-import type { SettlementOffer, PresentationSetup, Settlement } from "@/lib/types/settlement";
+import type { PresentationSetup, Settlement } from "@/lib/types/settlement";
 
 interface PresentationSetupFormProps {
   offer: Settlement;
@@ -31,7 +31,7 @@ export default function PresentationSetupForm({
     bankDetailsForm: false,
   });
   const [customMessage, setCustomMessage] = useState("");
-  const [subjectLine, setSubjectLine] = useState( `Settlement Offer - Claim ${offer.claim_type}`);
+  const [subjectLine, setSubjectLine] = useState(`Settlement Offer - Claim ${offer.claim_type}`);
   const [scheduledSendDate, setScheduledSendDate] = useState<string>("");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -181,7 +181,7 @@ export default function PresentationSetupForm({
         {/* Message Customization */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Message Customization</h3>
-          
+
           <div>
             <Label htmlFor="subjectLine">Subject Line *</Label>
             <Input
@@ -209,7 +209,7 @@ export default function PresentationSetupForm({
         {/* Tracking */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Tracking</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="scheduledSendDate">Scheduled Send Date</Label>
