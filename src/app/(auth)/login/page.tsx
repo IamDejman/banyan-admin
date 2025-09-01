@@ -122,14 +122,14 @@ export default function LoginPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Checkbox
+                  {/* <Checkbox
                     id="remember"
                     checked={rememberMe}
                     onCheckedChange={(checked) => setRememberMe(checked as boolean)}
                   />
                   <Label htmlFor="remember" className="text-sm">
                     Remember me
-                  </Label>
+                  </Label> */}
                 </div>
                 <Link
                   href="/forgot-password"
