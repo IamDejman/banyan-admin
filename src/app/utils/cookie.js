@@ -2,7 +2,7 @@ import Cookie from "js-cookie";
 
 const dev = process.env.NODE_ENV === "development";
 // const parentDomain = dev ? "localhost" : "banyan.ricive.com";
-const parentDomain = "https://banyan-admin-six.vercel.app";
+const parentDomain = "banyan-admin-six.vercel.app";
 
 const cookie = () => {
   /**
