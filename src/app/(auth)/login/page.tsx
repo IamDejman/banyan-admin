@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BanyanLogo } from '@/components/ui/banyan-logo';
-import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { login, verifyEmail } from '@/app/services/auth';
 import { Loader2 } from 'lucide-react';
@@ -31,7 +30,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otpHash, setOtpHash] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
@@ -122,14 +120,7 @@ export default function LoginPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  {/* <Checkbox
-                    id="remember"
-                    checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  />
-                  <Label htmlFor="remember" className="text-sm">
-                    Remember me
-                  </Label> */}
+                 
                 </div>
                 <Link
                   href="/forgot-password"
