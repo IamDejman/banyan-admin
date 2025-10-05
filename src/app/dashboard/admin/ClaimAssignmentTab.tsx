@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Plus, Eye, Edit, RotateCcw, Search, Download, Upload } from "lucide-react";
+import { Plus, Eye, Edit, RotateCcw, Search, Upload } from "lucide-react";
 
 // Mock data for claim assignments
 const mockAssignments = [
@@ -156,10 +156,6 @@ export default function ClaimAssignmentTab() {
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Export
-        </Button>
       </div>
 
       <Card>

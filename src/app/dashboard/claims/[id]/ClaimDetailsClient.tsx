@@ -1,24 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   User,
   Calendar,
   FileText,
-  DollarSign,
   CheckCircle,
   AlertCircle,
   Clock,
-  Download,
   Eye,
-  Edit
+  X,
+  Send,
+  ArrowLeft
 } from 'lucide-react';
-import { getClaims } from '@/app/services/dashboard';
+import Link from 'next/link';
+import { getClaimById } from '@/app/services/dashboard';
 import { ApiError } from '@/lib/types/settlement';
 
 // Define proper types for API response data
@@ -100,58 +102,54 @@ interface ClaimDetailsClientProps {
 }
 
 export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps) {
-  const [activeTab, setActiveTab] = useState('overview');
   const [claimData, setClaimData] = useState<ApiClaim | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Modal states
+  const [showRequestInfoModal, setShowRequestInfoModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  
+  // Request info form state
+  const [requestType, setRequestType] = useState<'document' | 'question'>('document');
+  const [documentName, setDocumentName] = useState('');
+  const [question, setQuestion] = useState('');
 
   useEffect(() => {
     const fetchClaimData = async () => {
       setLoading(true);
       try {
-        const res: unknown = await getClaims();
-        console.log(res, "res__");
+        console.log('Fetching claim with ID:', claimId);
+        const res = await getClaimById(claimId);
+        console.log('Single claim response:', res);
 
-        // Helper function to safely extract claims data
-        const extractClaimsData = (response: unknown): ApiClaim[] => {
-          if (Array.isArray(response)) {
-            // If response is an array, try to get data from first element
-            const firstItem = response[0];
-            if (firstItem && typeof firstItem === 'object' && firstItem !== null) {
-              if ('data' in firstItem && firstItem.data) {
-                if (Array.isArray(firstItem.data)) {
-                  return firstItem.data;
-                } else if (typeof firstItem.data === 'object' && firstItem.data !== null && 'data' in firstItem.data) {
-                  return Array.isArray(firstItem.data.data) ? firstItem.data.data : [];
-                }
-              }
-            }
-            return [];
-          } else if (response && typeof response === 'object' && response !== null) {
-            // If response is an object, try to extract data
+        // Helper function to safely extract claim data
+        const extractClaimData = (response: unknown): ApiClaim | null => {
+          if (response && typeof response === 'object' && response !== null) {
+            // If response has data property
             if ('data' in response && response.data) {
-              if (Array.isArray(response.data)) {
-                return response.data;
-              } else if (typeof response.data === 'object' && response.data !== null && 'data' in response.data) {
-                return Array.isArray(response.data.data) ? response.data.data : [];
-              }
+              return response.data as ApiClaim;
             }
+            // If response is the claim object itself
+            return response as ApiClaim;
           }
-          return [];
+          return null;
         };
 
-        const claimsData = extractClaimsData(res);
-        const claim = claimsData.find((claim: ApiClaim) => claim.claim_number === claimId);
-        console.log(claim, "claim__111");
-        setClaimData(claim || null);
+        const claimData = extractClaimData(res);
+        console.log('Extracted claim data:', claimData);
+        setClaimData(claimData);
       } catch (err: unknown) {
         const error = err as ApiError;
-        console.error('Error fetching claim data:', error?.response?.data?.message);
+        console.error('Error fetching claim data:', error?.response?.data?.message || error?.message);
+        setClaimData(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchClaimData();
+    if (claimId) {
+      fetchClaimData();
+    }
   }, [claimId]);
 
   console.log(claimData, "claim__111");
@@ -181,14 +179,14 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
 
     return {
       id: claim.claim_number,
-      clientName: claim.client.first_name + ' ' + claim.client.last_name, // API doesn't provide client name
+      clientName: claim.client.first_name + ' ' + claim.client.last_name,
       clientEmail: claim.client.email,
       clientPhone: claim.client.phone,
       submissionDate: submissionDate.toLocaleDateString(),
       claimType: claim.claim_type_details?.name || 'Unknown',
       status: claim.status === 'completed' ? 'Completed' : 'Pending Review',
       documentStatus,
-      estimatedValue: claim.estimated_value, // API doesn't provide estimated value
+      estimatedValue: claim.estimated_value,
       description: claim.description || 'No description provided',
       incidentLocation: claim.incident_location,
       incidentDate: new Date(claim.incident_date).toLocaleDateString(),
@@ -211,6 +209,37 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
   };
 
   const transformedClaim = transformClaimData(claimData);
+
+  // Action handlers
+  const handleRequestInfo = () => {
+    setShowRequestInfoModal(true);
+  };
+
+
+  const handleApproveClaim = () => {
+    setShowApproveModal(true);
+  };
+
+  const submitRequestInfo = () => {
+    if (requestType === 'document' && documentName.trim()) {
+      console.log('Requesting document:', documentName);
+      // API call to request document
+    } else if (requestType === 'question' && question.trim()) {
+      console.log('Requesting info:', question);
+      // API call to send question
+    }
+    // Reset form and close modal
+    setDocumentName('');
+    setQuestion('');
+    setShowRequestInfoModal(false);
+  };
+
+
+  const submitApproveClaim = () => {
+    console.log('Approving claim:', claimId);
+    // API call to approve claim
+    setShowApproveModal(false);
+  };
 
   if (loading) {
     return (
@@ -254,235 +283,250 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
           <h1 className="text-3xl font-bold">Claim Details</h1>
           <p className="text-muted-foreground">Claim ID: {claimId}</p>
         </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/dashboard/claims">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Claims
+          </Link>
+        </Button>
+      </div>
+
+      {/* Status and Days Since Submission */}
+      <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
+          <span className="text-sm font-medium text-muted-foreground">Status:</span>
+          <Badge className={getStatusColor(claimData?.status || 'submitted')}>
+            {transformedClaim.status}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">Days Since Submission:</span>
+          <span className="text-sm font-medium">{transformedClaim.daysSinceSubmission}</span>
+        </div>
+      </div>
+
+      {/* Available Actions */}
+      <div>
+        <h4 className="text-sm font-medium text-muted-foreground mb-3">Available Actions</h4>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Button className="w-full" variant="outline" onClick={handleApproveClaim}>
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Approve Claim
           </Button>
-          <Button variant="outline" size="sm">
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
+          <Button className="w-full" variant="outline" onClick={handleRequestInfo}>
+            <AlertCircle className="h-4 w-4 mr-2" />
+            Request More Info
           </Button>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Status</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <Badge className={getStatusColor(claimData?.status || 'submitted')}>
-              {transformedClaim.status}
-            </Badge>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Document Status</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{transformedClaim.documentStatus}%</div>
-            <Progress value={transformedClaim.documentStatus} className="h-2 mt-2" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estimated Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₦{transformedClaim.estimatedValue.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Days Since Submission</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{transformedClaim.daysSinceSubmission}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="actions">Actions</TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Client Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{transformedClaim.clientName}</p>
-                    <p className="text-sm text-muted-foreground">{transformedClaim.clientEmail}</p>
-                    <p className="text-sm text-muted-foreground">{transformedClaim.clientPhone}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Claim Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Claim Type:</span>
-                    <span className="text-sm">{transformedClaim.claimType}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Submission Date:</span>
-                    <span className="text-sm">{transformedClaim.submissionDate}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Incident Date:</span>
-                    <span className="text-sm">{transformedClaim.incidentDate}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Incident Location:</span>
-                    <span className="text-sm">{transformedClaim.incidentLocation}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Estimated Value:</span>
-                    <span className="text-sm">₦{transformedClaim.estimatedValue.toLocaleString()}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      {/* All Information - Single Card */}
+      <Card>
+        <CardContent className="space-y-8 pt-6">
+          {/* Client Information */}
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Client Information</h4>
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="font-medium">{transformedClaim.clientName}</p>
+                <p className="text-sm text-muted-foreground">{transformedClaim.clientEmail}</p>
+                <p className="text-sm text-muted-foreground">{transformedClaim.clientPhone}</p>
+              </div>
+            </div>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Description</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{transformedClaim.description}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          {/* Claim Information */}
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Claim Information</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Claim Type:</span>
+                <span className="text-sm">{transformedClaim.claimType}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Submission Date:</span>
+                <span className="text-sm">{transformedClaim.submissionDate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Incident Date:</span>
+                <span className="text-sm">{transformedClaim.incidentDate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Incident Location:</span>
+                <span className="text-sm">{transformedClaim.incidentLocation}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Estimated Value:</span>
+                <span className="text-sm">₦{transformedClaim.estimatedValue.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
 
-        {/* Documents Tab */}
-        <TabsContent value="documents" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Uploaded Documents</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {transformedClaim.documents.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
-                  </div>
-                ) : (
-                  transformedClaim.documents.map((doc: TransformedClaimDocument) => (
-                    <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{doc.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {doc.type.toUpperCase()} • {doc.size} • Uploaded {doc.uploadedDate}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button onClick={() => window.open(doc.document_url, '_blank')} variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button onClick={() => window.open(doc.document_url, '_blank')} variant="ghost" size="sm">
-                          <Download className="h-4 w-4" />
-                        </Button>
+          {/* Description */}
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Description</h4>
+            <p className="text-sm text-muted-foreground">{transformedClaim.description}</p>
+          </div>
+
+          {/* Documents Section */}
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Uploaded Documents</h4>
+            <div className="space-y-4">
+              {transformedClaim.documents.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
+                </div>
+              ) : (
+                transformedClaim.documents.map((doc: TransformedClaimDocument) => (
+                  <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{doc.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {doc.type.toUpperCase()} • {doc.size} • Uploaded {doc.uploadedDate}
+                        </p>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Timeline Tab */}
-        <TabsContent value="timeline" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Claim Timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {transformedClaim.timeline.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No timeline events found</p>
-                  </div>
-                ) : (
-                  transformedClaim.timeline.map((event: TransformedClaimTimeline, index: number) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className="w-3 h-3 bg-primary rounded-full"></div>
-                        {index < transformedClaim.timeline.length - 1 && (
-                          <div className="w-0.5 h-8 bg-gray-200 mt-1"></div>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{event.action}</p>
-                        <p className="text-sm text-muted-foreground">{event.description}</p>
-                        <p className="text-xs text-muted-foreground">{event.date}</p>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Button onClick={() => window.open(doc.document_url, '_blank')} variant="ghost" size="sm">
+                        <Eye className="h-4 w-4" />
+                      </Button>
                     </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
-        {/* Actions Tab */}
-        <TabsContent value="actions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Available Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Button className="w-full" variant="outline">
+          {/* Timeline Section */}
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Claim Timeline</h4>
+            <div className="space-y-4">
+              {transformedClaim.timeline.length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No timeline events found</p>
+                </div>
+              ) : (
+                transformedClaim.timeline.map((event: TransformedClaimTimeline, index: number) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-3 h-3 bg-primary rounded-full"></div>
+                      {index < transformedClaim.timeline.length - 1 && (
+                        <div className="w-0.5 h-8 bg-gray-200 mt-1"></div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{event.action}</p>
+                      <p className="text-sm text-muted-foreground">{event.description}</p>
+                      <p className="text-xs text-muted-foreground">{event.date}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+        </CardContent>
+      </Card>
+
+      {/* Request More Info Modal */}
+      {showRequestInfoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Request More Information</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowRequestInfoModal(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Request Type</label>
+                <Select value={requestType} onValueChange={(value: 'document' | 'question') => setRequestType(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="document">Document Request</SelectItem>
+                    <SelectItem value="question">Question/Information</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {requestType === 'document' ? (
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Document Name</label>
+                  <Input
+                    placeholder="Enter document name (user will be required to upload)"
+                    value={documentName}
+                    onChange={(e) => setDocumentName(e.target.value)}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Question</label>
+                  <Textarea
+                    placeholder="Enter your question (user will be required to answer)"
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" onClick={() => setShowRequestInfoModal(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button onClick={submitRequestInfo} className="flex-1">
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Request
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Approve Claim Modal */}
+      {showApproveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Approve Claim</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowApproveModal(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="text-center py-4">
+                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to approve this claim? This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" onClick={() => setShowApproveModal(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button onClick={submitApproveClaim} className="flex-1 bg-green-600 hover:bg-green-700">
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Approve Claim
                 </Button>
-                <Button className="w-full" variant="outline">
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  Request More Info
-                </Button>
-                <Button className="w-full" variant="outline">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Claim
-                </Button>
-                <Button className="w-full" variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Details
-                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-} 
+}

@@ -18,6 +18,11 @@ const navigationSections = [
     items: [],
   },
   {
+    name: 'Assign Claims',
+    href: '/dashboard/admin',
+    items: [],
+  },
+  {
     name: 'Documents',
     href: '/dashboard/documents',
     items: [],
@@ -80,12 +85,6 @@ const navigationSections = [
     href: '/dashboard/audit-logs',
     items: [],
   },
-  // --- Admin/Settings ---
-  {
-    name: 'Admin',
-    href: '/dashboard/admin',
-    items: [],
-  },
 ];
 
 export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
@@ -116,7 +115,7 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
               <div className="flex items-center">
                 <Link
                   href={section.href || '#'}
-                  className={`py-2 px-2 sm:px-3 rounded hover:bg-gray-100 font-medium flex-1 text-sm sm:text-base transition-colors${pathname === section.href ? ' bg-primary text-primary-foreground' : ''}`}
+                  className={`py-3 px-3 rounded-lg hover:bg-gray-100 font-medium flex-1 text-sm sm:text-base transition-all duration-200 ${pathname === section.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
                   onClick={() => hasSubmenu ? toggleSection(section.name) : undefined}
                 >
                   {section.name}
@@ -125,19 +124,19 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
                 {hasSubmenu && (
                   <button
                     onClick={() => toggleSection(section.name)}
-                    className="ml-1 sm:ml-2 focus:outline-none p-1"
+                    className="ml-2 focus:outline-none p-1 rounded hover:bg-gray-100 transition-colors"
                   >
-                    <ChevronRight size={14} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                    <ChevronRight size={16} className={`text-gray-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
                   </button>
                 )}
               </div>
               {hasSubmenu && isExpanded && (
-                <div className="ml-3 sm:ml-7 mt-1 flex flex-col gap-1">
+                <div className="ml-4 mt-2 mb-2 border-l-2 border-gray-200 pl-4 flex flex-col gap-1">
                   {section.items.map((item) => (
                     <Link 
                       key={item.name} 
                       href={item.href} 
-                      className={`py-1 px-2 rounded hover:bg-gray-50 text-xs sm:text-sm transition-colors${pathname === item.href ? ' bg-primary text-primary-foreground' : ''}`}
+                      className={`py-2 px-3 rounded-md hover:bg-gray-50 text-xs sm:text-sm transition-all duration-200 ${pathname === item.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
                     >
                       {item.name}
                     </Link>

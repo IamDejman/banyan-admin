@@ -76,7 +76,7 @@ export function Header() {
               <Search size={16} className="text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search claims, documents..."
+                placeholder="Search by client name or claim ID..."
                 className="bg-transparent border-none outline-none text-sm w-64"
               />
             </div>

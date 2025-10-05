@@ -160,24 +160,6 @@ export default function PermissionsClient() {
     setRoles(prev => prev.filter(role => role.id !== roleId));
   }
 
-  function getCategoryColor(category: string) {
-    switch (category) {
-      case "claims": return "default";
-      case "users": return "secondary";
-      case "reports": return "destructive";
-      case "system": return "outline";
-      default: return "outline";
-    }
-  }
-
-  function getActionColor(action: string) {
-    switch (action) {
-      case "read": return "default";
-      case "write": return "secondary";
-      case "approve": return "destructive";
-      default: return "outline";
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -190,85 +172,85 @@ export default function PermissionsClient() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Permissions Section */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Permissions</h3>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="claims">Claims</SelectItem>
-                <SelectItem value="users">Users</SelectItem>
-                <SelectItem value="reports">Reports</SelectItem>
-                <SelectItem value="system">System</SelectItem>
-              </SelectContent>
-            </Select>
+        <Card>
+          <div className="p-6 border-b">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Permissions</h3>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="claims">Claims</SelectItem>
+                  <SelectItem value="users">Users</SelectItem>
+                  <SelectItem value="reports">Reports</SelectItem>
+                  <SelectItem value="system">System</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {filtered.map((permission) => (
-              <div key={permission.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <div className="font-medium">{permission.name}</div>
-                  <div className="text-sm text-muted-foreground">{permission.description}</div>
-                  <div className="flex gap-2 mt-1">
-                    <Badge variant={getCategoryColor(permission.category)}>
-                      {permission.category}
-                    </Badge>
-                    <Badge variant={getActionColor(permission.action)}>
+          <div className="p-6">
+            <div className="space-y-2">
+              {filtered.map((permission) => (
+                <div key={permission.id} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50">
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{permission.name}</div>
+                    <div className="text-xs text-muted-foreground">{permission.description}</div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Badge variant="secondary" className="text-xs px-2 py-0">
                       {permission.action}
                     </Badge>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </Card>
 
         {/* Roles Section */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Roles</h3>
-          <div className="space-y-4">
-            {roles.map((role) => (
-              <div key={role.id} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <div className="font-medium">{role.name}</div>
-                    <div className="text-sm text-muted-foreground">{role.description}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Role created {new Date(role.createdAt).toLocaleDateString()}
+        <Card>
+          <div className="p-6 border-b">
+            <h3 className="text-lg font-semibold">Roles</h3>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3">
+              {roles.map((role) => (
+                <div key={role.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold text-sm">{role.name}</h4>
+                        {role.isDefault && (
+                          <Badge variant="secondary" className="text-xs">Default</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">{role.description}</p>
+                      <div className="text-xs text-muted-foreground">
+                        Created {new Date(role.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 ml-4">
+                      <Button size="sm" variant="ghost" onClick={() => { setModal({ mode: "view", role }); setFormData({ name: role.name, description: role.description, permissions: role.permissions }); }}>
+                        View
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setModal({ mode: "edit", role }); setFormData({ name: role.name, description: role.description, permissions: role.permissions }); }}>
+                        Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteRole(role.id)} className="text-red-600 hover:text-red-700">
+                        Delete
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => { setModal({ mode: "view", role }); setFormData({ name: role.name, description: role.description, permissions: role.permissions }); }}>
-                      View
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => { setModal({ mode: "edit", role }); setFormData({ name: role.name, description: role.description, permissions: role.permissions }); }}>
-                      Edit
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleDeleteRole(role.id)}>
-                      Delete
-                    </Button>
+                  <div className="mt-2">
+                    <div className="text-xs text-muted-foreground mb-1">
+                      {role.permissions.length} permissions
+                    </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {role.permissions.slice(0, 3).map((permissionId) => {
-                    const permission = permissions.find(p => p.id === permissionId);
-                    return permission ? (
-                      <Badge key={permissionId} variant="outline" className="text-xs">
-                        {permission.name}
-                      </Badge>
-                    ) : null;
-                  })}
-                  {role.permissions.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{role.permissions.length - 3} more
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </Card>
       </div>

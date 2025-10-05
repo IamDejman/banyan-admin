@@ -129,10 +129,6 @@ export default function AgentsAuditLogsClient() {
     return matchesSearch && matchesAction && matchesSeverity;
   });
 
-  function handleExport() {
-    // Mock export functionality
-    console.log("Exporting agent audit logs...");
-  }
 
   function getSeverityColor(severity: AuditLogSeverity) {
     switch (severity) {
@@ -162,7 +158,6 @@ export default function AgentsAuditLogsClient() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Agents Audit Logs</h2>
-        <Button onClick={handleExport}>Export Logs</Button>
       </div>
 
       <div className="flex gap-4 items-center flex-wrap">

@@ -128,7 +128,7 @@ export function ClaimsPendingTable() {
       <div className="flex items-center justify-between">
         <input
           type="text"
-          placeholder="Search claims..."
+          placeholder="Search by client name or claim ID..."
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"

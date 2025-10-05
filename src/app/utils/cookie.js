@@ -1,8 +1,7 @@
 import Cookie from "js-cookie";
 
 const dev = process.env.NODE_ENV === "development";
-// const parentDomain = dev ? "localhost" : "banyan.ricive.com";
-const parentDomain = "banyan-admin-six.vercel.app";
+const parentDomain = dev ? undefined : "banyan-admin-six.vercel.app";
 
 const cookie = () => {
   /**
@@ -11,13 +10,19 @@ const cookie = () => {
    * @param {*} value
    */
   const setCookie = (key, value) => {
-    return Cookie.set(key, value, {
+    const options = {
       path: "/",
       expires: 2,
-      domain: parentDomain,
       secure: !dev,
       sameSite: 'strict'
-    });
+    };
+    
+    // Only set domain if it's defined (for production)
+    if (parentDomain) {
+      options.domain = parentDomain;
+    }
+    
+    return Cookie.set(key, value, options);
   };
 
   /**
@@ -33,12 +38,18 @@ const cookie = () => {
    * @param {*} key
    */
   const deleteCookie = (key) => {
-    return Cookie.remove(key, {
+    const options = {
       path: "/",
-      domain: parentDomain,
       secure: !dev,
       sameSite: 'strict'
-    });
+    };
+    
+    // Only set domain if it's defined (for production)
+    if (parentDomain) {
+      options.domain = parentDomain;
+    }
+    
+    return Cookie.remove(key, options);
   };
 
   return { setCookie, getCookie, deleteCookie };

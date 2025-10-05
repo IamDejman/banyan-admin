@@ -174,12 +174,6 @@ export default function SettlementsPage() {
                   <stat.icon className="h-6 w-6 text-primary" />
                 </div>
               </div>
-              <div className="mt-4 flex items-center text-sm">
-                <span className={`font-medium ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>
-                  {stat.trend}
-                </span>
-                <span className="text-muted-foreground ml-1">from last month</span>
-              </div>
             </Card>
           ))
         )}

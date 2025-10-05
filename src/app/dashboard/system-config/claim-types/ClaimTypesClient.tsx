@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { X, Plus } from "lucide-react";
+import { X, Plus, ChevronDown, ChevronRight, Edit, Trash2 } from "lucide-react";
 import type { ClaimType } from "@/lib/types/claim-types";
 import { getClaimTypes } from "@/app/services/dashboard";
 
@@ -25,6 +25,7 @@ export default function ClaimTypesClient() {
   const [modal, setModal] = useState<ModalState>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [expandedRows, setExpandedRows] = useState<Set<string | number>>(new Set());
 
   const filtered = claimTypes.filter((ct) =>
     ct.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -70,6 +71,18 @@ export default function ClaimTypesClient() {
   // Helper function to get status text
   function getStatusText(active: number): string {
     return active === 1 ? 'Active' : 'Inactive';
+  }
+
+  function toggleExpandedRow(id: string | number) {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
   }
 
   useEffect(() => {
@@ -130,19 +143,17 @@ export default function ClaimTypesClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-20 sm:w-auto">Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Code</TableHead>
-                <TableHead className="hidden sm:table-cell">Description</TableHead>
-                <TableHead className="hidden lg:table-cell">Required Documents</TableHead>
-                <TableHead className="hidden md:table-cell">Processing Time</TableHead>
-                <TableHead className="hidden sm:table-cell">Status</TableHead>
-                <TableHead className="w-20 sm:w-auto">Actions</TableHead>
+                <TableHead className="w-12"></TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-32">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     <div className="text-center">
                       <X className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">No claim types found</p>
@@ -150,98 +161,117 @@ export default function ClaimTypesClient() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((claimType) => (
-                  <TableRow key={claimType.id}>
-                    <TableCell className="font-medium text-sm sm:text-base">{claimType.name}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
-                      {claimType.code}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
-                      {claimType.description}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <div className="flex flex-wrap gap-1">
-                        {claimType.required_documents && claimType.required_documents.length > 0 ? (
-                          claimType.required_documents.map((doc, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {doc}
+                filtered.map((claimType) => {
+                  const isExpanded = expandedRows.has(claimType.id);
+                  return (
+                    <React.Fragment key={claimType.id}>
+                      <TableRow className="hover:bg-muted/50">
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExpandedRow(claimType.id)}
+                            className="h-6 w-6 p-0"
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                        <TableCell className="font-medium">{claimType.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {claimType.code}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              checked={claimType.active === 1}
+                              onCheckedChange={() => handleStatusToggle(claimType.id)}
+                            />
+                            <Badge variant={claimType.active === 1 ? "default" : "secondary"}>
+                              {getStatusText(claimType.active)}
                             </Badge>
-                          ))
-                        ) : (
-                          <span className="text-muted-foreground text-xs">N/A</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-xs sm:text-sm">
-                      {formatData(claimType.processing_time_estimate)}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <div className="flex items-center gap-2">
-                        <Switch checked={claimType.active === 1} onCheckedChange={() => handleStatusToggle(claimType.id)} />
-                        <span className="text-xs">{getStatusText(claimType.active)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 sm:gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setModal({ mode: "edit", claimType })}>
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDelete(claimType.id)}>
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => setModal({ mode: "edit", claimType })}
+                              className="h-7 px-2"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleDelete(claimType.id)}
+                              className="h-7 px-2 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="bg-muted/30 p-0">
+                            <div className="p-4 space-y-3">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <div>
+                                    <span className="text-sm font-medium text-muted-foreground">Description:</span>
+                                    <p className="text-sm">{claimType.description}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium text-muted-foreground">Tracking Prefix:</span>
+                                    <p className="text-sm">{claimType.tracking_prefix}</p>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <div>
+                                    <span className="text-sm font-medium text-muted-foreground">Processing Time:</span>
+                                    <p className="text-sm">{formatData(claimType.processing_time_estimate)}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium text-muted-foreground">Created:</span>
+                                    <p className="text-sm">
+                                      {claimType.created_at ? new Date(claimType.created_at).toLocaleDateString() : 'N/A'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-muted-foreground">Required Documents:</span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {claimType.required_documents && claimType.required_documents.length > 0 ? (
+                                    claimType.required_documents.map((doc, index) => (
+                                      <Badge key={index} variant="secondary" className="text-xs">
+                                        {doc}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm">No documents required</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  );
+                })
               )}
             </TableBody>
           </Table>
         </div>
 
-        {/* Mobile Claim Types Cards */}
-        <div className="sm:hidden space-y-3 p-4">
-          {filtered.map((claimType) => (
-            <div key={claimType.id} className="border rounded-lg p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-sm">{claimType.name}</span>
-                <div className="flex items-center gap-2">
-                  <Switch checked={claimType.active === 1} onCheckedChange={() => handleStatusToggle(claimType.id)} />
-                  <span className="text-xs">{getStatusText(claimType.active)}</span>
-                </div>
-              </div>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Code:</span>
-                  <span className="text-right">{claimType.code}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Description:</span>
-                  <span className="text-right">{claimType.description}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Processing:</span>
-                  <span>{formatData(claimType.processing_time_estimate)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Documents:</span>
-                  <span className="text-right">
-                    {claimType.required_documents && claimType.required_documents.length > 0
-                      ? `${claimType.required_documents.length} required`
-                      : 'N/A'}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 pt-2">
-                <Button variant="ghost" size="sm" onClick={() => setModal({ mode: "edit", claimType })} className="flex-1">
-                  Edit
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(claimType.id)} className="flex-1">
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
       </Card>
 
       {modal && (

@@ -9,17 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import {
   Search,
-  Download,
   Eye,
   CheckSquare,
   X,
   MessageSquare,
-  FileText,
-  Clock,
-  Calendar,
-  AlertCircle
+  FileText
 } from 'lucide-react';
-import { getDocumentStatistics, updateDocument, listDocuments } from '@/app/services/dashboard';
+import { updateDocument, listDocuments } from '@/app/services/dashboard';
 import { useToast } from '@/components/ui/use-toast';
 
 // Define proper types for documents
@@ -37,16 +33,6 @@ interface Document {
   updated_at?: string;
 }
 
-interface DocumentStats {
-  total_pending_documents: number;
-  total_pending_documents_percentage: number;
-  documents_by_claim_type: number;
-  documents_by_claim_type_percentage: number;
-  average_verification_time: number;
-  average_verification_time_percentage: number;
-  rejection_rate: number;
-  rejection_rate_percentage: number;
-}
 
 interface ModalState {
   isOpen: boolean;
@@ -64,16 +50,6 @@ export default function DocumentsPage() {
   const [fileTypeFilter, setFileTypeFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [documentStats, setDocumentStats] = useState<DocumentStats>({
-    total_pending_documents: 0,
-    total_pending_documents_percentage: 0,
-    documents_by_claim_type: 0,
-    documents_by_claim_type_percentage: 0,
-    average_verification_time: 0,
-    average_verification_time_percentage: 0,
-    rejection_rate: 0,
-    rejection_rate_percentage: 0
-  });
 
   const filteredDocuments = documents.filter((doc: Document) => {
     const matchesSearch =
@@ -238,41 +214,8 @@ export default function DocumentsPage() {
     return `${diffDays} days`;
   };
 
-  const getIconComponent = (iconName: string) => {
-    switch (iconName) {
-      case 'Clock':
-        return <Clock className="h-4 w-4 text-muted-foreground" />;
-      case 'FileText':
-        return <FileText className="h-4 w-4 text-muted-foreground" />;
-      case 'Calendar':
-        return <Calendar className="h-4 w-4 text-muted-foreground" />;
-      case 'AlertCircle':
-        return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
-      default:
-        return <FileText className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
 
   useEffect(() => {
-    console.log("fetching document statistics__");
-    getDocumentStatistics().then((res) => {
-      console.log(res, "res__");
-      // Handle the response - it might be an array with the first element being the data
-      const statsData = Array.isArray(res) ? res[0] : res;
-      if (statsData) {
-        // Use the original percentage values from API
-        setDocumentStats({
-          total_pending_documents: statsData.total_pending_documents || 0,
-          total_pending_documents_percentage: statsData.total_pending_documents_percentage || 0,
-          documents_by_claim_type: statsData.documents_by_claim_type || 0,
-          documents_by_claim_type_percentage: statsData.documents_by_claim_type_percentage || 0,
-          average_verification_time: statsData.average_verification_time || 0,
-          average_verification_time_percentage: statsData.average_verification_time_percentage || 0,
-          rejection_rate: statsData.rejection_rate || 0,
-          rejection_rate_percentage: statsData.rejection_rate_percentage || 0
-        });
-      }
-    });
     listDocuments().then((res: unknown) => {
       console.log(res, "res__");
       // Handle the response - it might be an array with the first element being the data
@@ -287,41 +230,6 @@ export default function DocumentsPage() {
     });
   }, []);
 
-  // Generate quickStats from API data
-  const quickStats = [
-    {
-      title: 'Total Pending Documents',
-      value: documentStats.total_pending_documents.toString(),
-      icon: 'Clock',
-      description: 'Requires verification',
-      trend: `+${documentStats.total_pending_documents_percentage}% from yesterday`,
-      trendUp: documentStats.total_pending_documents_percentage > 0,
-    },
-    {
-      title: 'Documents by Claim Type',
-      value: documentStats.documents_by_claim_type.toString(),
-      icon: 'FileText',
-      description: 'Most common type',
-      trend: `${documentStats.documents_by_claim_type_percentage}% of total`,
-      trendUp: documentStats.documents_by_claim_type_percentage > 0,
-    },
-    {
-      title: 'Average Verification Time',
-      value: `${documentStats.average_verification_time} days`,
-      icon: 'Calendar',
-      description: 'Last 30 days',
-      trend: `${documentStats.average_verification_time_percentage > 0 ? '+' : ''}${documentStats.average_verification_time_percentage}%`,
-      trendUp: documentStats.average_verification_time_percentage < 0,
-    },
-    {
-      title: 'Rejection Rate',
-      value: `${documentStats.rejection_rate}%`,
-      icon: 'AlertCircle',
-      description: 'By document type',
-      trend: `${documentStats.rejection_rate_percentage > 0 ? '+' : ''}${documentStats.rejection_rate_percentage}%`,
-      trendUp: documentStats.rejection_rate_percentage < 0,
-    },
-  ];
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -330,38 +238,8 @@ export default function DocumentsPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Documents</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        </div>
       </div>
 
-      {/* Quick Stats Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {quickStats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              {getIconComponent(stat.icon)}
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl sm:text-2xl font-bold">{stat.value}</div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {stat.description}
-                </p>
-                <div className={`flex items-center text-xs ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>
-                  {stat.trend}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       {/* Filters and Search */}
       <Card>
@@ -609,10 +487,6 @@ export default function DocumentsPage() {
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Button size="sm" variant="outline" className="flex-1">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </Button>
                   <Button size="sm" variant="outline" className="flex-1">
                     <MessageSquare className="h-4 w-4 mr-2" />
                     Add Note

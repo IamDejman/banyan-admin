@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, FileText, BarChart3, Users, Shield, Activity } from "lucide-react";
+import { FileText, BarChart3, Users, Shield, Activity, Mail, Send } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const reportTypes = [
@@ -46,7 +46,9 @@ export default function ReportsPage() {
   const [selectedReportType, setSelectedReportType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [email, setEmail] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(false);
 
   // Auto-select report type based on URL
   useEffect(() => {
@@ -64,22 +66,29 @@ export default function ReportsPage() {
   const selectedReport = reportTypes.find(report => report.value === selectedReportType);
   const IconComponent = selectedReport?.icon || FileText;
 
-  function handleDownloadReport() {
-    if (!selectedReportType || !startDate || !endDate) {
+
+  const isFormValid = selectedReportType && startDate && endDate && email;
+
+  function handleSendToEmail() {
+    if (!isFormValid) {
       return;
     }
-
-    setIsGenerating(true);
     
-    // Simulate report generation
+    setIsGenerating(true);
+    setIsEmailSent(false);
+    
+    // Simulate sending report to email
     setTimeout(() => {
       setIsGenerating(false);
-      // In a real app, this would trigger the actual report download
-      console.log(`Generating ${selectedReportType} report from ${startDate} to ${endDate}`);
+      setIsEmailSent(true);
+      console.log(`Sending ${selectedReportType} report to ${email} from ${startDate} to ${endDate}`);
+      
+      // Reset success message after 3 seconds
+      setTimeout(() => {
+        setIsEmailSent(false);
+      }, 3000);
     }, 2000);
   }
-
-  const isFormValid = selectedReportType && startDate && endDate;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -92,7 +101,7 @@ export default function ReportsPage() {
           <div>
             <h2 className="text-lg sm:text-xl font-semibold mb-4">Generate Report</h2>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Report Type */}
               <div className="space-y-2">
                 <Label htmlFor="reportType">Report Type *</Label>
@@ -111,6 +120,19 @@ export default function ReportsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Email Address */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full"
+                />
               </div>
 
               {/* Start Date */}
@@ -138,17 +160,37 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            {/* Download Button */}
+            {/* Send to Email Button */}
             <div className="mt-6">
               <Button 
-                onClick={handleDownloadReport}
+                onClick={handleSendToEmail}
                 disabled={!isFormValid || isGenerating}
                 className="w-full sm:w-auto"
               >
-                <Download className="h-4 w-4 mr-2" />
-                {isGenerating ? "Generating Report..." : "Download Report"}
+                {isGenerating ? (
+                  <>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Sending Report...
+                  </>
+                ) : isEmailSent ? (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Report Sent!
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Send to Email
+                  </>
+                )}
               </Button>
+              {isEmailSent && (
+                <p className="text-sm text-green-600 mt-2">
+                  Report has been sent to {email}
+                </p>
+              )}
             </div>
+
           </div>
 
           {/* Report Preview */}

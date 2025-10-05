@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Edit, UserX, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Eye, Check, X, ChevronDown, ChevronRight } from "lucide-react";
 import AgentForm from "./AgentForm";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { Agent, UserStatus } from "@/lib/types/user";
@@ -207,23 +207,18 @@ export default function AgentsPage() {
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Tooltip>
-                        <Tooltip content="Edit Agent">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setModal({ mode: "edit", agent })}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </Tooltip>
                         <Tooltip content={agent.status === "active" ? "Disable Agent" : "Enable Agent"}>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleToggleStatus(agent.id)}
-                            className={agent.status === "inactive" ? "text-red-500" : ""}
+                            className={agent.status === "active" ? "text-red-500" : "text-green-600"}
                           >
-                            <UserX className="h-4 w-4" />
+                            {agent.status === "active" ? (
+                              <X className="h-4 w-4" />
+                            ) : (
+                              <Check className="h-4 w-4" />
+                            )}
                           </Button>
                         </Tooltip>
                       </div>

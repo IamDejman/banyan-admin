@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -42,10 +41,6 @@ export default function SystemReportsClient() {
     to: new Date(),
   });
 
-  function handleExport() {
-    // Export functionality
-    console.log("Exporting system report...");
-  }
 
   function getHealthColor(health: string) {
     switch (health) {
@@ -86,7 +81,6 @@ export default function SystemReportsClient() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">System Reports</h2>
-        <Button onClick={handleExport}>Export Report</Button>
       </div>
 
       <div className="flex gap-4 items-center flex-wrap">

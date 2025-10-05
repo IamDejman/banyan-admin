@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { ChevronDown, ChevronRight, Edit, Trash2 } from "lucide-react";
 import InsurerForm from "./InsurerForm";
 import type { Insurer } from "@/lib/types/insurer";
 import type { ClaimType } from "@/lib/types/claim-types";
@@ -46,6 +48,7 @@ export default function InsurersClient() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalState>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const filtered = insurers.filter((i) =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -98,9 +101,17 @@ export default function InsurersClient() {
     setInsurers((prev) => prev.filter((i) => i.id !== id));
   }
 
-  function getClaimTypeNames(claimTypeIds: string[]): string {
-    if (claimTypeIds.length === 0) return "N/A";
-    return claimTypeIds.join(", ");
+
+  function toggleExpandedRow(id: string) {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
   }
 
   useEffect(() => {
@@ -161,102 +172,144 @@ export default function InsurersClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-20 sm:w-auto">Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Email</TableHead>
-                <TableHead className="hidden md:table-cell">Phone</TableHead>
-                <TableHead className="hidden lg:table-cell">Address</TableHead>
-                <TableHead className="hidden sm:table-cell">Claim Types</TableHead>
-                <TableHead className="hidden sm:table-cell">Status</TableHead>
-                <TableHead className="w-20 sm:w-auto">Actions</TableHead>
+                <TableHead className="w-12"></TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Claim Types</TableHead>
+                <TableHead className="w-32">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     <div className="text-center">
                       <Image
                         src="/globe.svg"
                         alt="Insurer logo"
                         width={32}
                         height={32}
-                        className="rounded"
+                        className="rounded mx-auto mb-2"
                       />
                       <p className="text-sm text-muted-foreground">No insurers found</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((insurer) => (
-                  <TableRow key={insurer.id}>
-                    <TableCell className="font-medium text-sm sm:text-base">{insurer.name}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{insurer.contact_email}</TableCell>
-                    <TableCell className="hidden md:table-cell">{insurer.contact_phone}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{insurer.address}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <span className="text-xs sm:text-sm">
-                        {getClaimTypeNames(insurer.supported_claim_types)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <div className="flex items-center gap-2">
-                        <Switch checked={insurer.status} onCheckedChange={() => handleStatusToggle(insurer.id)} />
-                        <span className="text-xs">{insurer.status ? "Enabled" : "Disabled"}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 sm:gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setModal({ mode: "edit", insurer })}>
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="outline" className="ml-2" onClick={() => handleDelete(insurer.id)}>
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                filtered.map((insurer) => {
+                  const isExpanded = expandedRows.has(insurer.id);
+                  return (
+                    <React.Fragment key={insurer.id}>
+                      <TableRow className="hover:bg-muted/50">
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExpandedRow(insurer.id)}
+                            className="h-6 w-6 p-0"
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                        <TableCell className="font-medium">{insurer.name}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              checked={insurer.status}
+                              onCheckedChange={() => handleStatusToggle(insurer.id)}
+                            />
+                            <Badge variant={insurer.status ? "default" : "secondary"}>
+                              {insurer.status ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {insurer.supported_claim_types.slice(0, 2).map((type, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {type}
+                              </Badge>
+                            ))}
+                            {insurer.supported_claim_types.length > 2 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{insurer.supported_claim_types.length - 2}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => setModal({ mode: "edit", insurer })}
+                              className="h-7 px-2"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleDelete(insurer.id)}
+                              className="h-7 px-2 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="bg-muted/30 p-0">
+                            <div className="p-4 space-y-3">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <div>
+                                    <span className="text-sm font-medium text-muted-foreground">Email:</span>
+                                    <p className="text-sm">{insurer.contact_email}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium text-muted-foreground">Phone:</span>
+                                    <p className="text-sm">{insurer.contact_phone}</p>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <div>
+                                    <span className="text-sm font-medium text-muted-foreground">Address:</span>
+                                    <p className="text-sm">{insurer.address}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium text-muted-foreground">Special Instructions:</span>
+                                    <p className="text-sm">{insurer.special_instructions}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-muted-foreground">Supported Claim Types:</span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {insurer.supported_claim_types.map((type, index) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                      {type}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  );
+                })
               )}
             </TableBody>
           </Table>
         </div>
 
-        {/* Mobile Insurers Cards */}
-        <div className="sm:hidden space-y-3 p-4">
-          {filtered.map((insurer) => (
-            <div key={insurer.id} className="border rounded-lg p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-sm">{insurer.name}</span>
-                <div className="flex items-center gap-2">
-                  <Switch checked={insurer.status} onCheckedChange={() => handleStatusToggle(insurer.id)} />
-                  <span className="text-xs">{insurer.status ? "Enabled" : "Disabled"}</span>
-                </div>
-              </div>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email:</span>
-                  <span>{insurer.contact_email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Phone:</span>
-                  <span>{insurer.contact_phone}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Claim Types:</span>
-                  <span className="text-right">{getClaimTypeNames(insurer.supported_claim_types)}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 pt-2">
-                <Button variant="ghost" size="sm" onClick={() => setModal({ mode: "edit", insurer })} className="flex-1">
-                  Edit
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(insurer.id)} className="flex-1">
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
       </Card>
       {modal && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">

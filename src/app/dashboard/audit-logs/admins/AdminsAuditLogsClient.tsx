@@ -1,12 +1,11 @@
 "use client";
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Download } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 
 interface AuditLog {
   id: string;
@@ -109,10 +108,6 @@ export default function AdminsAuditLogsClient() {
     return new Date(timestamp).toLocaleString();
   }
 
-  function handleExport() {
-    // Mock export functionality
-    console.log("Exporting audit logs...");
-  }
 
   return (
     <div className="space-y-6">
@@ -123,10 +118,6 @@ export default function AdminsAuditLogsClient() {
             Track all administrative actions and system changes
           </p>
         </div>
-        <Button onClick={handleExport} variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Export
-        </Button>
       </div>
 
       {/* Filters */}
@@ -169,7 +160,6 @@ export default function AdminsAuditLogsClient() {
                 <SelectItem value="Permission Modified">Permission Modified</SelectItem>
                 <SelectItem value="Login Attempt">Login Attempt</SelectItem>
                 <SelectItem value="System Configuration">System Configuration</SelectItem>
-                <SelectItem value="Data Export">Data Export</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -25,7 +25,7 @@ export default function AssignClaimsPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Assign Claims to Agents</CardTitle>
+          <CardTitle>Claim Assignment</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>

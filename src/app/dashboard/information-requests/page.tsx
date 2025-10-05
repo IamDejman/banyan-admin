@@ -207,10 +207,6 @@ export default function InformationRequestsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <FileText className="h-4 w-4 mr-2" />
-            Export
-          </Button>
           <Button size="sm">
             <Send className="h-4 w-4 mr-2" />
             Send Reminders
@@ -234,9 +230,6 @@ export default function InformationRequestsPage() {
                 <p className="text-xs text-muted-foreground">
                   {stat.description}
                 </p>
-                <div className={`flex items-center text-xs ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>
-                  {stat.trend}
-                </div>
               </div>
             </CardContent>
           </Card>

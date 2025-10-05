@@ -110,6 +110,19 @@ export const deleteInsurer = (id: string): Promise<ApiResponse<void>> => Http.de
 
 export const getClaimTypes = (): Promise<ApiResponse<ClaimType[]>> => Http.get(`/admin/claim-types`);
 
+// Agent interface
+interface Agent {
+    id: string | number;
+    first_name: string;
+    last_name: string;
+    email?: string;
+    active?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export const getAgents = (): Promise<ApiResponse<Agent[]>> => Http.get(`/admin/agents`);
+
 
 export const getClaimTypeById = (id: string): Promise<ApiResponse<ClaimType>> => Http.get(`/admin/claim-types/${id}`);
 
@@ -153,7 +166,32 @@ export const deletePaymentConfiguration = (id: string): Promise<ApiResponse<void
 
 export const getClaimsStatistics = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claims/statistics`);
 
-export const getClaims = (): Promise<ApiResponse<Claim[]>> => Http.get(`/admin/claims`);
+export const getClaims = (
+  page: number = 1,
+  perPage: number = 15,
+  filters?: {
+    search?: string;
+    status?: string;
+    assigned_agent?: string;
+    claim_type?: string;
+    start_date?: string;
+    end_date?: string;
+  }
+): Promise<ApiResponse<Claim[]>> => {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    per_page: perPage.toString(),
+  });
+
+  if (filters?.search) params.append('search', filters.search);
+  if (filters?.status && filters.status !== 'all') params.append('status', filters.status);
+  if (filters?.assigned_agent && filters.assigned_agent !== 'all') params.append('assigned_agent', filters.assigned_agent);
+  if (filters?.claim_type && filters.claim_type !== 'all') params.append('claim_type', filters.claim_type);
+  if (filters?.start_date) params.append('start_date', filters.start_date);
+  if (filters?.end_date) params.append('end_date', filters.end_date);
+
+  return Http.get(`/admin/claims?${params.toString()}`);
+};
 
 export const getClaimById = (id: string): Promise<ApiResponse<Claim>> => Http.get(`/admin/claims/${id}`);
 
@@ -187,6 +225,27 @@ export const rejectSettlementOffer = (payload: Record<string, unknown>): Promise
 
 // approve claim
 export const approveClaim = (id: string): Promise<ApiResponse<unknown>> => Http.post(`/admin/claims/approve/${id}`);
+
+// Audit Log interfaces
+interface AuditLog {
+  id: number;
+  log_name: string;
+  description: string;
+  subject_type: string | null;
+  event: string | null;
+  subject_id: string | null;
+  causer_type: string;
+  causer_id: number;
+  properties: {
+    action: string;
+    status: string;
+  };
+  batch_uuid: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getAuditLogs = (): Promise<ApiResponse<AuditLog[]>> => Http.get(`/admin/audit-logs`);
 
 
 

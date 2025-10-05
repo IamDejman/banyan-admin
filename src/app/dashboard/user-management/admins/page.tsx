@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Edit, UserX, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Eye, Check, X, ChevronDown, ChevronRight, UserX } from "lucide-react";
 import AdminForm from "./AdminForm";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { Admin, UserStatus } from "@/lib/types/user";
@@ -69,12 +69,13 @@ const permissionLabels = {
 };
 
 export default function AdminsPage() {
+  const [admins, setAdmins] = useState(mockAdmins);
   const [modal, setModal] = useState<{ mode: "create" | "edit"; admin?: typeof mockAdmins[0] } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter] = useState("all");
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
 
-  const filteredAdmins = mockAdmins.filter((admin) => {
+  const filteredAdmins = admins.filter((admin) => {
     const matchesSearch = 
       admin.firstName.toLowerCase().includes(search.toLowerCase()) ||
       admin.lastName.toLowerCase().includes(search.toLowerCase()) ||
@@ -84,6 +85,14 @@ export default function AdminsPage() {
     
     return matchesSearch && matchesStatus;
   });
+
+  function handleToggleStatus(adminId: string) {
+    setAdmins(prev => prev.map(admin => 
+      admin.id === adminId 
+        ? { ...admin, status: admin.status === "active" ? "inactive" : "active" }
+        : admin
+    ));
+  }
 
   function handleToggleExpanded(adminId: string) {
     setExpandedRows(prev => 
@@ -108,8 +117,7 @@ export default function AdminsPage() {
       lastLogin: undefined,
       department: "Administration"
     };
-    // In a real app, you'd add this to the database
-    console.log('Creating admin:', newAdmin);
+    setAdmins([newAdmin, ...admins]);
     setModal(null);
   }
 
@@ -124,8 +132,9 @@ export default function AdminsPage() {
       phone: adminData.phoneNumber,
     };
     
-    // In a real app, you'd update this in the database
-    console.log('Updating admin:', updatedAdmin);
+    setAdmins(prev => prev.map(admin => 
+      admin.id === modal.admin!.id ? updatedAdmin : admin
+    ));
     setModal(null);
   }
 
@@ -144,9 +153,9 @@ export default function AdminsPage() {
         </div>
       </div>
 
-      {/* Search and Filters */}
+      {/* Admins Table */}
       <Card>
-        <Card className="p-4 sm:p-6">
+        <div className="p-4 sm:p-6 border-b">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
               <div className="relative">
@@ -159,12 +168,8 @@ export default function AdminsPage() {
               </div>
             </div>
           </div>
-        </Card>
-      </Card>
-
-      {/* Admins Table */}
-      <Card>
-        <Card className="p-0">
+        </div>
+        <div className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -231,13 +236,18 @@ export default function AdminsPage() {
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </Tooltip>
-                            <Tooltip content="Edit Admin">
+                            <Tooltip content={admin.status === "active" ? "Disable Admin" : "Enable Admin"}>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setModal({ mode: "edit", admin })}
+                                onClick={() => handleToggleStatus(admin.id)}
+                                className={admin.status === "active" ? "text-red-500" : "text-green-600"}
                               >
-                                <Edit className="h-4 w-4" />
+                                {admin.status === "active" ? (
+                                  <X className="h-4 w-4" />
+                                ) : (
+                                  <Check className="h-4 w-4" />
+                                )}
                               </Button>
                             </Tooltip>
                           </div>
@@ -316,9 +326,18 @@ export default function AdminsPage() {
                     <Eye className="h-4 w-4 mr-1" />
                     View
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setModal({ mode: "edit", admin })} className="flex-1">
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleToggleStatus(admin.id)} 
+                    className={`flex-1 ${admin.status === "active" ? "text-red-500" : "text-green-600"}`}
+                  >
+                    {admin.status === "active" ? (
+                      <X className="h-4 w-4 mr-1" />
+                    ) : (
+                      <Check className="h-4 w-4 mr-1" />
+                    )}
+                    {admin.status === "active" ? "Disable" : "Enable"}
                   </Button>
                 </div>
                 {expandedRows.includes(admin.id) && (
@@ -338,7 +357,7 @@ export default function AdminsPage() {
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       </Card>
 
       {modal && (

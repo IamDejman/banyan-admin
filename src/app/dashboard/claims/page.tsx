@@ -7,17 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip } from '@/components/ui/tooltip';
 import {
   Clock,
   FileText,
   Search,
-  User,
-  Download,
   Eye,
   CheckSquare,
+  Filter,
   X,
   ChevronLeft,
   ChevronRight,
@@ -25,7 +21,7 @@ import {
   ChevronsRight
 } from 'lucide-react';
 import Link from 'next/link';
-import { getClaims, getClaimsStatistics, approveClaim } from '@/app/services/dashboard';
+import { getClaims, getClaimsStatistics, getClaimTypes } from '@/app/services/dashboard';
 import { toast } from '@/components/ui/use-toast';
 
 // Define proper types for API response data
@@ -55,321 +51,304 @@ interface ApiClaim {
   incident_location: string;
   incident_date: string;
   documents: ApiClaimDocument[];
+  assigned_agent?: string; // This might need to be added to the API response
 }
 
 interface TransformedClaim {
   id: string;
   clientName: string;
   submissionDate: string;
-  claimType: string;
-  documentStatus: number;
+  claim_type: string;
   status: string;
-  estimatedValue: number;
-  incidentLocation: string;
-  description: string;
-  incidentDate: string;
+  assigned_agent: string;
   originalClaim: ApiClaim;
-}
-
-interface TransformedSettledClaim extends TransformedClaim {
-  settlementDate: string;
-  settlementAmount: number;
 }
 
 interface Statistics {
   total_pending_claims: number;
-  average_review_time: number;
-  document_completion: number;
   settled_claim: number;
-  propertydamage_claims: number;
-  auto_accident_claims: number;
-  medical_claims: number;
-  liability: number;
 }
 
-interface QuickStat {
-  title: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-  description: string;
-  trend: string;
-  trendUp: boolean;
+// Error interface for proper typing
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+    status?: number;
+    statusText?: string;
+  };
+  message?: string;
 }
 
-interface ClaimType {
-  label: string;
-  value: string;
-  count: number;
+interface FilterState {
+  status: string;
+  assigned_agent: string;
+  claim_type: string;
+  start_date: string;
+  end_date: string;
+}
+
+interface SearchState {
+  search: string;
 }
 
 export default function ClaimsReviewPage() {
-  const [filters, setFilters] = useState({
-    dateRange: 'today',
-    claimType: 'all',
-    documentStatus: 'all',
-    startDate: '',
-    endDate: '',
+  const [search, setSearch] = useState<SearchState>({
     search: '',
   });
-  const [activeTab, setActiveTab] = useState('pending');
-  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; claim: TransformedClaim | null }>({ isOpen: false, claim: null });
+  const [filters, setFilters] = useState<FilterState>({
+    status: 'all',
+    assigned_agent: 'all',
+    claim_type: 'all',
+    start_date: '',
+    end_date: '',
+  });
   const [statistics, setStatistics] = useState<Statistics>({
     total_pending_claims: 0,
-    average_review_time: 0,
-    document_completion: 0,
     settled_claim: 0,
-    propertydamage_claims: 0,
-    auto_accident_claims: 0,
-    medical_claims: 0,
-    liability: 0
   });
   const [claims, setClaims] = useState<ApiClaim[]>([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    itemsPerPage: 10,
+    itemsPerPage: 15,
   });
   const [loading, setLoading] = useState(false);
-
-  const handleApproveClaim = (claim: TransformedClaim) => {
-    console.log("Approving claim:", claim);
-    setApproveModal({ isOpen: true, claim });
-  };
-
-  const confirmApprove = async () => {
-    try {
-      if (approveModal.claim) {
-        console.log("Approving claim:", approveModal.claim.id);
-        const res = await approveClaim(approveModal.claim.id);
-        console.log(res, "res__111");
-        // In a real app, this would update the claim status
-        return toast({
-          title: "Claim approved successfully",
-          description: "The claim has been approved successfully",
-          variant: "default",
-        });
-      }
-      setApproveModal({ isOpen: false, claim: null });
-
-    } catch {
-      toast({
-        title: "Failed to approve claim",
-        description: "The claim has not been approved",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const cancelApprove = () => {
-    setApproveModal({ isOpen: false, claim: null });
-  };
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [claimTypes, setClaimTypes] = useState<Array<{id: string | number, name: string}>>([]);
+  const [claimTypesLoading, setClaimTypesLoading] = useState(false);
+  const [, setClaimTypesError] = useState<string | null>(null);
+  const [tempFilters, setTempFilters] = useState<FilterState>({
+    status: 'all',
+    assigned_agent: 'all',
+    claim_type: 'all',
+    start_date: '',
+    end_date: '',
+  });
+  const [filtersApplied, setFiltersApplied] = useState(false);
 
   const getStatusColor = (status: string) => {
     const colors = {
       submitted: "bg-yellow-100 text-yellow-800",
       completed: "bg-green-100 text-green-800",
+      settled: "bg-green-100 text-green-800",
       rejected: "bg-red-100 text-red-800",
       processing: "bg-blue-100 text-blue-800",
+      pending: "bg-yellow-100 text-yellow-800",
     };
-    return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800";
+    return colors[status.toLowerCase() as keyof typeof colors] || "bg-gray-100 text-gray-800";
   };
 
   // Transform API claim data to table format
   const transformClaimData = (claim: ApiClaim): TransformedClaim => {
-    const uploadedDocs = claim.documents?.filter((doc: ApiClaimDocument) => doc.document_uploaded) || [];
-    const totalDocs = claim.documents?.length || 0;
-    const documentStatus = totalDocs > 0 ? Math.round((uploadedDocs.length / totalDocs) * 100) : 0;
-
     return {
-      id: claim.claim_number,
-      clientName: claim.client.first_name + ' ' + claim.client.last_name, // API doesn't provide client name
+      id: claim.id, // Use database ID for navigation
+      clientName: `${claim.client.first_name} ${claim.client.last_name}`,
       submissionDate: new Date(claim.submission_date).toLocaleDateString(),
-      claimType: claim.claim_type_details?.name || 'Unknown',
-      documentStatus,
-      status: claim.status === 'completed' ? 'Completed' : 'Pending Review',
-      estimatedValue: claim.estimated_value, // API doesn't provide estimated value
-      incidentLocation: claim.incident_location,
-      description: claim.description,
-      incidentDate: new Date(claim.incident_date).toLocaleDateString(),
-      originalClaim: claim, // Keep original data for filtering
-    };
-  };
-
-  // Transform settled claim data with settlement info
-  const transformSettledClaimData = (claim: ApiClaim): TransformedSettledClaim => {
-    const baseData = transformClaimData(claim);
-    return {
-      ...baseData,
-      settlementDate: new Date(claim.submission_date).toLocaleDateString(), // Using submission date as settlement date
-      settlementAmount: 0, // API doesn't provide settlement amount
+      claim_type: claim.claim_type_details?.name || 'Unknown',
+      status: claim.status === 'completed' ? 'Settled' : 'Pending Review',
+      assigned_agent: claim.assigned_agent || 'Unassigned',
+      originalClaim: claim,
     };
   };
 
   // Filter and search claims
-  const filterClaims = (claims: ApiClaim[], searchTerm: string, claimTypeFilter: string): ApiClaim[] => {
+  const filterClaims = (claims: ApiClaim[], searchTerm: string, filters: FilterState): ApiClaim[] => {
     return claims.filter(claim => {
       const matchesSearch = searchTerm === '' ||
         claim.claim_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        claim.incident_location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        claim.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        claim.client.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        claim.client.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         claim.claim_type_details?.name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesType = claimTypeFilter === 'all' ||
-        claim.claim_type_details?.name?.toLowerCase().includes(claimTypeFilter.toLowerCase());
+      const matchesStatus = filters.status === 'all' ||
+        (filters.status === 'pending' && claim.status !== 'completed') ||
+        (filters.status === 'settled' && claim.status === 'completed');
 
-      return matchesSearch && matchesType;
+      const matchesAgent = filters.assigned_agent === 'all' ||
+        (filters.assigned_agent === 'unassigned' && (!claim.assigned_agent || claim.assigned_agent === '')) ||
+        claim.assigned_agent?.toLowerCase().replace(/\s+/g, '-').includes(filters.assigned_agent.toLowerCase());
+
+      const matchesType = filters.claim_type === 'all' ||
+        claim.claim_type_details?.name?.toLowerCase().replace(/\s+/g, '-').includes(filters.claim_type.toLowerCase());
+
+      const matchesDate = (!filters.start_date && !filters.end_date) ||
+        (filters.start_date && new Date(claim.submission_date) >= new Date(filters.start_date)) ||
+        (filters.end_date && new Date(claim.submission_date) <= new Date(filters.end_date));
+
+      return matchesSearch && matchesStatus && matchesAgent && matchesType && matchesDate;
     });
   };
 
-  // Apply filters and pagination
-  const getFilteredClaims = (): ApiClaim[] => {
-    const filtered = filterClaims(claims, filters.search, filters.claimType);
-    const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
-    const endIndex = startIndex + pagination.itemsPerPage;
-    return filtered.slice(startIndex, endIndex);
-  };
-
-  // Get filtered claims for display
-  const pendingClaims = getFilteredClaims().filter(claim => claim?.status !== 'completed').map(transformClaimData);
-  const settledClaims = getFilteredClaims().filter(claim => claim?.status === 'completed').map(transformSettledClaimData);
-
-  // Calculate total filtered items for pagination
-  const getTotalFilteredItems = useCallback((): number => {
-    const filtered = filterClaims(claims, filters.search, filters.claimType);
-    return filtered.length;
-  }, [claims, filters.search, filters.claimType]);
-
-  // Update pagination when filters or claims change
-  useEffect(() => {
-    const totalItems = getTotalFilteredItems();
-    const totalPages = Math.ceil(totalItems / pagination.itemsPerPage);
-    setPagination(prev => ({
-      ...prev,
-      totalItems,
-      totalPages,
-      currentPage: prev.currentPage > totalPages ? 1 : prev.currentPage,
-    }));
-  }, [claims, filters.search, filters.claimType, pagination.itemsPerPage, getTotalFilteredItems]);
+  // Get claims for display (filter current page results)
+      const filteredClaims = filterClaims(claims, search.search, filters);
+  const allClaims = filteredClaims.map(transformClaimData);
 
   // Handle pagination
   const handlePageChange = (page: number) => {
-    setPagination(prev => ({ ...prev, currentPage: page }));
+    fetchClaims(page);
   };
 
-  // Handle search
+  // Handle search (for now, just update state - could be enhanced with API search later)
   const handleSearch = (value: string) => {
-    setFilters(prev => ({ ...prev, search: value }));
-    setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page
+    setSearch({ search: value });
+    // Trigger immediate API call with search term
+    const combinedFilters = {
+      ...filters,
+      search: value
+    };
+    fetchClaimsWithFilters(1, combinedFilters);
   };
 
-  // Handle claim type filter
-  const handleClaimTypeFilter = (value: string) => {
-    setFilters(prev => ({ ...prev, claimType: value }));
-    setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page
+  // Handle filter modal (for now, just update state - could be enhanced with API filtering later)
+  const handleFilterChange = (key: keyof FilterState, value: string) => {
+    setTempFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  // Fetch claims
-  const fetchClaims = async () => {
-    setLoading(true);
+
+  const applyFilters = () => {
+    setFilters(tempFilters);
+    setFiltersApplied(true);
+    setShowFilterModal(false);
+    fetchClaimsWithFilters(1, { ...tempFilters }); // Reset to page 1 when applying new filters
+  };
+
+  const clearAllFilters = () => {
+    const clearedFilters = {
+      status: 'all',
+      assigned_agent: 'all',
+      claim_type: 'all',
+      start_date: '',
+      end_date: '',
+    };
+    setSearch({ search: '' });
+    setFilters(clearedFilters);
+    setTempFilters(clearedFilters);
+    setFiltersApplied(false);
+    fetchClaimsWithFilters(1, { ...clearedFilters });
+  };
+
+  const openFilterModal = () => {
+    setTempFilters(filters); // Set temp filters to current applied filters
+    setShowFilterModal(true);
+  };
+
+  const cancelFilters = () => {
+    setTempFilters(filters); // Reset temp filters to current applied filters
+    setShowFilterModal(false);
+  };
+
+  // Fetch claim types from API
+  const fetchClaimTypes = async () => {
+    setClaimTypesLoading(true);
+    setClaimTypesError(null);
     try {
-      const res: unknown = await getClaims();
-      console.log(res, "res__");
-
-      // Helper function to safely extract claims data
-      const extractClaimsData = (response: unknown): ApiClaim[] => {
-        if (Array.isArray(response)) {
-          // If response is an array, try to get data from first element
-          const firstItem = response[0];
-          if (firstItem && typeof firstItem === 'object' && firstItem !== null) {
-            if ('data' in firstItem && firstItem.data) {
-              if (Array.isArray(firstItem.data)) {
-                return firstItem.data;
-              } else if (typeof firstItem.data === 'object' && firstItem.data !== null && 'data' in firstItem.data) {
-                return Array.isArray(firstItem.data.data) ? firstItem.data.data : [];
-              }
-            }
-          }
-          return [];
-        } else if (response && typeof response === 'object' && response !== null) {
-          // If response is an object, try to extract data
-          if ('data' in response && response.data) {
-            if (Array.isArray(response.data)) {
-              return response.data;
-            } else if (typeof response.data === 'object' && response.data !== null && 'data' in response.data) {
-              return Array.isArray(response.data.data) ? response.data.data : [];
-            }
-          }
-        }
-        return [];
-      };
-
-      const claimsData = extractClaimsData(res);
-      setClaims(claimsData);
-    } catch {
-      console.error('Error fetching claims');
+      console.log('Fetching claim types...');
+      const res = await getClaimTypes();
+      console.log('Claim types response:', res);
+      
+      // Handle different possible response structures
+      let claimTypesData = null;
+      if (res && res.data && Array.isArray(res.data)) {
+        claimTypesData = res.data;
+      } else if (Array.isArray(res)) {
+        claimTypesData = res;
+      } else if (res && Array.isArray(res)) {
+        claimTypesData = res;
+      }
+      
+      if (claimTypesData && claimTypesData.length > 0) {
+        const mappedTypes = claimTypesData.map((type: { id: string | number; name: string }) => ({
+          id: type.id,
+          name: type.name
+        }));
+        console.log('Mapped claim types:', mappedTypes);
+        setClaimTypes(mappedTypes);
+      } else {
+        const errorMsg = 'No claim types data found in API response';
+        console.log(errorMsg);
+        setClaimTypesError(errorMsg);
+        toast({
+          title: "Error",
+          description: errorMsg,
+          variant: "destructive",
+        });
+      }
+    } catch (error: unknown) {
+      const errorMsg = (error as ApiError)?.response?.data?.message || (error as ApiError)?.message || 'Failed to fetch claim types';
+      console.error('Error fetching claim types:', error);
+      setClaimTypesError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false);
+      setClaimTypesLoading(false);
     }
   };
 
+  // Fetch claims with filters and pagination
+  const fetchClaimsWithFilters = useCallback(async (page: number = 1, filterParams: FilterState | null = null) => {
+    setLoading(true);
+    try {
+      const params = filterParams || { ...filters, search: search.search };
+      const res: unknown = await getClaims(page, pagination.itemsPerPage, params);
+      console.log(res, "res__");
+
+      // Helper function to safely extract claims data and pagination info
+      const extractClaimsData = (response: unknown): { claims: ApiClaim[], pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number } } => {
+        if (response && typeof response === 'object' && response !== null) {
+          if ('data' in response && response.data) {
+            const data = response.data as { data: ApiClaim[]; meta: { current_page: number; last_page: number; total: number; per_page: number } };
+            if ('data' in data && Array.isArray(data.data)) {
+              return {
+                claims: data.data,
+                pagination: {
+                  currentPage: data.meta?.current_page || 1,
+                  totalPages: data.meta?.last_page || 1,
+                  totalItems: data.meta?.total || 0,
+                  itemsPerPage: data.meta?.per_page || 15,
+                }
+              };
+            }
+          }
+        }
+        return { claims: [], pagination: { currentPage: 1, totalPages: 1, totalItems: 0, itemsPerPage: 15 } };
+      };
+
+      const { claims: claimsData, pagination: paginationData } = extractClaimsData(res);
+      setClaims(claimsData);
+      setPagination(prev => ({ ...prev, ...paginationData }));
+    } catch {
+      console.error('Error fetching claims');
+      toast({
+        title: "Error",
+        description: "Failed to fetch claims",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [filters, search.search, pagination.itemsPerPage]);
+
+  const fetchClaims = useCallback(async (page: number = 1) => {
+    return fetchClaimsWithFilters(page);
+  }, [fetchClaimsWithFilters]);
+
   useEffect(() => {
-    console.log("fetching claims statistics__");
     getClaimsStatistics().then((res) => {
       console.log(res, "res__111");
-      // Handle the response - it might be an array with the first element being the data
       const statsData = Array.isArray(res) ? res[0] : res;
       setStatistics(statsData as Statistics);
     });
-    fetchClaims();
-  }, []);
-
-  // Remove the automatic refetch - filtering will be client-side only
-
-  // Generate quickStats from API response
-  const quickStats: QuickStat[] = [
-    {
-      title: 'Total Pending Claims',
-      value: statistics.total_pending_claims.toString(),
-      icon: Clock,
-      description: 'Requires review',
-      trend: '+1%',
-      trendUp: true,
-    },
-    {
-      title: 'Average Review Time',
-      value: `${statistics.average_review_time} days`,
-      icon: Clock,
-      description: 'Last 30 days',
-      trend: '+1%',
-      trendUp: true,
-    },
-    {
-      title: 'Document Completion',
-      value: `${statistics.document_completion}%`,
-      icon: FileText,
-      description: 'Average across claims',
-      trend: '+1%',
-      trendUp: true,
-    },
-    {
-      title: 'Settled Claims',
-      value: statistics.settled_claim.toString(),
-      icon: CheckSquare,
-      description: 'This month',
-      trend: '+1%',
-      trendUp: true,
-    },
-  ];
-
-  // Generate claimTypes from API response
-  const claimTypes: ClaimType[] = [
-    { label: 'Property Damage', value: 'property', count: statistics.propertydamage_claims },
-    { label: 'Auto Accident', value: 'auto', count: statistics.auto_accident_claims },
-    { label: 'Medical', value: 'medical', count: statistics.medical_claims },
-    { label: 'Liability', value: 'liability', count: statistics.liability },
-  ];
-
+    fetchClaimTypes();
+    fetchClaims(1);
+    // Initialize temp filters with current filters
+    setTempFilters(filters);
+  }, [filters, fetchClaims]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -378,524 +357,216 @@ export default function ClaimsReviewPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Claims Review</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        </div>
       </div>
 
-      {/* Quick Stats Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {quickStats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl sm:text-2xl font-bold">{stat.value}</div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {stat.description}
-                </p>
-                <div className={`flex items-center text-xs ${stat.trendUp ? 'text-green-600' : 'text-red-600'}`}>
-                  {stat.trend}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* KPI Cards - Only Total Pending Claims and Settled Claims */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">
+              Total Pending Claims
+            </CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl sm:text-2xl font-bold">{statistics.total_pending_claims}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">
+              Settled Claims
+            </CardTitle>
+            <CheckSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl sm:text-2xl font-bold">{statistics.settled_claim}</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Claims by Type Breakdown */}
+      {/* All Claims - Single Box */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Claims by Type</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">All Claims</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {claimTypes.map((type) => (
-              <div key={type.value} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium text-sm sm:text-base">{type.label}</p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">{type.count} claims</p>
-                </div>
-                <div className="text-xl sm:text-2xl font-bold text-primary">{type.count}</div>
-              </div>
-            ))}
+        <CardContent className="space-y-4">
+          {/* Search and Filter */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by client name or claim ID..."
+                      className="pl-8 w-full"
+                      value={search.search}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      disabled={loading}
+                    />
+            </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={openFilterModal}
+                      className="flex-shrink-0"
+                    >
+                      <Filter className="h-4 w-4 mr-2" />
+                      {filtersApplied ? 'Edit Filter' : 'Filter'}
+                      {filtersApplied && (
+                        <div className="ml-2 h-2 w-2 bg-blue-500 rounded-full"></div>
+                      )}
+                    </Button>
+                    {filtersApplied && (
+                      <Button
+                        variant="ghost"
+                        onClick={clearAllFilters}
+                        className="flex-shrink-0 text-muted-foreground"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+          </div>
+
+          {/* Claims Table */}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Claim ID</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Submission Date</TableHead>
+                  <TableHead>Claim Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Assigned Agent</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <div className="text-center">
+                        <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">Loading claims...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : allClaims.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <div className="text-center">
+                        <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">No claims found</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  allClaims.map((claim) => (
+                    <TableRow key={claim.id}>
+                      <TableCell className="font-medium">{claim.originalClaim.claim_number}</TableCell>
+                      <TableCell>{claim.clientName}</TableCell>
+                      <TableCell>{claim.submissionDate}</TableCell>
+                      <TableCell>{claim.claim_type}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(claim.status)}>
+                          {claim.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{claim.assigned_agent}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/dashboard/claims/${claim.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="pending" className="text-xs sm:text-sm">Pending Claims</TabsTrigger>
-          <TabsTrigger value="settled" className="text-xs sm:text-sm">Settled Claims</TabsTrigger>
-        </TabsList>
-
-        {/* Pending Claims Tab */}
-        <TabsContent value="pending" className="space-y-4">
-          {/* Filters and Search */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Pending Review Claims</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search claims..."
-                      className="pl-8 w-full lg:w-64"
-                      value={filters.search}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      disabled={loading}
-                    />
-                  </div>
-                  <Select value={filters.claimType} onValueChange={handleClaimTypeFilter}>
-                    <SelectTrigger className="w-full lg:w-40">
-                      <SelectValue placeholder="Claim Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="property">Property Damage</SelectItem>
-                      <SelectItem value="auto">Auto Accident</SelectItem>
-                      <SelectItem value="medical">Medical</SelectItem>
-                    </SelectContent>
-                  </Select>
+      {/* Pagination Controls - Only show when there are results */}
+      {!loading && pagination.totalItems > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
+                {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
+                {pagination.totalItems} results
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(1)}
+                  disabled={pagination.currentPage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    const page = Math.max(1, Math.min(pagination.totalPages - 4, pagination.currentPage - 2)) + i;
+                    if (page > pagination.totalPages) return null;
+                    return (
+                      <Button
+                        key={page}
+                        variant={pagination.currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(page)}
+                        className="w-8 h-8"
+                      >
+                        {page}
+                      </Button>
+                    );
+                  })}
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.totalPages)}
+                  disabled={pagination.currentPage === pagination.totalPages}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Claims Table */}
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-20 sm:w-auto">Claim ID</TableHead>
-                      <TableHead className="hidden sm:table-cell">Client</TableHead>
-                      <TableHead className="hidden md:table-cell">Submission Date</TableHead>
-                      <TableHead className="hidden sm:table-cell">Claim Type</TableHead>
-                      <TableHead className="hidden lg:table-cell">Document Status</TableHead>
-                      <TableHead className="hidden sm:table-cell">Status</TableHead>
-                      <TableHead className="hidden md:table-cell">Estimated Value</TableHead>
-                      <TableHead className="w-20 sm:w-auto">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8">
-                          <div className="text-center">
-                            <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">Loading claims...</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : pendingClaims.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8">
-                          <div className="text-center">
-                            <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">No pending claims found</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      pendingClaims.map((claim) => (
-                        <TableRow key={claim.id}>
-                          <TableCell className="font-medium text-xs sm:text-sm">{claim.id}</TableCell>
-                          <TableCell className="hidden sm:table-cell">{claim.clientName}</TableCell>
-                          <TableCell className="hidden md:table-cell">{claim.submissionDate}</TableCell>
-                          <TableCell className="hidden sm:table-cell">{claim.claimType}</TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            <div className="flex items-center gap-2">
-                              <Progress value={claim.documentStatus} className="w-16" />
-                              <span className="text-xs">{claim.documentStatus}%</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <Badge className={getStatusColor(claim.status)}>
-                              {claim.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">₦{claim.estimatedValue.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 sm:gap-2">
-                              <Button variant="ghost" size="sm" asChild>
-                                <Link href={`/dashboard/claims/${claim.id}`}>
-                                  <Eye className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              {/* <Tooltip content="Approve Claim">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    // navigate to document page
-                                    navigate.push(`/dashboard/claims/${claim.id}/documents`);
-                                  }}
-                                // onClick={() => handleApproveClaim(claim)}
-                                >
-                                  <CheckSquare className="h-4 w-4" />
-                                </Button>
-                              </Tooltip> */}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Mobile Claims Cards */}
-              <div className="sm:hidden space-y-3 p-4">
-                {loading ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Loading claims...</p>
-                  </div>
-                ) : pendingClaims.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No pending claims found</p>
-                  </div>
-                ) : (
-                  pendingClaims.map((claim) => (
-                    <div key={claim.id} className="border rounded-lg p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">{claim.id}</span>
-                        <Badge className={getStatusColor(claim.status)}>
-                          {claim.status}
-                        </Badge>
-                      </div>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Client:</span>
-                          <span>{claim.clientName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Type:</span>
-                          <span>{claim.claimType}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Value:</span>
-                          <span>₦{claim.estimatedValue.toLocaleString()}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 pt-2">
-                        <Button variant="ghost" size="sm" asChild className="flex-1">
-                          <Link href={`/dashboard/claims/${claim.id}`}>
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Link>
-                        </Button>
-                        <Tooltip content="Approve Claim">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleApproveClaim(claim)}
-                            className="flex-1"
-                          >
-                            <CheckSquare className="h-4 w-4 mr-1" />
-                            Approve
-                          </Button>
-                        </Tooltip>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Pagination Controls */}
-          {!loading && pendingClaims.length > 0 && (
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
-                    {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
-                    {pagination.totalItems} results
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(1)}
-                      disabled={pagination.currentPage === 1}
-                    >
-                      <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={pagination.currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                        const page = Math.max(1, Math.min(pagination.totalPages - 4, pagination.currentPage - 2)) + i;
-                        if (page > pagination.totalPages) return null;
-                        return (
-                          <Button
-                            key={page}
-                            variant={pagination.currentPage === page ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handlePageChange(page)}
-                            className="w-8 h-8"
-                          >
-                            {page}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={pagination.currentPage === pagination.totalPages}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.totalPages)}
-                      disabled={pagination.currentPage === pagination.totalPages}
-                    >
-                      <ChevronsRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* Settled Claims Tab */}
-        <TabsContent value="settled" className="space-y-4">
-          {/* Settled Claims Table */}
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-20 sm:w-auto">Claim ID</TableHead>
-                      <TableHead className="hidden sm:table-cell">Client Name</TableHead>
-                      <TableHead className="hidden md:table-cell">Submission Date</TableHead>
-                      <TableHead className="hidden sm:table-cell">Claim Type</TableHead>
-                      <TableHead className="hidden lg:table-cell">Settlement Date</TableHead>
-                      <TableHead className="hidden md:table-cell">Settlement Amount</TableHead>
-                      <TableHead className="hidden sm:table-cell">Status</TableHead>
-                      <TableHead className="w-20 sm:w-auto">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8">
-                          <div className="text-center">
-                            <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">Loading settled claims...</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : settledClaims.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8">
-                          <div className="text-center">
-                            <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground">No settled claims found</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      settledClaims.map((claim) => (
-                        <TableRow key={claim.id}>
-                          <TableCell className="font-medium text-xs sm:text-sm">{claim.id}</TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              {claim.clientName}
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">{claim.submissionDate}</TableCell>
-                          <TableCell className="hidden sm:table-cell">{claim.claimType}</TableCell>
-                          <TableCell className="hidden lg:table-cell">{claim.settlementDate}</TableCell>
-                          <TableCell className="hidden md:table-cell">₦{claim.settlementAmount.toLocaleString()}</TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <Badge className={getStatusColor(claim.status)}>
-                              {claim.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 sm:gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                asChild
-                                title="View Claim Details"
-                              >
-                                <Link href={`/dashboard/claims/${claim.id}`}>
-                                  <Eye className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Mobile Settled Claims Cards */}
-              <div className="sm:hidden space-y-3 p-4">
-                {loading ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Loading settled claims...</p>
-                  </div>
-                ) : settledClaims.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No settled claims found</p>
-                  </div>
-                ) : (
-                  settledClaims.map((claim) => (
-                    <div key={claim.id} className="border rounded-lg p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">{claim.id}</span>
-                        <Badge className={getStatusColor(claim.status)}>
-                          {claim.status}
-                        </Badge>
-                      </div>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Client:</span>
-                          <span>{claim.clientName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Type:</span>
-                          <span>{claim.claimType}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Settlement:</span>
-                          <span>₦{claim.settlementAmount.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Date:</span>
-                          <span>{claim.settlementDate}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 pt-2">
-                        <Button variant="ghost" size="sm" asChild className="flex-1">
-                          <Link href={`/dashboard/claims/${claim.id}`}>
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Link>
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Pagination Controls for Settled Claims */}
-          {!loading && settledClaims.length > 0 && (
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
-                    {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
-                    {pagination.totalItems} results
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(1)}
-                      disabled={pagination.currentPage === 1}
-                    >
-                      <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={pagination.currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                        const page = Math.max(1, Math.min(pagination.totalPages - 4, pagination.currentPage - 2)) + i;
-                        if (page > pagination.totalPages) return null;
-                        return (
-                          <Button
-                            key={page}
-                            variant={pagination.currentPage === page ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handlePageChange(page)}
-                            className="w-8 h-8"
-                          >
-                            {page}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={pagination.currentPage === pagination.totalPages}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.totalPages)}
-                      disabled={pagination.currentPage === pagination.totalPages}
-                    >
-                      <ChevronsRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {/* Approve Claim Modal */}
-      {approveModal.isOpen && approveModal.claim && (
+      {/* Filter Modal */}
+      {showFilterModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md mx-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Approve Claim</h3>
+              <h3 className="text-lg font-semibold">Filter Claims</h3>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={cancelApprove}
+                onClick={() => setShowFilterModal(false)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -903,40 +574,88 @@ export default function ClaimsReviewPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Are you sure you want to approve this claim?</p>
-                <div className="bg-gray-50 p-3 rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Claim ID:</span>
-                    <span className="text-sm">{approveModal.claim.id}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Client:</span>
-                    <span className="text-sm">{approveModal.claim.clientName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Type:</span>
-                    <span className="text-sm">{approveModal.claim.claimType}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Estimated Value:</span>
-                    <span className="text-sm">₦{approveModal.claim.estimatedValue.toLocaleString()}</span>
-                  </div>
-                </div>
+                <label className="text-sm font-medium">Status</label>
+                <Select value={tempFilters.status} onValueChange={(value) => handleFilterChange('status', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="settled">Settled</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="flex gap-2 sm:gap-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Assigned Agent</label>
+                <Select value={tempFilters.assigned_agent} onValueChange={(value) => handleFilterChange('assigned_agent', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Agents</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    <SelectItem value="john-doe">John Doe</SelectItem>
+                    <SelectItem value="sarah-wilson">Sarah Wilson</SelectItem>
+                    <SelectItem value="mike-johnson">Mike Johnson</SelectItem>
+                    <SelectItem value="david-brown">David Brown</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Claim Type</label>
+                <Select value={tempFilters.claim_type} onValueChange={(value) => handleFilterChange('claim_type', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select claim type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {claimTypesLoading ? (
+                      <SelectItem value="" disabled>Loading...</SelectItem>
+                    ) : (
+                      claimTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id.toString()}>
+                          {type.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date From</label>
+                <Input
+                  type="date"
+                  value={tempFilters.start_date}
+                  onChange={(e) => handleFilterChange('start_date', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date To</label>
+                <Input
+                  type="date"
+                  value={tempFilters.end_date}
+                  onChange={(e) => handleFilterChange('end_date', e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
                 <Button
                   variant="outline"
-                  onClick={cancelApprove}
+                  onClick={cancelFilters}
                   className="flex-1"
                 >
                   Cancel
                 </Button>
                 <Button
-                  onClick={confirmApprove}
+                  onClick={applyFilters}
                   className="flex-1"
                 >
-                  Approve Claim
+                  Apply Filters
                 </Button>
               </div>
             </div>
@@ -945,4 +664,4 @@ export default function ClaimsReviewPage() {
       )}
     </div>
   );
-} 
+}
