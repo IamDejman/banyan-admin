@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useClaimsStore } from '@/lib/store/claims-store';
 import { ClaimStatus } from '@/lib/types/claims';
 import { format } from 'date-fns';
@@ -34,11 +33,7 @@ interface ClaimDetailsViewProps {
 }
 
 export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
-  const { selectedClaim, fetchClaimById, isLoading, uploadDocument } = useClaimsStore();
-
-  useEffect(() => {
-    fetchClaimById(claimId);
-  }, [claimId, fetchClaimById]);
+  const { selectedClaim, isLoading, uploadDocument } = useClaimsStore();
 
   if (isLoading || !selectedClaim) {
     return <div>Loading...</div>;

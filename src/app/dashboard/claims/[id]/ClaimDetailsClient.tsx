@@ -20,7 +20,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
-import { getClaimById } from '@/app/services/dashboard';
+import { getClaims } from '@/app/services/dashboard';
 import { ApiError } from '@/lib/types/settlement';
 
 // Define proper types for API response data
@@ -118,29 +118,38 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
     const fetchClaimData = async () => {
       setLoading(true);
       try {
-        console.log('Fetching claim with ID:', claimId);
-        const res = await getClaimById(claimId);
-        console.log('Single claim response:', res);
+        console.log('Fetching claims list to find claim with claim_number:', claimId);
+        
+        // Fetch all claims from the API
+        const res = await getClaims(1, 100); // Get first 100 claims
+        console.log('Claims list response:', res);
 
-        // Helper function to safely extract claim data
-        const extractClaimData = (response: unknown): ApiClaim | null => {
+        // Helper function to safely extract claims data
+        const extractClaimsData = (response: unknown): ApiClaim[] => {
           if (response && typeof response === 'object' && response !== null) {
-            // If response has data property
             if ('data' in response && response.data) {
-              return response.data as ApiClaim;
+              const data = response.data as { data: ApiClaim[] };
+              if ('data' in data && Array.isArray(data.data)) {
+                return data.data;
+              }
             }
-            // If response is the claim object itself
-            return response as ApiClaim;
           }
-          return null;
+          return [];
         };
 
-        const claimData = extractClaimData(res);
-        console.log('Extracted claim data:', claimData);
-        setClaimData(claimData);
+        const claimsData = extractClaimsData(res);
+        console.log('Extracted claims data:', claimsData);
+        
+        // Find the specific claim by claim_number
+        const foundClaim = claimsData.find(claim => claim.claim_number === claimId);
+        console.log('Found claim:', foundClaim);
+        
+        setClaimData(foundClaim || null);
       } catch (err: unknown) {
+        console.error('Error fetching claim data:', err);
         const error = err as ApiError;
-        console.error('Error fetching claim data:', error?.response?.data?.message || error?.message);
+        const errorMessage = error?.response?.data?.message || error?.message || 'Failed to fetch claim data';
+        console.error('Error message:', errorMessage);
         setClaimData(null);
       } finally {
         setLoading(false);
@@ -247,7 +256,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Claim Details</h1>
-            <p className="text-muted-foreground">Claim ID: {claimId}</p>
+            <p className="text-muted-foreground">Claim Number: {claimId}</p>
           </div>
         </div>
         <div className="text-center py-8">
@@ -264,7 +273,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Claim Details</h1>
-            <p className="text-muted-foreground">Claim ID: {claimId}</p>
+            <p className="text-muted-foreground">Claim Number: {claimId}</p>
           </div>
         </div>
         <div className="text-center py-8">
@@ -281,7 +290,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Claim Details</h1>
-          <p className="text-muted-foreground">Claim ID: {claimId}</p>
+          <p className="text-muted-foreground">Claim Number: {claimId}</p>
         </div>
         <Button variant="outline" size="sm" asChild>
           <Link href="/dashboard/claims">

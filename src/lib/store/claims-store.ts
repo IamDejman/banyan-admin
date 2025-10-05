@@ -96,7 +96,6 @@ interface ClaimsState {
   selectedClaim: Claim | null;
   isLoading: boolean;
   fetchClaims: () => Promise<void>;
-  fetchClaimById: (id: string) => Promise<void>;
   updateClaimStatus: (id: string, status: ClaimStatus, notes: string) => Promise<void>;
   uploadDocument: (claimId: string, fileName: string) => Promise<void>;
   addCommunication: (claimId: string, communication: Omit<ClaimCommunication, 'id' | 'timestamp'>) => Promise<void>;
@@ -120,18 +119,6 @@ export const useClaimsStore = create<ClaimsState>((set) => ({
     }
   },
 
-  fetchClaimById: async (id: string) => {
-    set({ isLoading: true });
-    try {
-      // TODO: Implement API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const claim = mockClaims.find(c => c.id === id);
-      set({ selectedClaim: claim || null, isLoading: false });
-    } catch {
-      console.error('Failed to fetch claim');
-      set({ isLoading: false });
-    }
-  },
 
   updateClaimStatus: async (id: string, status: ClaimStatus, notes: string) => {
     set({ isLoading: true });

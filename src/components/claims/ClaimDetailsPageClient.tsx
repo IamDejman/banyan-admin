@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
 import { ClaimDetailsView } from './ClaimDetailsView';
 import { ClaimReviewForm } from './ClaimReviewForm';
 import { useAuthStore } from '@/lib/store/auth-store';
-import { useClaimsStore } from '@/lib/store/claims-store';
 
 interface ClaimDetailsPageClientProps {
   claimId: string;
@@ -12,11 +10,6 @@ interface ClaimDetailsPageClientProps {
 
 export function ClaimDetailsPageClient({ claimId }: ClaimDetailsPageClientProps) {
   const { user } = useAuthStore();
-  const { fetchClaimById } = useClaimsStore();
-
-  useEffect(() => {
-    fetchClaimById(claimId);
-  }, [claimId, fetchClaimById]);
 
   return (
     <div className="space-y-6">
@@ -38,8 +31,8 @@ export function ClaimDetailsPageClient({ claimId }: ClaimDetailsPageClientProps)
               <ClaimReviewForm
                 claimId={claimId}
                 onSuccess={() => {
-                  // Refresh claim details after successful review
-                  fetchClaimById(claimId);
+                  // API not ready for use yet
+                  console.log('Review submitted for claim:', claimId);
                 }}
               />
             ) : (

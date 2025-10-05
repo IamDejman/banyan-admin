@@ -13,19 +13,21 @@ const navigationSections = [
     items: [],
   },
   {
-    name: 'Claims',
-    href: '/dashboard/claims',
-    items: [],
-  },
-  {
-    name: 'Assign Claims',
-    href: '/dashboard/admin',
-    items: [],
-  },
-  {
-    name: 'Documents',
-    href: '/dashboard/documents',
-    items: [],
+    name: 'Claims Management',
+    items: [
+      {
+        name: 'Claims',
+        href: '/dashboard/claims',
+      },
+      {
+        name: 'Assign Claims',
+        href: '/dashboard/admin',
+      },
+      {
+        name: 'Documents',
+        href: '/dashboard/documents',
+      },
+    ],
   },
   // {
   //   name: 'Assessments',

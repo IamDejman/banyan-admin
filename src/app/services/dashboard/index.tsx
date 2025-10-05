@@ -193,7 +193,6 @@ export const getClaims = (
   return Http.get(`/admin/claims?${params.toString()}`);
 };
 
-export const getClaimById = (id: string): Promise<ApiResponse<Claim>> => Http.get(`/admin/claims/${id}`);
 
 export const getDocumentStatistics = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claims/document-statistics`);
 export const listDocuments = (): Promise<ApiResponse<Document[]>> => Http.get(`/admin/claims/documents`);

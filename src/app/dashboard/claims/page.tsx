@@ -477,7 +477,7 @@ export default function ClaimsReviewPage() {
                       <TableCell>{claim.assigned_agent}</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/dashboard/claims/${claim.id}`}>
+                          <Link href={`/dashboard/claims/${claim.originalClaim.claim_number}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
