@@ -8,20 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
-  Clock,
   FileText,
   Search,
   Eye,
-  CheckSquare,
   Filter,
   X,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 import Link from 'next/link';
-import { getClaims, getClaimsStatistics, getClaimTypes } from '@/app/services/dashboard';
+import { getClaims, getClaimsStatistics, getClaimTypes, getClaimAssignments } from '@/app/services/dashboard';
+import { formatStatus } from '@/lib/utils/text-formatting';
 import { toast } from '@/components/ui/use-toast';
 
 // Define proper types for API response data
@@ -120,6 +121,8 @@ export default function ClaimsReviewPage() {
   const [claimTypes, setClaimTypes] = useState<Array<{id: string | number, name: string}>>([]);
   const [claimTypesLoading, setClaimTypesLoading] = useState(false);
   const [, setClaimTypesError] = useState<string | null>(null);
+  const [assignments, setAssignments] = useState<Array<{id: string | number, agent_name: string}>>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [tempFilters, setTempFilters] = useState<FilterState>({
     status: 'all',
     assigned_agent: 'all',
@@ -133,6 +136,7 @@ export default function ClaimsReviewPage() {
     const colors = {
       submitted: "bg-yellow-100 text-yellow-800",
       completed: "bg-green-100 text-green-800",
+      approved: "bg-emerald-100 text-emerald-800",
       settled: "bg-green-100 text-green-800",
       rejected: "bg-red-100 text-red-800",
       processing: "bg-blue-100 text-blue-800",
@@ -143,12 +147,28 @@ export default function ClaimsReviewPage() {
 
   // Transform API claim data to table format
   const transformClaimData = (claim: ApiClaim): TransformedClaim => {
+    // Format status to sentence case
+    const formatStatus = (status: string) => {
+      return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    };
+
+    // Format submission date to DD Mmm YYYY HH:MM
+    const formatSubmissionDate = (dateString: string) => {
+      const date = new Date(dateString);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = date.toLocaleDateString('en-US', { month: 'short' });
+      const year = date.getFullYear();
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${day} ${month} ${year} ${hours}:${minutes}`;
+    };
+
     return {
       id: claim.id, // Use database ID for navigation
       clientName: `${claim.client.first_name} ${claim.client.last_name}`,
-      submissionDate: new Date(claim.submission_date).toLocaleDateString(),
+      submissionDate: formatSubmissionDate(claim.submission_date),
       claim_type: claim.claim_type_details?.name || 'Unknown',
-      status: claim.status === 'completed' ? 'Settled' : 'Pending Review',
+      status: formatStatus(claim.status),
       assigned_agent: claim.assigned_agent || 'Unassigned',
       originalClaim: claim,
     };
@@ -290,6 +310,53 @@ export default function ClaimsReviewPage() {
     }
   };
 
+  const fetchAssignments = async () => {
+    setAssignmentsLoading(true);
+    try {
+      console.log('Fetching claim assignments...');
+      const res = await getClaimAssignments();
+      console.log('Assignments response:', res);
+      
+      // Handle different possible response structures
+      let assignmentsData = null;
+      if (res && res.data && Array.isArray(res.data)) {
+        assignmentsData = res.data;
+      } else if (Array.isArray(res)) {
+        assignmentsData = res;
+      }
+      
+      if (assignmentsData && assignmentsData.length > 0) {
+        // Extract unique agents from assignments
+        const uniqueAgents = assignmentsData.reduce((acc: Array<{id: string | number, agent_name: string}>, assignment: { agent_name: string; agent_id?: string | number; id?: string | number }) => {
+          if (assignment.agent_name && !acc.find(agent => agent.agent_name === assignment.agent_name)) {
+            acc.push({
+              id: assignment.agent_id || assignment.id || assignment.agent_name,
+              agent_name: assignment.agent_name
+            });
+          }
+          return acc;
+        }, []);
+        
+        console.log('Mapped assignments:', uniqueAgents);
+        setAssignments(uniqueAgents);
+      } else {
+        console.log('No assignments data found in API response');
+        setAssignments([]);
+      }
+    } catch (error: unknown) {
+      const errorMsg = (error as ApiError)?.response?.data?.message || (error as ApiError)?.message || 'Failed to fetch assignments';
+      console.error('Error fetching assignments:', error);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive",
+      });
+      setAssignments([]);
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  };
+
   // Fetch claims with filters and pagination
   const fetchClaimsWithFilters = useCallback(async (page: number = 1, filterParams: FilterState | null = null) => {
     setLoading(true);
@@ -345,6 +412,7 @@ export default function ClaimsReviewPage() {
       setStatistics(statsData as Statistics);
     });
     fetchClaimTypes();
+    fetchAssignments();
     fetchClaims(1);
     // Initialize temp filters with current filters
     setTempFilters(filters);
@@ -359,14 +427,26 @@ export default function ClaimsReviewPage() {
         </div>
       </div>
 
-      {/* KPI Cards - Only Total Pending Claims and Settled Claims */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+      {/* KPI Cards - Enhanced with better icons */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium">
-              Total Pending Claims
+              Total Claims
             </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <FileText className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl sm:text-2xl font-bold">{statistics.total_pending_claims + statistics.settled_claim}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">
+              Pending Review
+            </CardTitle>
+            <AlertCircle className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold">{statistics.total_pending_claims}</div>
@@ -376,14 +456,26 @@ export default function ClaimsReviewPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium">
-              Settled Claims
+              Approved
             </CardTitle>
-            <CheckSquare className="h-4 w-4 text-muted-foreground" />
+            <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold">{statistics.settled_claim}</div>
           </CardContent>
         </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">
+                Settlements
+              </CardTitle>
+              <div className="text-emerald-600 font-bold text-lg">₦</div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold">₦0</div>
+            </CardContent>
+          </Card>
       </div>
 
       {/* All Claims - Single Box */}
@@ -471,13 +563,13 @@ export default function ClaimsReviewPage() {
                       <TableCell>{claim.claim_type}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(claim.status)}>
-                          {claim.status}
+                          {formatStatus(claim.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>{claim.assigned_agent}</TableCell>
                       <TableCell>
                         <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/dashboard/claims/${claim.originalClaim.claim_number}`}>
+                          <Link href={`/dashboard/claims/${claim.id}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
@@ -596,10 +688,15 @@ export default function ClaimsReviewPage() {
                   <SelectContent>
                     <SelectItem value="all">All Agents</SelectItem>
                     <SelectItem value="unassigned">Unassigned</SelectItem>
-                    <SelectItem value="john-doe">John Doe</SelectItem>
-                    <SelectItem value="sarah-wilson">Sarah Wilson</SelectItem>
-                    <SelectItem value="mike-johnson">Mike Johnson</SelectItem>
-                    <SelectItem value="david-brown">David Brown</SelectItem>
+                    {assignmentsLoading ? (
+                      <SelectItem value="" disabled>Loading agents...</SelectItem>
+                    ) : (
+                      assignments.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.agent_name.toLowerCase().replace(/\s+/g, '-')}>
+                          {agent.agent_name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

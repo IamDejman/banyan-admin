@@ -1,14 +1,18 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Check, X, ChevronDown, ChevronRight, UserX } from "lucide-react";
+import { Plus, Check, X, ChevronDown, ChevronRight, UserX, Loader2, Edit } from "lucide-react";
 import AdminForm from "./AdminForm";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { Admin, UserStatus } from "@/lib/types/user";
+import { getAdmins, getAllUsers, createAdmin, disableUser, searchAdmins, editUser } from "@/app/services/dashboard";
+import { formatStatus } from "@/lib/utils/text-formatting";
+import { useToast } from "@/components/ui/use-toast";
+import { useDebounce } from "@/hooks/useDebounce";
 
 // Mock admin data
 const mockAdmins: Admin[] = [
@@ -22,9 +26,11 @@ const mockAdmins: Admin[] = [
     createdAt: "2024-01-01",
     lastLogin: "2024-01-20T10:30:00",
     role: "admin" as const,
-    permissions: ["claims_management", "user_management", "system_config", "reports_view"],
+    permissions: ["claims_management", "system_config", "reports_view"],
     isSuperAdmin: false,
-    department: "Administration"
+    department: "Administration",
+    assignedClaims: ["CLM-001", "CLM-003"],
+    completedClaims: ["CLM-002", "CLM-004"]
   },
   {
     id: "2",
@@ -36,9 +42,11 @@ const mockAdmins: Admin[] = [
     createdAt: "2024-01-02",
     lastLogin: "2024-01-19T14:15:00",
     role: "admin" as const,
-    permissions: ["claims_management", "user_management", "audit_logs"],
+    permissions: ["claims_management", "audit_logs"],
     isSuperAdmin: false,
-    department: "Operations"
+    department: "Operations",
+    assignedClaims: ["CLM-005", "CLM-006"],
+    completedClaims: ["CLM-007"]
   },
   {
     id: "3",
@@ -52,14 +60,15 @@ const mockAdmins: Admin[] = [
     role: "admin" as const,
     permissions: ["system_config", "reports_view", "audit_logs"],
     isSuperAdmin: true,
-    department: "IT"
+    department: "IT",
+    assignedClaims: [],
+    completedClaims: ["CLM-008", "CLM-009", "CLM-010"]
   },
 ];
 
 // Permission labels mapping
 const permissionLabels = {
   claims_management: "Claims Management",
-  user_management: "User Management",
   system_config: "System Configuration",
   reports_view: "Reports View",
   audit_logs: "Audit Logs",
@@ -69,11 +78,167 @@ const permissionLabels = {
 };
 
 export default function AdminsPage() {
-  const [admins, setAdmins] = useState(mockAdmins);
-  const [modal, setModal] = useState<{ mode: "create" | "edit"; admin?: typeof mockAdmins[0] } | null>(null);
+  const [admins, setAdmins] = useState<Admin[]>([]);
+  const [modal, setModal] = useState<{ mode: "create" | "edit"; admin?: Admin } | null>(null);
+  const [expandedAdmin, setExpandedAdmin] = useState<Admin | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter] = useState("all");
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const { toast } = useToast();
+  const debouncedSearch = useDebounce(search, 500);
+
+  // Fetch admins from API
+  const fetchAdmins = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log("Fetching admins from API...");
+      let response;
+      
+      try {
+        // Try the primary admins endpoint first
+        response = await getAdmins();
+        console.log("Primary admins response:", response);
+      } catch (primaryError) {
+        console.warn('Primary admins endpoint failed, trying alternative...', primaryError);
+        try {
+          // Try alternative endpoint to get all users
+          response = await getAllUsers();
+          console.log('All users response:', response);
+          
+          // Filter admins from all users on the client side
+          if (response && response.data && Array.isArray(response.data)) {
+            const admins = (response.data as unknown as { role: string }[]).filter((user: { role: string }) => user.role === 'admin');
+            response = { ...response, data: admins };
+          }
+        } catch (altError) {
+          console.error('Alternative endpoint also failed:', altError);
+          throw altError;
+        }
+      }
+      
+      // Check if response has data property
+      if (response && Array.isArray(response.data)) {
+        // Transform API response to match Admin interface
+        const transformedAdmins: Admin[] = (response.data as unknown as { id: string | number; first_name: string; last_name: string; email: string; phone: string; status: string; created_at: string; last_login_at?: string; permissions?: string[]; is_super_admin?: boolean; department?: string }[]).map((admin: { 
+          id: string | number; 
+          first_name: string; 
+          last_name: string; 
+          email: string; 
+          phone: string; 
+          status: string; 
+          created_at: string; 
+          last_login_at?: string;
+          permissions?: string[];
+          is_super_admin?: boolean;
+          department?: string;
+        }) => ({
+          id: admin.id?.toString() || (admin as { user_id?: string | number }).user_id?.toString() || `admin-${Date.now()}`,
+          firstName: admin.first_name || (admin as { firstName?: string }).firstName || "Unknown",
+          lastName: admin.last_name || (admin as { lastName?: string }).lastName || "Unknown",
+          email: admin.email || "",
+          phone: admin.phone || (admin as { phone_number?: string }).phone_number || "",
+          status: (admin.status || "active") as UserStatus,
+          createdAt: admin.created_at || (admin as { createdAt?: string }).createdAt || new Date().toISOString().split('T')[0],
+          lastLogin: admin.last_login_at || (admin as { lastLogin?: string }).lastLogin,
+          role: "admin" as const,
+          permissions: admin.permissions || [],
+          isSuperAdmin: admin.is_super_admin || (admin as { isSuperAdmin?: boolean }).isSuperAdmin || false,
+          department: admin.department || "Administration",
+          assignedClaims: [],
+          completedClaims: []
+        }));
+        
+        setAdmins(transformedAdmins);
+      } else {
+        // If no data array, treat as empty result
+        setAdmins([]);
+      }
+    } catch (err: unknown) {
+      console.error("Error fetching admins:", err);
+      
+      // Check if it's a backend filtering error
+      if ((err as { response?: { data?: { message?: string } } })?.response?.data?.message?.includes("scopeFilter")) {
+        setError("Backend filtering error. Using mock data for demonstration.");
+        setAdmins(mockAdmins);
+      } else {
+        setError("Failed to load admins. Please try again.");
+        // Fallback to mock data in case of API error
+        setAdmins(mockAdmins);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAdmins();
+  }, [fetchAdmins]);
+
+  // Handle debounced search
+  useEffect(() => {
+    if (debouncedSearch.trim()) {
+      handleSearch(debouncedSearch);
+    } else {
+      fetchAdmins();
+    }
+  }, [debouncedSearch]);
+
+  const handleSearch = async (searchTerm: string) => {
+    setSearchLoading(true);
+    try {
+      console.log('Searching admins with term:', searchTerm);
+      const response = await searchAdmins(searchTerm);
+      console.log('Search response:', response);
+      
+      if (response?.data && Array.isArray(response.data)) {
+        const transformedAdmins = (response.data as unknown as { id: string | number; first_name: string; last_name: string; email: string; phone: string; status: string; created_at: string; last_login_at?: string; permissions?: string[]; is_super_admin?: boolean; department?: string }[]).map((admin: { 
+          id: string | number; 
+          first_name: string; 
+          last_name: string; 
+          email: string; 
+          phone: string; 
+          status: string; 
+          created_at: string; 
+          last_login_at?: string;
+          permissions?: string[];
+          is_super_admin?: boolean;
+          department?: string;
+        }) => ({
+          id: admin.id?.toString() || `admin-${Date.now()}`,
+          firstName: admin.first_name || (admin as { firstName?: string }).firstName || "Unknown",
+          lastName: admin.last_name || (admin as { lastName?: string }).lastName || "Unknown",
+          email: admin.email || "",
+          phone: admin.phone || (admin as { phone_number?: string }).phone_number || "",
+          status: (admin.status || "active") as UserStatus,
+          createdAt: admin.created_at || new Date().toISOString().split('T')[0],
+          lastLogin: admin.last_login_at || undefined,
+          role: "admin" as const,
+          permissions: admin.permissions || [],
+          department: admin.department || "Administration",
+          isSuperAdmin: admin.is_super_admin || false,
+          assignedClaims: [],
+          completedClaims: []
+        }));
+        setAdmins(transformedAdmins);
+      } else {
+        setAdmins([]);
+      }
+    } catch (error) {
+      console.error('Search failed:', error);
+      toast({
+        variant: "destructive",
+        title: "Search failed",
+        description: "Failed to search admins. Please try again.",
+      });
+      setAdmins([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
 
   const filteredAdmins = admins.filter((admin) => {
     const matchesSearch = 
@@ -86,12 +251,36 @@ export default function AdminsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  function handleToggleStatus(adminId: string) {
-    setAdmins(prev => prev.map(admin => 
-      admin.id === adminId 
-        ? { ...admin, status: admin.status === "active" ? "inactive" : "active" }
-        : admin
-    ));
+  async function handleToggleStatus(adminId: string) {
+    const admin = admins.find(a => a.id === adminId);
+    if (!admin) return;
+
+    const action = admin.disabled ? 'enable' : 'disable';
+    const confirmed = window.confirm(
+      `Are you sure you want to ${action} ${admin.firstName} ${admin.lastName}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Call the API to disable/enable the admin
+      await disableUser(adminId);
+      
+      // Update the local state
+      setAdmins(prev => prev.map(admin => 
+        admin.id === adminId 
+          ? { ...admin, disabled: !admin.disabled, status: admin.disabled ? "active" : "inactive" }
+          : admin
+      ));
+    } catch (err) {
+      console.error('Failed to toggle admin status:', err);
+      setError('Failed to update admin status. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleToggleExpanded(adminId: string) {
@@ -102,40 +291,77 @@ export default function AdminsPage() {
     );
   }
 
-  function handleCreateAdmin(adminData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
-    const newAdmin: Admin = {
-      id: `admin-${Date.now()}`,
-      firstName: adminData.firstName,
-      lastName: adminData.lastName,
-      email: adminData.email,
-      phone: adminData.phoneNumber,
-      role: "admin",
-      status: "active",
-      permissions: [],
-      isSuperAdmin: false,
-      createdAt: new Date().toISOString().split('T')[0],
-      lastLogin: undefined,
-      department: "Administration"
-    };
-    setAdmins([newAdmin, ...admins]);
-    setModal(null);
+  async function handleCreateAdmin(adminData: { firstName: string; lastName: string; email: string; phoneNumber: string; password: string }) {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Call the API to create the admin
+      await createAdmin({
+        email: adminData.email,
+        first_name: adminData.firstName,
+        last_name: adminData.lastName,
+        password: adminData.password,
+        role: "admin",
+        phone: adminData.phoneNumber
+      });
+
+      // If we get here, the API call succeeded (200 response)
+      // Refresh the page to show the new admin
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to create admin:', err);
+      setError('Failed to create admin. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function handleUpdateAdmin(adminData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
+  async function handleUpdateAdmin(adminData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
     if (!modal?.admin) return;
     
-    const updatedAdmin: Admin = {
-      ...modal.admin,
-      firstName: adminData.firstName,
-      lastName: adminData.lastName,
-      email: adminData.email,
-      phone: adminData.phoneNumber,
-    };
-    
-    setAdmins(prev => prev.map(admin => 
-      admin.id === modal.admin!.id ? updatedAdmin : admin
-    ));
-    setModal(null);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Call the API to update the admin
+      await editUser(modal.admin.id, {
+        first_name: adminData.firstName,
+        last_name: adminData.lastName,
+        email: adminData.email,
+        phone: adminData.phoneNumber,
+        role: "admin"
+      });
+      
+      // Update the local state
+      const updatedAdmin: Admin = {
+        ...modal.admin,
+        firstName: adminData.firstName,
+        lastName: adminData.lastName,
+        email: adminData.email,
+        phone: adminData.phoneNumber,
+      };
+      
+      setAdmins(prev => prev.map(admin => 
+        admin.id === modal.admin!.id ? updatedAdmin : admin
+      ));
+      setModal(null);
+      
+      toast({
+        title: "Admin updated",
+        description: `${adminData.firstName} ${adminData.lastName} has been updated successfully.`,
+      });
+    } catch (err) {
+      console.error('Failed to update admin:', err);
+      setError('Failed to update admin. Please try again.');
+      toast({
+        variant: "destructive",
+        title: "Error updating admin",
+        description: "Failed to update admin. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -157,13 +383,13 @@ export default function AdminsPage() {
       <Card>
         <div className="p-4 sm:p-6 border-b">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
-              <div className="relative">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4 flex-1">
+              <div className="relative flex-1">
                 <Input
                   placeholder="Search admins..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full lg:w-64"
+                  className="w-full"
                 />
               </div>
             </div>
@@ -183,7 +409,25 @@ export default function AdminsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAdmins.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <div className="text-center">
+                        <Loader2 className="h-8 w-8 text-gray-400 mx-auto mb-2 animate-spin" />
+                        <p className="text-sm text-muted-foreground">Loading admins...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <div className="text-center">
+                        <UserX className="h-8 w-8 text-red-400 mx-auto mb-2" />
+                        <p className="text-sm text-red-600 mb-3">{error}</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredAdmins.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8">
                       <div className="text-center">
@@ -221,33 +465,33 @@ export default function AdminsPage() {
                           {admin.lastLogin ? new Date(admin.lastLogin).toLocaleDateString() : "Never"}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <Badge className={admin.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                            {admin.status}
+                          <Badge className={!admin.disabled ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                            {admin.disabled ? "Disabled" : "Active"}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1 sm:gap-2">
-                            <Tooltip content="View Details">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleToggleExpanded(admin.id)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </Tooltip>
-                            <Tooltip content={admin.status === "active" ? "Disable Admin" : "Enable Admin"}>
+                            <Tooltip content={!admin.disabled ? "Disable Admin" : "Enable Admin"}>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleToggleStatus(admin.id)}
-                                className={admin.status === "active" ? "text-red-500" : "text-green-600"}
+                                className={!admin.disabled ? "text-red-500" : "text-green-600"}
                               >
-                                {admin.status === "active" ? (
+                                {!admin.disabled ? (
                                   <X className="h-4 w-4" />
                                 ) : (
                                   <Check className="h-4 w-4" />
                                 )}
+                              </Button>
+                            </Tooltip>
+                            <Tooltip content="Edit Admin">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setModal({ mode: "edit", admin })}
+                              >
+                                <Edit className="h-4 w-4" />
                               </Button>
                             </Tooltip>
                           </div>
@@ -299,12 +543,30 @@ export default function AdminsPage() {
           
           {/* Mobile Admin Cards */}
           <div className="sm:hidden space-y-3 p-4">
-            {filteredAdmins.map((admin) => (
+            {(loading || searchLoading) ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 text-gray-400 mx-auto mb-2 animate-spin" />
+                <p className="text-sm text-muted-foreground">
+                  {searchLoading ? "Searching admins..." : "Loading admins..."}
+                </p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <UserX className="h-8 w-8 text-red-400 mx-auto mb-2" />
+                <p className="text-sm text-red-600 mb-3">{error}</p>
+              </div>
+            ) : filteredAdmins.length === 0 ? (
+              <div className="text-center py-8">
+                <UserX className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No admins found</p>
+              </div>
+            ) : (
+              filteredAdmins.map((admin) => (
               <div key={admin.id} className="border rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{admin.firstName} {admin.lastName}</span>
                   <Badge className={admin.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                    {admin.status}
+                    {formatStatus(admin.status)}
                   </Badge>
                 </div>
                 <div className="space-y-1 text-sm">
@@ -322,22 +584,18 @@ export default function AdminsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-2">
-                  <Button variant="ghost" size="sm" onClick={() => handleToggleExpanded(admin.id)} className="flex-1">
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={() => handleToggleStatus(admin.id)} 
-                    className={`flex-1 ${admin.status === "active" ? "text-red-500" : "text-green-600"}`}
+                    className={`flex-1 ${!admin.disabled ? "text-red-500" : "text-green-600"}`}
                   >
-                    {admin.status === "active" ? (
+                    {!admin.disabled ? (
                       <X className="h-4 w-4 mr-1" />
                     ) : (
                       <Check className="h-4 w-4 mr-1" />
                     )}
-                    {admin.status === "active" ? "Disable" : "Enable"}
+                    {!admin.disabled ? "Disable" : "Enable"}
                   </Button>
                 </div>
                 {expandedRows.includes(admin.id) && (
@@ -355,10 +613,102 @@ export default function AdminsPage() {
                   </div>
                 )}
               </div>
-            ))}
+            )))}
           </div>
         </div>
       </Card>
+
+      {/* Expanded Admin View */}
+      {expandedAdmin && (
+        <Card className="mt-6">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold">Admin Details</h3>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setExpandedAdmin(null)}
+              >
+                Close
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Assigned Claims */}
+              <div>
+                <div className="text-4xl font-bold text-blue-600 mb-1">
+                  {expandedAdmin.assignedClaims?.length || 0}
+                </div>
+                <div className="text-sm text-gray-600">Assigned Claims</div>
+              </div>
+
+              {/* Completed Claims */}
+              <div>
+                <div className="text-4xl font-bold text-green-600 mb-1">
+                  {expandedAdmin.completedClaims?.length || 0}
+                </div>
+                <div className="text-sm text-gray-600">Completed Claims</div>
+              </div>
+
+              {/* Last Login */}
+              <div>
+                <span className="text-sm text-gray-600">Last Login: </span>
+                <span className="text-sm text-gray-900">
+                  {expandedAdmin.lastLogin ? 
+                    new Date(expandedAdmin.lastLogin).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    }).replace(/,/g, '') : 'Never'
+                  }
+                </span>
+              </div>
+
+              {/* Date Created */}
+              <div>
+                <span className="text-sm text-gray-600">Date Created: </span>
+                <span className="text-sm text-gray-900">
+                  {new Date(expandedAdmin.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </span>
+              </div>
+
+              {/* Additional Info */}
+              <div className="flex gap-4">
+                <div>
+                  <Badge 
+                    variant={expandedAdmin.status === "active" ? "default" : "secondary"}
+                    className={expandedAdmin.status === "active" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-600 border-gray-200"}
+                  >
+                    {formatStatus(expandedAdmin.status)}
+                  </Badge>
+                </div>
+                {expandedAdmin.isSuperAdmin && (
+                  <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">
+                    Super Admin
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-6 pt-6 border-t flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setModal({ mode: "edit", admin: expandedAdmin })}
+              >
+                Edit Admin
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {modal && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">

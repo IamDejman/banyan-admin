@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Eye, EyeOff } from "lucide-react";
 import type { Customer } from "@/lib/types/user";
 
 interface CustomerFormProps {
@@ -13,6 +14,7 @@ interface CustomerFormProps {
     lastName: string;
     email: string;
     phoneNumber: string;
+    password: string;
   }) => void;
   onCancel: () => void;
 }
@@ -26,6 +28,8 @@ export default function CustomerForm({
   const [lastName, setLastName] = useState(customer?.lastName || "");
   const [email, setEmail] = useState(customer?.email || "");
   const [phoneNumber, setPhoneNumber] = useState(customer?.phone || "");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmit(e: React.FormEvent) {
@@ -48,8 +52,14 @@ export default function CustomerForm({
 
     if (!phoneNumber.trim()) {
       newErrors.phoneNumber = "Phone number is required";
-    } else if (!/^\+234\d{10}$/.test(phoneNumber)) {
-      newErrors.phoneNumber = "Please enter a valid Nigerian phone number (+234XXXXXXXXXX)";
+    } else if (!/^0\d{10}$/.test(phoneNumber)) {
+      newErrors.phoneNumber = "Please enter a valid Nigerian phone number (08012345678)";
+    }
+
+    if (!customer && !password.trim()) {
+      newErrors.password = "Password is required";
+    } else if (!customer && password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters long";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -62,6 +72,7 @@ export default function CustomerForm({
       lastName: lastName.trim(),
       email: email.trim().toLowerCase(),
       phoneNumber: phoneNumber.trim(),
+      password: password.trim(),
     });
   }
 
@@ -114,10 +125,38 @@ export default function CustomerForm({
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
             className={errors.phoneNumber ? "border-red-500" : ""}
-            placeholder="+2348012345678"
+            placeholder="08012345678"
           />
           {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>}
         </div>
+
+        {!customer && (
+          <div>
+            <Label htmlFor="password">Password *</Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`pr-10 ${errors.password ? "border-red-500" : ""}`}
+                placeholder="Enter password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          </div>
+        )}
 
         <div className="flex gap-2 justify-end pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>

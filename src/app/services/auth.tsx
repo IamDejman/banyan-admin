@@ -49,6 +49,10 @@ export const forgotPassword = (payload: { email: string }) =>
 export const resendOtp = (payload: { email: string }) =>
   Http.post(`/auth/resend-otp`, payload);
 
+// Resend OTP using otp_hash (for after login verification)
+export const resendOtpWithHash = (payload: { otp_hash: string }) =>
+  Http.post(`/admin/resend-otp`, payload);
+
 export const resetPassword = (payload: {
   otp: string;
   reset_id: string;

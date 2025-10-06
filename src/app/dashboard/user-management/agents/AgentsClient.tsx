@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AgentForm from "./AgentForm";
 import type { Agent } from "@/lib/types/user";
+import { formatStatus, formatDepartment, toSentenceCase } from "@/lib/utils/text-formatting";
+import { createAgent } from "@/app/services/dashboard";
+import { useToast } from "@/components/ui/use-toast";
 
 const initialMockAgents: Agent[] = [
   {
@@ -24,6 +27,7 @@ const initialMockAgents: Agent[] = [
     department: "Claims",
     supervisor: "John Doe",
     assignedClaims: ["CLM001", "CLM002"],
+    completedClaims: ["CLM001"],
     performanceRating: 4.5,
     specializations: ["Auto", "Property"],
   },
@@ -41,6 +45,7 @@ const initialMockAgents: Agent[] = [
     department: "Customer Service",
     supervisor: "Jane Smith",
     assignedClaims: ["CLM003"],
+    completedClaims: ["CLM003"],
     performanceRating: 4.2,
     specializations: ["Health"],
   },
@@ -52,6 +57,7 @@ export default function AgentsClient() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [modal, setModal] = useState<{ mode: "add" | "edit" | "view"; agent: Agent | null } | null>(null);
+  const { toast } = useToast();
 
   const filtered = agents.filter((agent) => {
     const matchesSearch = 
@@ -64,26 +70,77 @@ export default function AgentsClient() {
     return matchesSearch && matchesStatus && matchesDepartment;
   });
 
-  function handleAdd(agentData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
-    const newAgent: Agent = {
-      id: `agent-${Date.now()}`,
-      firstName: agentData.firstName,
-      lastName: agentData.lastName,
-      email: agentData.email,
-      phone: agentData.phoneNumber,
-      role: "agent",
-      status: "active",
-      employeeId: `EMP${Date.now()}`,
-      department: "Claims Processing",
-      supervisor: undefined,
-      assignedClaims: [],
-      performanceRating: undefined,
-      specializations: [],
-      createdAt: new Date().toISOString().split('T')[0],
-      lastLogin: undefined
-    };
-    setAgents(prev => [...prev, newAgent]);
-    setModal(null);
+  async function handleAdd(agentData: { firstName: string; lastName: string; email: string; phoneNumber: string; password?: string }) {
+    try {
+      console.log('Creating agent with data:', agentData);
+      
+      // Prepare data for API
+      const apiData = {
+        email: agentData.email,
+        first_name: agentData.firstName,
+        last_name: agentData.lastName,
+        password: agentData.password || "",
+        role: "agent" as const,
+        phone: agentData.phoneNumber
+      };
+      
+      const response = await createAgent(apiData);
+      console.log('Agent creation response:', response);
+      
+      if (response && response.data) {
+        // Transform API response to match Agent interface
+        const newAgent: Agent = {
+          id: response.data.id?.toString() || `agent-${Date.now()}`,
+          firstName: response.data.first_name || agentData.firstName,
+          lastName: response.data.last_name || agentData.lastName,
+          email: response.data.email || agentData.email,
+          phone: agentData.phoneNumber,
+          role: "agent",
+          status: "active",
+          employeeId: `EMP${Date.now()}`,
+          department: "Claims Processing",
+          supervisor: undefined,
+          assignedClaims: [],
+          completedClaims: [],
+          performanceRating: undefined,
+          specializations: [],
+          createdAt: new Date().toISOString().split('T')[0],
+          lastLogin: undefined
+        };
+        
+        setAgents(prev => [...prev, newAgent]);
+        setModal(null);
+        toast({
+          title: "Agent created successfully",
+          description: `${agentData.firstName} ${agentData.lastName} has been added.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error creating agent",
+          description: "Failed to create agent. Please try again.",
+        });
+      }
+    } catch (error: unknown) {
+      console.error('Error creating agent:', error);
+      
+      // Extract specific error message from the error object
+      let errorMessage = 'Error creating agent. Please check the form data and try again.';
+      
+      if ((error as { response?: { data?: { message?: string } } })?.response?.data?.message) {
+        errorMessage = (error as { response: { data: { message: string } } }).response.data.message;
+      } else if ((error as { response?: { data?: { error?: string } } })?.response?.data?.error) {
+        errorMessage = (error as { response: { data: { error: string } } }).response.data.error;
+      } else if ((error as { message?: string })?.message) {
+        errorMessage = (error as { message: string }).message;
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Error creating agent",
+        description: errorMessage,
+      });
+    }
   }
 
   function handleEdit(agentData: { firstName: string; lastName: string; email: string; phoneNumber: string }) {
@@ -117,38 +174,40 @@ export default function AgentsClient() {
         <Button onClick={() => setModal({ mode: "add", agent: null })}>Add Agent</Button>
       </div>
       
-      <div className="flex gap-4 items-center">
-        <Input
-          placeholder="Search by name, email, or employee ID..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-64"
-        />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="suspended">Suspended</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Department" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Departments</SelectItem>
-            <SelectItem value="Claims">Claims</SelectItem>
-            <SelectItem value="Customer Service">Customer Service</SelectItem>
-            <SelectItem value="Sales">Sales</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Card className="overflow-x-auto">
+      <Card>
+        <div className="p-6">
+          <div className="flex gap-4 items-center mb-6">
+            <Input
+              placeholder="Search by name, email, or employee ID..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-64"
+            />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="suspended">Suspended</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                <SelectItem value="Claims">Claims</SelectItem>
+                <SelectItem value="Customer Service">Customer Service</SelectItem>
+                <SelectItem value="Sales">Sales</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -179,11 +238,11 @@ export default function AgentsClient() {
                   </div>
                 </TableCell>
                 <TableCell>{agent.employeeId}</TableCell>
-                <TableCell>{agent.department}</TableCell>
+                <TableCell>{formatDepartment(agent.department)}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {agent.specializations.map(spec => (
-                      <Badge key={spec} variant="outline" className="text-xs">{spec}</Badge>
+                      <Badge key={spec} variant="outline" className="text-xs">{toSentenceCase(spec)}</Badge>
                     ))}
                   </div>
                 </TableCell>
@@ -201,7 +260,7 @@ export default function AgentsClient() {
                 </TableCell>
                 <TableCell>
                   <Badge variant={agent.status === "active" ? "default" : "secondary"}>
-                    {agent.status}
+                    {formatStatus(agent.status)}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -216,6 +275,7 @@ export default function AgentsClient() {
             ))}
           </TableBody>
         </Table>
+        </div>
       </Card>
 
       {modal && (
@@ -270,7 +330,7 @@ export default function AgentsClient() {
                     <div>
                       <span className="font-medium">Status:</span> 
                       <Badge variant={modal.agent!.status === "active" ? "default" : "secondary"} className="ml-2">
-                        {modal.agent!.status}
+                        {formatStatus(modal.agent!.status)}
                       </Badge>
                     </div>
                     <div>

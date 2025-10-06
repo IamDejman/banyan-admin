@@ -20,7 +20,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
-import { getClaims } from '@/app/services/dashboard';
+import { getClaimById, approveClaim, requestAdditionalInformation } from '@/app/services/dashboard';
 import { ApiError } from '@/lib/types/settlement';
 
 // Define proper types for API response data
@@ -108,43 +108,55 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
   // Modal states
   const [showRequestInfoModal, setShowRequestInfoModal] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   
   // Request info form state
   const [requestType, setRequestType] = useState<'document' | 'question'>('document');
   const [documentName, setDocumentName] = useState('');
   const [question, setQuestion] = useState('');
 
-  useEffect(() => {
-    const fetchClaimData = async () => {
+  const fetchClaimData = async () => {
       setLoading(true);
       try {
-        console.log('Fetching claims list to find claim with claim_number:', claimId);
-        
-        // Fetch all claims from the API
-        const res = await getClaims(1, 100); // Get first 100 claims
-        console.log('Claims list response:', res);
+        console.log('Fetching claim with ID:', claimId);
+        console.log('API endpoint will be: /admin/claims/show/' + claimId);
+        const res = await getClaimById(claimId);
+        console.log('Single claim response:', res);
+        console.log('Response type:', typeof res);
+        console.log('Response keys:', res ? Object.keys(res) : 'null');
 
-        // Helper function to safely extract claims data
-        const extractClaimsData = (response: unknown): ApiClaim[] => {
+        // Helper function to safely extract claim data
+        const extractClaimData = (response: unknown): ApiClaim | null => {
+          console.log('Raw API response:', response);
+          
           if (response && typeof response === 'object' && response !== null) {
+            // Check if response has data property
             if ('data' in response && response.data) {
+              console.log('Response has data property:', response.data);
+              return response.data as ApiClaim;
+            }
+            // Check if response is the claim object itself
+            if ('id' in response && 'claim_number' in response) {
+              console.log('Response is claim object directly');
+              return response as unknown as ApiClaim;
+            }
+            // Check if response has nested data structure
+            if ('data' in response && typeof response.data === 'object' && response.data !== null) {
               const data = response.data as { data: ApiClaim[] };
-              if ('data' in data && Array.isArray(data.data)) {
-                return data.data;
+              if ('data' in data && Array.isArray(data.data) && data.data.length > 0) {
+                console.log('Response has nested data array, taking first item:', data.data[0]);
+                return data.data[0] as ApiClaim;
               }
             }
           }
-          return [];
+          console.log('No valid claim data found in response');
+          return null;
         };
 
-        const claimsData = extractClaimsData(res);
-        console.log('Extracted claims data:', claimsData);
-        
-        // Find the specific claim by claim_number
-        const foundClaim = claimsData.find(claim => claim.claim_number === claimId);
-        console.log('Found claim:', foundClaim);
-        
-        setClaimData(foundClaim || null);
+        const claimData = extractClaimData(res);
+        console.log('Extracted claim data:', claimData);
+        console.log('Claim client data:', claimData?.client);
+        setClaimData(claimData);
       } catch (err: unknown) {
         console.error('Error fetching claim data:', err);
         const error = err as ApiError;
@@ -156,6 +168,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
       }
     };
 
+  useEffect(() => {
     if (claimId) {
       fetchClaimData();
     }
@@ -167,6 +180,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
     const colors = {
       submitted: "bg-yellow-100 text-yellow-800",
       completed: "bg-green-100 text-green-800",
+      approved: "bg-emerald-100 text-emerald-800",
       rejected: "bg-red-100 text-red-800",
       processing: "bg-blue-100 text-blue-800",
     };
@@ -176,26 +190,44 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
   // Transform claim data for display
   const transformClaimData = (claim: ApiClaim | null): TransformedClaimData | null => {
     if (!claim) return null;
+    
+    console.log('Transforming claim data:', claim);
 
     const uploadedDocs = claim.documents?.filter((doc: ApiClaimDocument) => doc.document_uploaded) || [];
     const totalDocs = claim.documents?.length || 0;
     const documentStatus = totalDocs > 0 ? Math.round((uploadedDocs.length / totalDocs) * 100) : 0;
 
     // Calculate days since submission
-    const submissionDate = new Date(claim.submission_date);
+    const submissionDate = new Date((claim as { created_at?: string }).created_at || claim.submission_date);
     const today = new Date();
     const daysSinceSubmission = Math.floor((today.getTime() - submissionDate.getTime()) / (1000 * 60 * 60 * 24));
 
+    // Format status to sentence case
+    const formatStatus = (status: string) => {
+      return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    };
+
+    // Format submission date to DD Mmm YYYY HH:MM
+    const formatSubmissionDate = (dateString: string) => {
+      const date = new Date(dateString);
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = date.toLocaleDateString('en-US', { month: 'short' });
+      const year = date.getFullYear();
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${day} ${month} ${year} ${hours}:${minutes}`;
+    };
+
     return {
       id: claim.claim_number,
-      clientName: claim.client.first_name + ' ' + claim.client.last_name,
-      clientEmail: claim.client.email,
-      clientPhone: claim.client.phone,
-      submissionDate: submissionDate.toLocaleDateString(),
+      clientName: `${claim.client?.first_name || ''} ${claim.client?.last_name || ''}`.trim(),
+      clientEmail: claim.client?.email || 'N/A',
+      clientPhone: claim.client?.phone || 'N/A',
+      submissionDate: formatSubmissionDate(claim.submission_date),
       claimType: claim.claim_type_details?.name || 'Unknown',
-      status: claim.status === 'completed' ? 'Completed' : 'Pending Review',
+      status: formatStatus(claim.status),
       documentStatus,
-      estimatedValue: claim.estimated_value,
+      estimatedValue: parseFloat(String(claim.estimated_value || '0').replace(/,/g, '')),
       description: claim.description || 'No description provided',
       incidentLocation: claim.incident_location,
       incidentDate: new Date(claim.incident_date).toLocaleDateString(),
@@ -229,25 +261,72 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
     setShowApproveModal(true);
   };
 
-  const submitRequestInfo = () => {
-    if (requestType === 'document' && documentName.trim()) {
-      console.log('Requesting document:', documentName);
-      // API call to request document
-    } else if (requestType === 'question' && question.trim()) {
-      console.log('Requesting info:', question);
-      // API call to send question
+  const submitRequestInfo = async () => {
+    try {
+      let requestTypeApi: 'document_request' | 'additional_information';
+      let details: string;
+
+      if (requestType === 'document' && documentName.trim()) {
+        requestTypeApi = 'document_request';
+        details = documentName.trim();
+      } else if (requestType === 'question' && question.trim()) {
+        requestTypeApi = 'additional_information';
+        details = question.trim();
+      } else {
+        alert('Please fill in the required information');
+        return;
+      }
+
+      console.log('Sending request:', { claimId, requestTypeApi, details });
+      
+      const response = await requestAdditionalInformation({
+        claim_id: claimId,
+        request_type: requestTypeApi,
+        details: details
+      });
+      
+      console.log('Request sent successfully:', response);
+      alert('Request sent successfully!');
+      
+      // Reset form and close modal
+      setDocumentName('');
+      setQuestion('');
+      setShowRequestInfoModal(false);
+      
+    } catch (error) {
+      console.error('Error sending request:', error);
+      const errorMessage = (error as ApiError)?.response?.data?.message || (error as ApiError)?.message || 'Failed to send request';
+      alert(`Error: ${errorMessage}`);
     }
-    // Reset form and close modal
-    setDocumentName('');
-    setQuestion('');
-    setShowRequestInfoModal(false);
   };
 
 
-  const submitApproveClaim = () => {
-    console.log('Approving claim:', claimId);
-    // API call to approve claim
-    setShowApproveModal(false);
+  const submitApproveClaim = async () => {
+    if (isApproving) return; // Prevent multiple clicks
+    
+    try {
+      setIsApproving(true);
+      console.log('Approving claim:', claimId);
+      const response = await approveClaim(claimId);
+      console.log('Claim approval response:', response);
+      
+      // Show success message
+      alert('Claim approved successfully!');
+      
+      // Close modal
+      setShowApproveModal(false);
+      
+      // Refresh the claim data to update the status
+      console.log('Refreshing claim data after approval...');
+      await fetchClaimData();
+      
+    } catch (error) {
+      console.error('Error approving claim:', error);
+      const errorMessage = (error as ApiError)?.response?.data?.message || (error as ApiError)?.message || 'Failed to approve claim';
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setIsApproving(false);
+    }
   };
 
   if (loading) {
@@ -256,7 +335,9 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Claim Details</h1>
-            <p className="text-muted-foreground">Claim Number: {claimId}</p>
+            <p className="text-muted-foreground">
+              Claim Number: <span className="animate-pulse">Loading...</span>
+            </p>
           </div>
         </div>
         <div className="text-center py-8">
@@ -273,7 +354,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Claim Details</h1>
-            <p className="text-muted-foreground">Claim Number: {claimId}</p>
+            <p className="text-muted-foreground">Claim Number: {claimData?.claim_number || claimId}</p>
           </div>
         </div>
         <div className="text-center py-8">
@@ -290,7 +371,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Claim Details</h1>
-          <p className="text-muted-foreground">Claim Number: {claimId}</p>
+          <p className="text-muted-foreground">Claim Number: {claimData?.claim_number || claimId}</p>
         </div>
         <Button variant="outline" size="sm" asChild>
           <Link href="/dashboard/claims">
@@ -315,20 +396,22 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
         </div>
       </div>
 
-      {/* Available Actions */}
-      <div>
-        <h4 className="text-sm font-medium text-muted-foreground mb-3">Available Actions</h4>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Button className="w-full" variant="outline" onClick={handleApproveClaim}>
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Approve Claim
-          </Button>
-          <Button className="w-full" variant="outline" onClick={handleRequestInfo}>
-            <AlertCircle className="h-4 w-4 mr-2" />
-            Request More Info
-          </Button>
+      {/* Available Actions - Only show if claim is not approved */}
+      {claimData?.status !== 'approved' && (
+        <div>
+          <h4 className="text-sm font-medium text-muted-foreground mb-3">Available Actions</h4>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Button className="w-full" variant="outline" onClick={handleApproveClaim}>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Approve Claim
+            </Button>
+            <Button className="w-full" variant="outline" onClick={handleRequestInfo}>
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Request More Info
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* All Information - Single Card */}
       <Card>
@@ -527,9 +610,13 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
                 <Button variant="outline" onClick={() => setShowApproveModal(false)} className="flex-1">
                   Cancel
                 </Button>
-                <Button onClick={submitApproveClaim} className="flex-1 bg-green-600 hover:bg-green-700">
+                <Button 
+                  onClick={submitApproveClaim} 
+                  disabled={isApproving}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                >
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Approve Claim
+                  {isApproving ? 'Approving...' : 'Approve Claim'}
                 </Button>
               </div>
             </div>

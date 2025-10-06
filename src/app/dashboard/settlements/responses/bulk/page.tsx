@@ -28,7 +28,6 @@ const counterOffers = [
     counterAmount: 8500,
     status: 'PENDING_REVIEW',
     presentedAt: '2024-03-15 10:30',
-    dueDate: '2024-03-22 10:30',
   },
   {
     id: '2',
@@ -39,7 +38,6 @@ const counterOffers = [
     counterAmount: 15000,
     status: 'PENDING_REVIEW',
     presentedAt: '2024-03-14 09:15',
-    dueDate: '2024-03-21 09:15',
   },
   {
     id: '3',
@@ -50,7 +48,6 @@ const counterOffers = [
     counterAmount: 5500,
     status: 'PENDING_REVIEW',
     presentedAt: '2024-03-15 11:30',
-    dueDate: '2024-03-22 11:30',
   },
 ];
 
@@ -203,7 +200,6 @@ export default function BulkResponsePage() {
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{offer.dueDate}</span>
                     </div>
                     {progress[offer.id] !== undefined && (
                       <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">

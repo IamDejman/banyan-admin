@@ -26,7 +26,6 @@ const pendingResponses = [
     offerAmount: 7500,
     status: 'PENDING_RESPONSE',
     presentedAt: '2024-03-15 10:30',
-    dueDate: '2024-03-22 10:30',
   },
   {
     id: '2',
@@ -36,7 +35,6 @@ const pendingResponses = [
     offerAmount: 12000,
     status: 'COUNTER_OFFER',
     presentedAt: '2024-03-14 09:15',
-    dueDate: '2024-03-21 09:15',
     counterOfferAmount: 15000,
   },
 ];
@@ -172,10 +170,6 @@ export default function ResponsesPage() {
                           ₦{response.counterOfferAmount.toLocaleString()}
                         </div>
                       )}
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Due Date: </span>
-                        {response.dueDate}
-                      </div>
                       <div className="flex gap-2">
                         <Button
                           variant="outline"

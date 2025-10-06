@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { formatStatus, toSentenceCase } from '@/lib/utils/text-formatting';
 import {
   Select,
   SelectContent,
@@ -126,7 +127,7 @@ export default function ClaimStatusClient({ claimId }: ClaimStatusClientProps) {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Type</span>
                 <span className="text-sm">
-                  {claim.type.replace(/_/g, ' ')}
+                  {toSentenceCase(claim.type)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -136,7 +137,7 @@ export default function ClaimStatusClient({ claimId }: ClaimStatusClientProps) {
                     statusColors[claim.currentStatus as keyof typeof statusColors]
                   }
                 >
-                  {claim.currentStatus.replace(/_/g, ' ')}
+                  {formatStatus(claim.currentStatus)}
                 </Badge>
               </div>
             </div>

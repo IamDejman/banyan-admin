@@ -18,7 +18,6 @@ const mockAssignments = [
     claimType: "Motor",
     assignedAgent: "Sarah K.",
     dateAssigned: new Date("2024-01-28"),
-    dueDate: new Date("2024-02-05"),
     status: "Active",
     assignmentReason: "New claim",
     specialInstructions: "Client is VIP",
@@ -30,7 +29,6 @@ const mockAssignments = [
     claimType: "Fire",
     assignedAgent: "Mike T.",
     dateAssigned: new Date("2024-01-27"),
-    dueDate: new Date("2024-02-03"),
     status: "Overdue",
     assignmentReason: "Reassignment",
     specialInstructions: "Complex case - requires expert review",
@@ -42,7 +40,6 @@ const mockAssignments = [
     claimType: "Property",
     assignedAgent: "Lisa M.",
     dateAssigned: new Date("2024-01-26"),
-    dueDate: new Date("2024-02-02"),
     status: "Active",
     assignmentReason: "New claim",
     specialInstructions: "",
@@ -109,13 +106,6 @@ export default function ClaimAssignmentTab() {
     return <Badge variant={badgeConfig.variant}>{badgeConfig.label}</Badge>;
   }
 
-  function getDaysUntilDue(dueDate: Date) {
-    const days = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    if (days < 0) return `${Math.abs(days)} days overdue`;
-    if (days === 0) return "Due today";
-    if (days === 1) return "Due tomorrow";
-    return `${days} days left`;
-  }
 
   return (
     <div className="space-y-6">
@@ -171,7 +161,6 @@ export default function ClaimAssignmentTab() {
                 <TableHead>Claim Type</TableHead>
                 <TableHead>Assigned Agent</TableHead>
                 <TableHead>Date Assigned</TableHead>
-                <TableHead>Due Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -179,7 +168,7 @@ export default function ClaimAssignmentTab() {
             <TableBody>
               {filteredAssignments.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No assignments found.
                   </TableCell>
                 </TableRow>
@@ -191,14 +180,6 @@ export default function ClaimAssignmentTab() {
                   <TableCell>{assignment.claimType}</TableCell>
                   <TableCell>{assignment.assignedAgent}</TableCell>
                   <TableCell>{assignment.dateAssigned.toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <div>
-                      <div>{assignment.dueDate.toLocaleDateString()}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {getDaysUntilDue(assignment.dueDate)}
-                      </div>
-                    </div>
-                  </TableCell>
                   <TableCell>{getStatusBadge(assignment.status)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -342,10 +323,6 @@ export default function ClaimAssignmentTab() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium">Due Date</label>
-                      <Input type="date" />
-                    </div>
                   </div>
                   
                   <div>
@@ -364,7 +341,6 @@ export default function ClaimAssignmentTab() {
                       claimType: "Motor",
                       assignedAgent: "Unassigned",
                       dateAssigned: new Date(),
-                      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
                       status: "Active",
                       assignmentReason: "New assignment",
                       specialInstructions: ""
@@ -455,9 +431,6 @@ export default function ClaimAssignmentTab() {
                     </div>
                     <div>
                       <span className="font-medium">Date Assigned:</span> {modal.assignment.dateAssigned.toLocaleDateString()}
-                    </div>
-                    <div>
-                      <span className="font-medium">Due Date:</span> {modal.assignment.dueDate.toLocaleDateString()}
                     </div>
                     <div>
                       <span className="font-medium">Status:</span> {getStatusBadge(modal.assignment.status)}

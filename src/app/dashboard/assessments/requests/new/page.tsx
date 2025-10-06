@@ -13,14 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { ArrowLeft } from 'lucide-react';
 
 
 const claims = [
@@ -42,7 +35,6 @@ export default function NewRequestPage() {
     claimId: '',
     requestType: '',
     description: '',
-    dueDate: new Date(),
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -134,34 +126,6 @@ export default function NewRequestPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Due Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                >
-                  <Calendar className="mr-2 h-4 w-4" />
-                  {request.dueDate ? (
-                    format(request.dueDate, 'PPP')
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <CalendarComponent
-                  mode="single"
-                  selected={request.dueDate}
-                  onSelect={(date) =>
-                    date && setRequest((prev) => ({ ...prev, dueDate: date }))
-                  }
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
 
           <div className="flex gap-2">
             <Button
@@ -178,7 +142,6 @@ export default function NewRequestPage() {
                 !request.claimId ||
                 !request.requestType ||
                 !request.description ||
-                !request.dueDate ||
                 isLoading
               }
             >

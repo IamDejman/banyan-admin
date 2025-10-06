@@ -10,7 +10,8 @@ export type BaseUser = {
   phone: string;
   status: UserStatus;
   createdAt: string;
-  lastLogin?: string;
+  lastLogin?: string; // This maps to last_login_at from API
+  disabled?: boolean;
 };
 
 export type Admin = BaseUser & {
@@ -18,6 +19,8 @@ export type Admin = BaseUser & {
   permissions: string[];
   department?: string;
   isSuperAdmin: boolean;
+  assignedClaims: string[];
+  completedClaims: string[];
 };
 
 export type Agent = BaseUser & {
@@ -26,6 +29,7 @@ export type Agent = BaseUser & {
   department: string;
   supervisor?: string;
   assignedClaims: string[];
+  completedClaims: string[];
   performanceRating?: number;
   specializations: string[];
 };
@@ -44,6 +48,10 @@ export type Customer = BaseUser & {
     notifications: boolean;
     language: string;
   };
+  bvnVerification: number; // 0 = false, 1 = true
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountName?: string;
 };
 
 export type User = Admin | Agent | Customer; 

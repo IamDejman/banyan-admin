@@ -22,7 +22,6 @@ const counterOffer = {
   clientNotes: 'The damage assessment shows higher repair costs than initially estimated.',
   status: 'PENDING_REVIEW',
   presentedAt: '2024-03-14 09:15',
-  dueDate: '2024-03-21 09:15',
 };
 
 // Add after the mock data for counter offer
@@ -145,10 +144,6 @@ export default function CounterOfferPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Presented</span>
                 <span className="text-sm">{counterOffer.presentedAt}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Due Date</span>
-                <span className="text-sm">{counterOffer.dueDate}</span>
               </div>
             </div>
           </CardContent>

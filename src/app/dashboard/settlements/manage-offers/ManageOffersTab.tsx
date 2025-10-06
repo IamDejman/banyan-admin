@@ -359,7 +359,6 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
                       </Button>
                       <Button variant="outline" className="justify-start">
                         <RotateCcw className="h-4 w-4 mr-2" />
-                        Extend Deadline
                       </Button>
                       {modal.offer.client_response?.responseType === "COUNTER_OFFER" && (
                         <Button variant="outline" className="justify-start">

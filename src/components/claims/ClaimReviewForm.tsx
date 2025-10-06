@@ -12,7 +12,6 @@ const reviewSchema = z.object({
   outcome: z.enum(['APPROVED', 'REJECTED', 'NEEDS_INFO'] as const),
   notes: z.string().min(10, 'Review notes must be at least 10 characters'),
   additionalInfo: z.string().optional(),
-  deadline: z.string().optional(),
 });
 
 type ReviewFormData = z.infer<typeof reviewSchema>;
@@ -135,20 +134,6 @@ export function ClaimReviewForm({ claimId, onSuccess }: ClaimReviewFormProps) {
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="deadline"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Response Deadline
-            </label>
-            <input
-              type="date"
-              id="deadline"
-              {...register('deadline')}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
         </>
       )}
 

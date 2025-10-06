@@ -25,7 +25,6 @@ const informationRequests = [
     requestType: 'ADDITIONAL_DOCUMENTS',
     status: 'PENDING',
     requestedAt: '2024-03-15 10:30',
-    dueDate: '2024-03-22 10:30',
     description: 'Please provide additional medical reports for the treatment period.',
   },
   {
@@ -35,7 +34,6 @@ const informationRequests = [
     requestType: 'CLARIFICATION',
     status: 'RESPONDED',
     requestedAt: '2024-03-14 09:15',
-    dueDate: '2024-03-21 09:15',
     description: 'Please clarify the circumstances of the incident.',
   },
 ];
@@ -166,10 +164,6 @@ export default function AssessmentsPage() {
                       <div className="text-sm">
                         <span className="text-muted-foreground">Requested: </span>
                         {request.requestedAt}
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Due: </span>
-                        {request.dueDate}
                       </div>
                       <Button
                         variant="outline"

@@ -36,8 +36,20 @@ const navigationSections = [
   // },
   {
     name: 'Settlements',
-    href: '/dashboard/settlements',
-    items: [],
+    items: [
+      {
+        name: 'Create Offers',
+        href: '/dashboard/settlements/create-offers',
+      },
+      {
+        name: 'Approve Offers',
+        href: '/dashboard/settlements/approve-offers',
+      },
+      {
+        name: 'Manage Offers',
+        href: '/dashboard/settlements/manage-offers',
+      },
+    ],
   },
   // --- System Config ---
   {

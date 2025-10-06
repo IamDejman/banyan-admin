@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { X, Upload, FileText } from "lucide-react";
 import type { SettlementOffer } from "@/lib/types/settlement";
-import { getClaims, } from '@/app/services/dashboard';
+import { getApprovedClaims } from '@/app/services/dashboard';
 
 // Interface for the actual claims data structure from API
 interface ApiClaim {
@@ -104,10 +104,11 @@ export default function SettlementOfferForm({
     }
   }, [assessedAmount, deductions, serviceFeePercentage]);
 
-  // Fetch claims data
+  // Fetch approved claims data
   useEffect(() => {
-    getClaims().then((res: unknown) => {
-      console.log("Raw claims response:", res);
+    console.log("🔄 Fetching approved claims from API...");
+    getApprovedClaims().then((res: unknown) => {
+      console.log("✅ Raw approved claims response:", res);
 
       let claimsData: ApiClaim[] = [];
 
@@ -119,7 +120,14 @@ export default function SettlementOfferForm({
         claimsData = response?.data?.data || [];
       }
 
-      console.log("Processed claims data:", claimsData);
+      console.log("📊 Processed approved claims data:", claimsData);
+      console.log("📈 Number of approved claims found:", claimsData.length);
+      
+      // Log each claim's status to verify they are approved
+      claimsData.forEach((claim, index) => {
+        console.log(`Claim ${index + 1}: ${claim.claim_number} - Status: ${(claim as { status?: string }).status || 'unknown'}`);
+      });
+      
       setClaims(claimsData);
 
       // If we have an existing offer, try to find the claim
@@ -130,7 +138,7 @@ export default function SettlementOfferForm({
         }
       }
     }).catch((error) => {
-      console.error("Error fetching claims:", error);
+      console.error("❌ Error fetching approved claims:", error);
       setClaims([]);
     });
   }, [existingOffer?.claimId]);
@@ -215,10 +223,6 @@ export default function SettlementOfferForm({
             </SelectContent>
           </Select>
           {errors.claimId && <p className="text-red-500 text-sm mt-1">{errors.claimId}</p>}
-          {/* Debug info */}
-          <p className="text-xs text-gray-500 mt-1">
-            Selected Claim ID: {selectedClaimId || 'None'} | Claims loaded: {claims.length}
-          </p>
         </div>
 
         {/* Client Details (Auto-populated) */}

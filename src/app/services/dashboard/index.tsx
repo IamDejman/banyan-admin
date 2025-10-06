@@ -121,7 +121,44 @@ interface Agent {
     updated_at?: string;
 }
 
-export const getAgents = (): Promise<ApiResponse<Agent[]>> => Http.get(`/admin/agents`);
+// NOTE: This API currently returns 500 error due to backend filtering issue
+// The endpoint expects an array for filter parameter but receives null
+// Returns empty array when API fails
+// Alternative endpoints to try:
+// 1. /admin/user-management (without role filter)
+// 2. /admin/users?role=agent
+// 3. /admin/agents
+// NOTE: This API currently returns 500 error due to backend filtering issue
+// The endpoint expects an array for filter parameter but receives null
+// Returns empty array when API fails
+// Alternative endpoints to try:
+// 1. /admin/user-management (without role filter)
+// 2. /admin/users?role=agent
+// 3. /admin/agents
+export const getAgents = (page: number = 1, perPage: number = 15): Promise<ApiResponse<Agent[]>> => 
+  Http.get(`/admin/user-management/?role=agent&page=${page}&per_page=${perPage}`);
+
+// Search agents with search parameter
+export const searchAgents = (searchTerm: string): Promise<ApiResponse<Agent[]>> => 
+  Http.get(`/admin/user-management/?role=agent&search=${encodeURIComponent(searchTerm)}`);
+
+// Alternative function to get all users and filter agents client-side
+export const getAllUsers = (): Promise<ApiResponse<Agent[]>> => Http.get(`/admin/user-management`);
+
+// Create agent interface
+interface CreateAgentRequest {
+  email: string;
+  first_name: string;
+  last_name: string;
+  password: string;
+  role: "agent";
+  phone: string;
+}
+
+// Create a new agent
+export const createAgent = (agentData: CreateAgentRequest): Promise<ApiResponse<Agent>> => {
+  return Http.post(`/admin/user-management/`, agentData);
+};
 
 
 export const getClaimTypeById = (id: string): Promise<ApiResponse<ClaimType>> => Http.get(`/admin/claim-types/${id}`);
@@ -193,6 +230,18 @@ export const getClaims = (
   return Http.get(`/admin/claims?${params.toString()}`);
 };
 
+export const getClaimById = (id: string): Promise<ApiResponse<Claim>> => Http.get(`/admin/claims/show/${id}`);
+
+// Admin management API
+// NOTE: This API currently returns 500 error due to backend filtering issue
+// The endpoint expects an array for filter parameter but receives null
+// Same issue as getAgents and getCustomers - will use getAllUsers as fallback
+export const getAdmins = (page: number = 1, perPage: number = 15): Promise<ApiResponse<Admin[]>> => 
+  Http.get(`/admin/user-management/?role=admin&page=${page}&per_page=${perPage}`);
+
+// Search admins with search parameter
+export const searchAdmins = (searchTerm: string): Promise<ApiResponse<Admin[]>> => 
+  Http.get(`/admin/user-management/?role=admin&search=${encodeURIComponent(searchTerm)}`);
 
 export const getDocumentStatistics = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claims/document-statistics`);
 export const listDocuments = (): Promise<ApiResponse<Document[]>> => Http.get(`/admin/claims/documents`);
@@ -223,7 +272,38 @@ export const approveSettlementOffer = (payload: Record<string, unknown>): Promis
 export const rejectSettlementOffer = (payload: Record<string, unknown>): Promise<ApiResponse<unknown>> => Http.post(`/admin/claim-offers/reject-offer`, payload);
 
 // approve claim
-export const approveClaim = (id: string): Promise<ApiResponse<unknown>> => Http.post(`/admin/claims/approve/${id}`);
+export const approveClaim = (claimId: string): Promise<ApiResponse<unknown>> => Http.post(`/admin/claims/approve-claim`, { claim_id: claimId });
+
+// get settlements with status filter
+export const getSettlementsWithStatus = (status: string = 'settlement_offered'): Promise<ApiResponse<unknown>> => Http.get(`/admin/claims/settlements?status=${status}`);
+
+// get approved claims for settlement offers
+export const getApprovedClaims = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claims?status=approved`);
+
+// request additional information for a claim
+export const requestAdditionalInformation = (payload: {
+  claim_id: string | number;
+  request_type: 'document_request' | 'additional_information';
+  details: string;
+}): Promise<ApiResponse<unknown>> => Http.post(`/admin/claims/request-additional-information`, payload);
+
+// get claim assignments (for agent filter)
+export const getClaimAssignments = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claim-assignments`);
+
+// get claim assignments with claims data
+export const getClaimAssignmentsWithClaims = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claim-assignments/claims`);
+
+// Claim assignment statistics interface
+interface ClaimAssignmentStatistics {
+  total_agents: number;
+  active_assignments: number;
+  total_assignments?: number;
+  completed_assignments?: number;
+  overdue_assignments?: number;
+}
+
+// get claim assignments statistics
+export const getClaimAssignmentStatistics = (): Promise<ApiResponse<ClaimAssignmentStatistics>> => Http.get(`/admin/claim-assignments/statistics`);
 
 // Audit Log interfaces
 interface AuditLog {
@@ -245,6 +325,93 @@ interface AuditLog {
 }
 
 export const getAuditLogs = (): Promise<ApiResponse<AuditLog[]>> => Http.get(`/admin/audit-logs`);
+
+// Customer interface
+interface Customer {
+    id: string | number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone?: string;
+    status?: string;
+    role: string;
+    created_at?: string;
+    updated_at?: string;
+    last_login?: string;
+    date_of_birth?: string;
+    address?: string;
+    emergency_contact?: {
+        name: string;
+        phone: string;
+        relationship: string;
+    };
+    claims?: string[];
+    preferences?: {
+        notifications: boolean;
+        language: string;
+    };
+}
+
+// Admin interface
+interface Admin {
+    id: string | number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone?: string;
+    status?: string;
+    role: string;
+    created_at?: string;
+    updated_at?: string;
+    last_login?: string;
+    permissions?: string[];
+    is_super_admin?: boolean;
+    department?: string;
+}
+
+// Get customers from the API with pagination
+// NOTE: This API currently returns 500 error due to backend filtering issue
+// The endpoint expects an array for filter parameter but receives null
+// Same issue as getAgents - will use getAllUsers as fallback
+export const getCustomers = (page: number = 1, perPage: number = 15): Promise<ApiResponse<Customer[]>> => 
+  Http.get(`/admin/user-management/?role=customer&page=${page}&per_page=${perPage}`);
+
+// Search customers with search parameter
+export const searchCustomers = (searchTerm: string): Promise<ApiResponse<Customer[]>> => 
+  Http.get(`/admin/user-management/?role=customer&search=${encodeURIComponent(searchTerm)}`);
+
+// Create a new customer
+export const createCustomer = (payload: {
+  email: string;
+  first_name: string;
+  last_name: string;
+  password: string;
+  role: string;
+  phone: string;
+}): Promise<ApiResponse<Customer>> => Http.post(`/admin/user-management/`, payload);
+
+// Create a new admin
+export const createAdmin = (payload: {
+  email: string;
+  first_name: string;
+  last_name: string;
+  password: string;
+  role: string;
+  phone: string;
+}): Promise<ApiResponse<Admin>> => Http.post(`/admin/user-management/`, payload);
+
+// Disable/Enable a user
+export const disableUser = (userId: string): Promise<ApiResponse<unknown>> => Http.patch(`/admin/user-management/disable/${userId}`);
+
+// Edit/Update a user
+export const editUser = (userId: string, payload: {
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  password?: string;
+  phone?: string;
+  role?: string;
+}): Promise<ApiResponse<unknown>> => Http.patch(`/admin/user-management/update/${userId}`, payload);
 
 
 

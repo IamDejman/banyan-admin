@@ -22,8 +22,6 @@ const mockRequests = [
     documentType: 'Medical Records',
     status: 'Pending Response',
     submissionDate: '2024-01-15',
-    deadline: '2024-01-22',
-    daysRemaining: 3,
     responseTime: '2.1 days',
     assignedTo: 'Sarah Wilson',
   },
@@ -35,8 +33,6 @@ const mockRequests = [
     documentType: 'Accident Details',
     status: 'Response Received',
     submissionDate: '2024-01-14',
-    deadline: '2024-01-21',
-    daysRemaining: -1,
     responseTime: '1.8 days',
     assignedTo: 'Mike Johnson',
   },
@@ -48,8 +44,6 @@ const mockRequests = [
     documentType: 'Police Report',
     status: 'Overdue',
     submissionDate: '2024-01-10',
-    deadline: '2024-01-17',
-    daysRemaining: -3,
     responseTime: '5.2 days',
     assignedTo: 'David Brown',
   },
@@ -61,8 +55,6 @@ const mockRequests = [
     documentType: 'Witness Statement',
     status: 'Pending Response',
     submissionDate: '2024-01-16',
-    deadline: '2024-01-23',
-    daysRemaining: 4,
     responseTime: '0.5 days',
     assignedTo: 'Unassigned',
   },
@@ -74,8 +66,6 @@ const mockRequests = [
     documentType: 'Repair Estimates',
     status: 'Response Received',
     submissionDate: '2024-01-13',
-    deadline: '2024-01-20',
-    daysRemaining: 0,
     responseTime: '2.3 days',
     assignedTo: 'Sarah Wilson',
   },
@@ -155,7 +145,6 @@ export default function InformationRequestsPage() {
   const [selectedDocumentType, setSelectedDocumentType] = useState('');
   const [selectedReason, setSelectedReason] = useState('');
   const [customMessage, setCustomMessage] = useState('');
-  const [deadline, setDeadline] = useState('');
 
   const handleSelectRequest = (requestId: string) => {
     setSelectedRequests(prev => 
@@ -182,11 +171,6 @@ export default function InformationRequestsPage() {
     }
   };
 
-  const getDaysRemainingColor = (days: number) => {
-    if (days < 0) return 'text-red-600';
-    if (days <= 2) return 'text-orange-600';
-    return 'text-green-600';
-  };
 
   const handleDocumentTypeChange = (value: string) => {
     setSelectedDocumentType(value);
@@ -305,14 +289,6 @@ export default function InformationRequestsPage() {
                       />
                     </div>
 
-                    <div>
-                      <label className="text-sm font-medium">Deadline</label>
-                      <Input 
-                        type="date" 
-                        value={deadline}
-                        onChange={(e) => setDeadline(e.target.value)}
-                      />
-                    </div>
 
                     <div className="flex items-center gap-2">
                       <Button className="flex-1">
@@ -375,8 +351,6 @@ export default function InformationRequestsPage() {
                     <TableHead>Client Name</TableHead>
                     <TableHead>Document Type</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Deadline</TableHead>
-                    <TableHead>Days Remaining</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -403,12 +377,6 @@ export default function InformationRequestsPage() {
                         <Badge className={getStatusColor(request.status)}>
                           {request.status}
                         </Badge>
-                      </TableCell>
-                      <TableCell>{request.deadline}</TableCell>
-                      <TableCell>
-                        <span className={`font-medium ${getDaysRemainingColor(request.daysRemaining)}`}>
-                          {request.daysRemaining >= 0 ? `${request.daysRemaining} days` : `${Math.abs(request.daysRemaining)} days overdue`}
-                        </span>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

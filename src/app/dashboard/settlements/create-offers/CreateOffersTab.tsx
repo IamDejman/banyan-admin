@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Edit } from "lucide-react";
+import { Plus, Eye, Edit, Clock, CheckCircle, TrendingUp } from "lucide-react";
 import SettlementOfferForm from "./SettlementOfferForm";
-import { createSettlementOffer } from "@/app/services/dashboard";
+import { createSettlementOffer, getSettlementsWithStatus } from "@/app/services/dashboard";
 import { Settlement, } from "@/lib/types/settlement";
+import { formatStatus } from "@/lib/utils/text-formatting";
 
 // Interface for the form data
 interface SettlementFormData {
@@ -30,14 +31,16 @@ interface SettlementFormData {
 interface CreateOffersTabProps {
   settlements: Settlement[];
   loading: boolean;
-  refetch: () => void;
+  refetch?: () => void;
 }
 
 
 
 export default function CreateOffersTab({ settlements, loading, refetch }: CreateOffersTabProps) {
-  const availableSettlements = useMemo(() => settlements.length > 0 ? settlements : [], [settlements]);
-  const [offers, setOffers] = useState<Settlement[]>(availableSettlements);
+  const availableSettlements = useMemo(() => settlements && settlements.length > 0 ? settlements : [], [settlements]);
+  const [, setOffers] = useState<Settlement[]>(availableSettlements);
+  const [settlementsData, setSettlementsData] = useState<Settlement[]>([]);
+  const [settlementsLoading, setSettlementsLoading] = useState(false);
   const [modal, setModal] = useState<{ mode: "create" | "view" | "edit"; offer?: Settlement } | null>(null);
   const [search, setSearch] = useState("");
 
@@ -45,17 +48,52 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
 
   // Use settlements data if available, otherwise fall back to mock data
 
+  // Function to fetch settlements from API
+  const fetchSettlements = async () => {
+    try {
+      setSettlementsLoading(true);
+      const response = await getSettlementsWithStatus('settlement_offered');
+      console.log('Settlements API response:', response);
+      
+      // Extract data from the nested response structure
+      let settlementsArray = [];
+      if (response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
+        settlementsArray = response.data.data;
+      } else if (Array.isArray(response)) {
+        settlementsArray = response;
+      }
+      
+      setSettlementsData(settlementsArray);
+    } catch (error) {
+      console.error('Error fetching settlements:', error);
+      setSettlementsData([]);
+    } finally {
+      setSettlementsLoading(false);
+    }
+  };
+
   useEffect(() => {
     setOffers(availableSettlements);
+    fetchSettlements(); // Fetch settlements on component mount
   }, [availableSettlements]);
 
 
-  // const filteredOffers = offers
-  const filteredOffers = offers.filter((offer) =>
-    offer?.client.toLowerCase().includes(search.toLowerCase()) ||
-    offer.id.toString().toLowerCase().includes(search.toLowerCase()) ||
-    offer.claim_type.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filter settlements data based on search
+  const filteredSettlements = settlementsData.filter((settlement) => {
+    if (!search) return true;
+    const searchLower = search.toLowerCase();
+    return (
+      (settlement as { client_name?: string })?.client_name?.toLowerCase().includes(searchLower) ||
+      settlement?.id?.toString().toLowerCase().includes(searchLower) ||
+      settlement?.claim_type?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // const filteredOffers = offers.filter((offer) =>
+  //   offer?.client.toLowerCase().includes(search.toLowerCase()) ||
+  //   offer.id.toString().toLowerCase().includes(search.toLowerCase()) ||
+  //   offer.claim_type.toLowerCase().includes(search.toLowerCase())
+  // );
 
   async function handleCreateOffer(newOffer: SettlementFormData) {
     try {
@@ -76,7 +114,9 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       console.log(payload, "payload__");
       const response = await createSettlementOffer(payload);
       console.log(response, "response__");
-      refetch();
+      if (refetch) {
+        refetch();
+      }
       setModal(null);
     } catch (error) {
       console.error(error, "error__");
@@ -103,7 +143,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
     };
 
     const config = statusConfig[status?.toUpperCase() as keyof typeof statusConfig] || statusConfig.DRAFT;
-    return <Badge variant={config?.variant}>{config?.label}</Badge>;
+    return <Badge variant={config?.variant}>{formatStatus(config?.label)}</Badge>;
   }
 
   return (
@@ -118,6 +158,57 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
         </Button>
       </div>
 
+      {/* KPI Cards */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Active Offers</p>
+                <p className="text-2xl font-bold">0</p>
+              </div>
+              <div className="text-blue-600 font-bold text-lg">₦</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Pending Approval</p>
+                <p className="text-2xl font-bold">0</p>
+              </div>
+              <Clock className="h-4 w-4 text-orange-600" />
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Ready to Present</p>
+                <p className="text-2xl font-bold">0</p>
+              </div>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Settled</p>
+                <p className="text-2xl font-bold">₦0</p>
+              </div>
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+            </div>
+          </div>
+        </Card>
+      </div>
+
       {/* Loading State */}
       {loading && (
         <Card className="p-6">
@@ -128,18 +219,17 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
         </Card>
       )}
 
-      <div className="flex gap-4 items-center">
-        <Input
-          placeholder="Search offers by client name, offer ID, or claim type..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-64"
-        />
-      </div>
-
       <Card>
         <div className="p-6 border-b">
-          <h3 className="text-lg font-semibold">Draft & Created Offers List</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">View Created Offers</h3>
+          </div>
+          <Input
+            placeholder="Search offers by client name, offer ID, or claim type..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-64"
+          />
         </div>
         <div className="overflow-x-auto">
           <Table>
@@ -155,37 +245,43 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOffers.length === 0 && (
+              {settlementsLoading ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground">
-                    No offers found.
+                    Loading settlements...
                   </TableCell>
                 </TableRow>
-              )}
-              {filteredOffers.map((offer) => (
-                <TableRow key={offer.id}>
-                  <TableCell className="font-medium">{offer.id}</TableCell>
-                  <TableCell>{offer.client}</TableCell>
-                  <TableCell>{offer.claim_type}</TableCell>
-                  <TableCell>₦{offer.offer_amount}</TableCell>
-                  <TableCell>{getStatusBadge(offer.status)}</TableCell>
-                  <TableCell>{offer?.created_at ? new Date(offer.created_at).toLocaleDateString() : "N/A"}</TableCell>
+              ) : filteredSettlements.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    No settlement offers found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredSettlements.map((settlement) => (
+                <TableRow key={settlement.id}>
+                  <TableCell className="font-medium">{settlement.id || 'N/A'}</TableCell>
+                  <TableCell>{(settlement as { client_name?: string }).client_name || 'N/A'}</TableCell>
+                  <TableCell>{settlement.claim_type || 'N/A'}</TableCell>
+                  <TableCell>₦{settlement.offer_amount || (settlement as { final_amount?: string | number }).final_amount || '0'}</TableCell>
+                  <TableCell>{getStatusBadge(settlement.status || 'settlement_offered')}</TableCell>
+                  <TableCell>{settlement?.created_at ? new Date(settlement.created_at).toLocaleDateString() : 'N/A'}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setModal({ mode: "view", offer })}
+                        onClick={() => setModal({ mode: "view", offer: settlement })}
                         title="View Offer Details"
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      {offer.status === "DRAFT" && (
+                      {settlement.status === "DRAFT" && (
                         <>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setModal({ mode: "edit", offer })}
+                            onClick={() => setModal({ mode: "edit", offer: settlement })}
                             title="Edit Offer"
                           >
                             <Edit className="h-4 w-4" />
@@ -196,7 +292,8 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                ))
+              )}
             </TableBody>
           </Table>
         </div>

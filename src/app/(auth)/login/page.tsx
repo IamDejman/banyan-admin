@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BanyanLogo } from '@/components/ui/banyan-logo';
 import Link from 'next/link';
-import { login, verifyEmail } from '@/app/services/auth';
+import { login, verifyEmail, resendOtpWithHash } from '@/app/services/auth';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import cookie from '@/app/utils/cookie';
 
@@ -35,6 +35,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [isResending, setIsResending] = useState(false);
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     try {
@@ -45,6 +47,8 @@ export default function LoginPage() {
       setOtpHash(res?.otp_hash || '');
       setIsLoading(false);
       setStep('2fa');
+      // Start 5-minute countdown when OTP step is reached
+      setCountdown(300); // 5 minutes = 300 seconds
     } catch (err: unknown) {
       const error = err as ApiError;
       console.log(error, "err");
@@ -72,6 +76,43 @@ export default function LoginPage() {
       setIsLoading(false);
       setError(error?.response?.data?.message || 'An error occurred');
     }
+  };
+
+  // Countdown timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (countdown > 0) {
+      interval = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [countdown]);
+
+  // Resend OTP function
+  const handleResendOtp = async () => {
+    if (countdown > 0 || !otpHash) return;
+    
+    try {
+      setIsResending(true);
+      setError('');
+      await resendOtpWithHash({ otp_hash: otpHash });
+      // Restart countdown after successful resend
+      setCountdown(300); // 5 minutes
+      setError(''); // Clear any previous errors
+    } catch (err: unknown) {
+      const error = err as ApiError;
+      setError(error?.response?.data?.message || 'Failed to resend OTP');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  // Format countdown display
+  const formatCountdown = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -170,14 +211,33 @@ export default function LoginPage() {
               <Button type="submit" className="w-full">
                 {isLoading ? <Loader2 className="w-4 h-4 mr-2" /> : 'Verify'}
               </Button>
-              <div className="text-center text-sm">
-                <button
-                  type="button"
-                  onClick={() => setStep('credentials')}
-                  className="text-primary hover:underline"
-                >
-                  Back to Login
-                </button>
+              
+              {/* Resend OTP Section */}
+              <div className="text-center text-sm space-y-2">
+                {countdown > 0 ? (
+                  <div className="text-muted-foreground">
+                    Resend OTP in {formatCountdown(countdown)}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={isResending}
+                    className="text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isResending ? 'Resending...' : 'Resend OTP'}
+                  </button>
+                )}
+                
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setStep('credentials')}
+                    className="text-primary hover:underline"
+                  >
+                    Back to Login
+                  </button>
+                </div>
               </div>
             </form>
           )}

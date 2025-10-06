@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdminForm from "./AdminForm";
 import type { Admin } from "@/lib/types/user";
+import { formatStatus } from "@/lib/utils/text-formatting";
 
 const initialMockAdmins: Admin[] = [
   {
@@ -23,6 +24,8 @@ const initialMockAdmins: Admin[] = [
     permissions: ["users:read", "users:write", "reports:read"],
     department: "IT",
     isSuperAdmin: true,
+    assignedClaims: [],
+    completedClaims: [],
   },
   {
     id: "2",
@@ -37,6 +40,8 @@ const initialMockAdmins: Admin[] = [
     permissions: ["users:read", "reports:read"],
     department: "Operations",
     isSuperAdmin: false,
+    assignedClaims: [],
+    completedClaims: [],
   },
 ];
 
@@ -76,7 +81,9 @@ export default function AdminsClient() {
       isSuperAdmin: false,
       createdAt: new Date().toISOString().split('T')[0],
       lastLogin: undefined,
-      department: "Administration"
+      department: "Administration",
+      assignedClaims: [],
+      completedClaims: []
     };
     setAdmins(prev => [...prev, newAdmin]);
     setModal(null);
@@ -173,7 +180,7 @@ export default function AdminsClient() {
                 </TableCell>
                 <TableCell>
                   <Badge variant={admin.status === "active" ? "default" : "secondary"}>
-                    {admin.status}
+                    {formatStatus(admin.status)}
                   </Badge>
                 </TableCell>
                 <TableCell>
