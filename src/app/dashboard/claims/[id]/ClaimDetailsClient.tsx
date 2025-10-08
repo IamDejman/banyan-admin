@@ -217,20 +217,28 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
       description: claim.description || 'No description provided',
       incidentLocation: claim.incident_location,
       incidentDate: formatDate(claim.incident_date),
-      documents: claim.documents?.map((doc: ApiClaimDocument): TransformedClaimDocument => ({
-        id: doc.id,
-        name: doc.document_type,
-        type: 'pdf',
-        size: 'N/A',
-        uploadedDate: formatDate(doc.created_at),
-        isUploaded: doc.document_uploaded,
-        document_url: doc.document_url,
-      })) || [],
-      timeline: claim.claim_history?.map((history: ApiClaimHistory): TransformedClaimTimeline => ({
-        date: formatDate(history.created_at),
-        action: history.description,
-        description: `Status: ${history.status}`,
-      })) || [],
+      documents: claim.documents
+        ?.sort((a: ApiClaimDocument, b: ApiClaimDocument) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        .map((doc: ApiClaimDocument): TransformedClaimDocument => ({
+          id: doc.id,
+          name: doc.document_type,
+          type: 'pdf',
+          size: 'N/A',
+          uploadedDate: formatDate(doc.created_at),
+          isUploaded: doc.document_uploaded,
+          document_url: doc.document_url,
+        })) || [],
+      timeline: claim.claim_history
+        ?.sort((a: ApiClaimHistory, b: ApiClaimHistory) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        .map((history: ApiClaimHistory): TransformedClaimTimeline => ({
+          date: formatDate(history.created_at),
+          action: history.description,
+          description: `Status: ${history.status}`,
+        })) || [],
       daysSinceSubmission,
     };
   };
