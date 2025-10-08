@@ -22,7 +22,7 @@ import {
 import Link from 'next/link';
 import { getClaimById, approveClaim, requestAdditionalInformation } from '@/app/services/dashboard';
 import { ApiError } from '@/lib/types/settlement';
-import { formatStatus, formatDateTime, formatDate } from '@/lib/utils/text-formatting';
+import { formatStatus, formatDateTime, formatDate, formatTimestampForHistory } from '@/lib/utils/text-formatting';
 
 // Define proper types for API response data
 interface ApiClaimDocument {
@@ -77,7 +77,7 @@ interface TransformedClaimDocument {
 interface TransformedClaimTimeline {
   date: string;
   action: string;
-  description: string;
+  description?: string; // Optional - skip if no details
 }
 
 interface TransformedClaimData {
@@ -235,9 +235,9 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )
         .map((history: ApiClaimHistory): TransformedClaimTimeline => ({
-          date: formatDate(history.created_at),
-          action: history.description,
-          description: `Status: ${history.status}`,
+          date: formatTimestampForHistory(history.created_at),
+          action: history.description || 'Status update',
+          description: history.status ? `Status: ${history.status}` : undefined,
         })) || [],
       daysSinceSubmission,
     };
@@ -508,7 +508,9 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">{event.action}</p>
-                      <p className="text-sm text-muted-foreground">{event.description}</p>
+                      {event.description && (
+                        <p className="text-sm text-muted-foreground">{event.description}</p>
+                      )}
                       <p className="text-xs text-muted-foreground">{event.date}</p>
                     </div>
                   </div>

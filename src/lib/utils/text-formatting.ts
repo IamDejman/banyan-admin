@@ -181,3 +181,34 @@ export function formatDateForTable(date: Date | string | number | null | undefin
 export function formatDateTimeForTable(date: Date | string | number | null | undefined): string {
   return formatDateTime(date);
 }
+
+/**
+ * Formats a datetime for claim history display (DD Mmm YYYY HH:MM)
+ * @param date - Date object, date string, or timestamp
+ * @returns Formatted datetime string in DD Mmm YYYY HH:MM format
+ */
+export function formatTimestampForHistory(date: Date | string | number | null | undefined): string {
+  if (!date) return 'N/A';
+  
+  try {
+    const dateObj = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+    
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      return 'Invalid Date';
+    }
+    
+    // Format as DD Mmm YYYY HH:MM (e.g., "15 Jan 2024 14:30")
+    return dateObj.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).replace(',', '');
+  } catch (error) {
+    console.error('Error formatting timestamp for history:', error);
+    return 'Invalid Date';
+  }
+}
