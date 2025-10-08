@@ -166,11 +166,11 @@ export default function AdminPage() {
     if (debouncedSearch !== '') {
       console.log('Search API called with:', debouncedSearch);
       fetchClaimAssignments(debouncedSearch);
-    } else if (debouncedSearch === '' && search === '') {
+    } else if (debouncedSearch === '') {
       console.log('Clearing search');
       fetchClaimAssignments();
     }
-  }, [debouncedSearch, search]);
+  }, [debouncedSearch]);
 
   const filteredAssignments = assignments.filter((assignment) => {
     // Only filter by status since search is now handled server-side
