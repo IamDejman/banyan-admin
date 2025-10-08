@@ -1,10 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Menu, Search, User } from 'lucide-react';
-import { Sidebar } from './Sidebar';
+import { Search, User } from 'lucide-react';
 import { useAuth } from '@/lib/providers/auth-provider';
 import {
   DropdownMenu,
@@ -29,7 +27,6 @@ const workflowSections = {
 };
 
 export function Header() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
@@ -41,14 +38,7 @@ export function Header() {
       <header className="bg-white border-b px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <Menu size={20} />
-            </Button>
+            {/* Mobile menu button removed - handled by MainLayout */}
 
             {/* Breadcrumbs */}
             <div className="hidden md:flex items-center gap-2 text-sm">
@@ -95,15 +85,7 @@ export function Header() {
         </div>
       </header>
 
-      {/* Mobile Sidebar */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setIsSidebarOpen(false)} />
-          <div className="fixed left-0 top-0 h-full w-64 bg-white">
-            <Sidebar />
-          </div>
-        </div>
-      )}
+      {/* Mobile Sidebar removed - handled by MainLayout */}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

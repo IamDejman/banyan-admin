@@ -157,8 +157,9 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
                 <Link
                   href={section.href || '#'}
                   className={`py-3 px-3 rounded-lg hover:bg-gray-100 font-medium flex-1 text-sm sm:text-base transition-all duration-200 ${pathname === section.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
-                  onClick={() => {
+                  onClick={(e) => {
                     if (hasSubmenu) {
+                      e.preventDefault();
                       toggleSection(section.name);
                     } else {
                       onItemClick?.();
@@ -171,7 +172,8 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
                 {hasSubmenu && (
                   <button
                     onClick={() => toggleSection(section.name)}
-                    className="ml-2 focus:outline-none p-1 rounded hover:bg-gray-100 transition-colors"
+                    className="ml-2 focus:outline-none p-2 rounded hover:bg-gray-100 transition-colors touch-manipulation"
+                    aria-label={`Toggle ${section.name} menu`}
                   >
                     <ChevronRight size={16} className={`text-gray-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
                   </button>
@@ -183,7 +185,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
                     <Link 
                       key={item.name} 
                       href={item.href} 
-                      className={`py-2 px-3 rounded-md hover:bg-gray-50 text-xs sm:text-sm transition-all duration-200 ${pathname === item.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
+                      className={`py-3 px-3 rounded-md hover:bg-gray-50 text-xs sm:text-sm transition-all duration-200 touch-manipulation ${pathname === item.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
                       onClick={() => onItemClick?.()}
                     >
                       {item.name}

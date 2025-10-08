@@ -5,7 +5,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '@/lib/providers/auth-provider';
 import { cn } from '@/lib/utils';
-import { Menu } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface MainLayoutProps {
@@ -39,7 +39,18 @@ export function MainLayout({ children }: MainLayoutProps) {
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <Sidebar onItemClick={() => setIsMobileMenuOpen(false)} />
+        <div className="relative h-full">
+          {/* Mobile close button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 z-10 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <X className="h-6 w-6" />
+          </Button>
+          <Sidebar onItemClick={() => setIsMobileMenuOpen(false)} />
+        </div>
       </div>
 
       {/* Overlay */}
