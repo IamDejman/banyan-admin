@@ -15,3 +15,16 @@ export {
   CURRENCY_CONFIG,
   CURRENCY_RULES
 } from './config/currency';
+
+// Re-export text formatting functions including date formatting
+export {
+  toSentenceCase,
+  formatStatus,
+  formatClaimType,
+  formatDepartment,
+  formatRole,
+  formatDate,
+  formatDateTime,
+  formatDateForTable,
+  formatDateTimeForTable
+} from './utils/text-formatting';

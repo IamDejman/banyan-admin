@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Plus, Eye, Edit, RotateCcw, Search, Upload } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { assignClaim } from "@/app/services/dashboard";
 
 // Mock data for claim assignments
 const mockAssignments = [
@@ -64,6 +66,7 @@ export default function ClaimAssignmentTab() {
   const [modal, setModal] = useState<{ mode: "single" | "bulk" | "view" | "edit"; assignment?: typeof mockAssignments[0] } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const { toast } = useToast();
 
   const filteredAssignments = assignments.filter((assignment) => {
     const matchesSearch = 
@@ -76,15 +79,37 @@ export default function ClaimAssignmentTab() {
     return matchesSearch && matchesStatus;
   });
 
-  function handleCreateAssignment(newAssignment: typeof mockAssignments[0]) {
-    const assignment = {
-      ...newAssignment,
-      id: (Math.random() * 100000).toFixed(0),
-      dateAssigned: new Date(),
-      status: "Active",
-    };
-    setAssignments([assignment, ...assignments]);
-    setModal(null);
+  async function handleCreateAssignment(newAssignment: typeof mockAssignments[0]) {
+    try {
+      // Call the API to assign the claim
+      const response = await assignClaim(newAssignment.claimId, newAssignment.assignedAgent, newAssignment.specialInstructions);
+      
+      if (response) {
+        const assignment = {
+          ...newAssignment,
+          id: (Math.random() * 100000).toFixed(0),
+          dateAssigned: new Date(),
+          status: "Active",
+        };
+        setAssignments([assignment, ...assignments]);
+        setModal(null);
+        
+        // Show success notification
+        toast({
+          title: "Claim Assigned Successfully",
+          description: `Claim ${newAssignment.claimId} has been assigned to ${newAssignment.assignedAgent}.`,
+        });
+        
+        // The assignments state is already updated, no need to refresh
+      }
+    } catch (error) {
+      console.error('Error assigning claim:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign claim. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
 
   function handleReassign(assignmentId: string, newAgent: string) {

@@ -11,9 +11,11 @@ import { ChevronDown, ChevronRight, Edit, Trash2 } from "lucide-react";
 import InsurerForm from "./InsurerForm";
 import type { Insurer } from "@/lib/types/insurer";
 import type { ClaimType } from "@/lib/types/claim-types";
-import { getInsurers } from "@/app/services/dashboard";
+import { getInsurers, updateInsurer, deleteInsurer } from "@/app/services/dashboard";
+import { useToast } from "@/components/ui/use-toast";
 
 type ModalState = { mode: "add" | "edit"; insurer: Insurer | null } | null;
+type ConfirmState = { type: "delete"; insurer: Insurer } | null;
 
 // Interface for the API response structure
 interface InsurersApiResponse {
@@ -47,8 +49,10 @@ export default function InsurersClient() {
   const [insurers, setInsurers] = useState<Insurer[]>([]);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalState>(null);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmState>(null);
   const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
 
   const filtered = insurers.filter((i) =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -88,9 +92,47 @@ export default function InsurersClient() {
     setModal(null);
   }
 
-  function handleEdit(updated: Omit<Insurer, "id">) {
-    setInsurers((prev) => prev.map((i) => (i.id === modal?.insurer?.id ? { ...i, ...updated } : i)));
-    setModal(null);
+  async function handleEdit(updated: Omit<Insurer, "id">) {
+    if (!modal?.insurer?.id) return;
+    
+    try {
+      setLoading(true);
+      
+      // Transform the data to match API format
+      const apiPayload = {
+        name: updated.name,
+        logo: updated.logo || undefined,
+        contact_email: updated.contact_email,
+        contact_phone: updated.contact_phone,
+        address: updated.address,
+        supported_claim_types: JSON.stringify(updated.supported_claim_types),
+        special_instructions: updated.special_instructions,
+        active: updated.status ? 1 : 0
+      };
+      
+      // Call the API to update the insurer
+      const response = await updateInsurer(modal.insurer.id, apiPayload);
+      console.log('Insurer update response:', response);
+      
+      // Update local state on success
+      setInsurers((prev) => prev.map((i) => (i.id === modal?.insurer?.id ? { ...i, ...updated } : i)));
+      setModal(null);
+      
+      // Show success message
+      toast({
+        title: "Insurer updated successfully",
+        description: `${updated.name} has been updated.`,
+      });
+    } catch (error) {
+      console.error('Failed to update insurer:', error);
+      toast({
+        variant: "destructive",
+        title: "Error updating insurer",
+        description: "Failed to update insurer. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleStatusToggle(id: string) {
@@ -98,7 +140,44 @@ export default function InsurersClient() {
   }
 
   function handleDelete(id: string) {
-    setInsurers((prev) => prev.filter((i) => i.id !== id));
+    const insurer = insurers.find(i => i.id === id);
+    if (!insurer) return;
+
+    // Show confirmation dialog
+    setConfirmDialog({ type: "delete", insurer });
+  }
+
+  async function confirmDelete() {
+    if (!confirmDialog || confirmDialog.type !== "delete") return;
+
+    const { insurer } = confirmDialog;
+    
+    try {
+      setLoading(true);
+      
+      // Call the API to delete the insurer
+      await deleteInsurer(insurer.id);
+      console.log('Insurer deleted successfully');
+      
+      // Update local state on success
+      setInsurers((prev) => prev.filter((i) => i.id !== insurer.id));
+      
+      // Show success message
+      toast({
+        title: "Insurer deleted successfully",
+        description: `${insurer.name} has been deleted.`,
+      });
+    } catch (error) {
+      console.error('Failed to delete insurer:', error);
+      toast({
+        variant: "destructive",
+        title: "Error deleting insurer",
+        description: "Failed to delete insurer. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+      setConfirmDialog(null);
+    }
   }
 
 
@@ -337,6 +416,40 @@ export default function InsurersClient() {
                 />
               </>
             )}
+          </div>
+        </div>
+      )}
+      
+      {/* Confirmation Dialog */}
+      {confirmDialog && confirmDialog.type === "delete" && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+          <div className="bg-white rounded shadow-lg p-6 w-full max-w-md relative">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <Trash2 className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Insurer</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to delete <strong>&quot;{confirmDialog.insurer.name}&quot;</strong>? 
+                This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmDialog(null)}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={confirmDelete}
+                  disabled={loading}
+                >
+                  {loading ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

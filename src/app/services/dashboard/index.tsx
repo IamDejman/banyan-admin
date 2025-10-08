@@ -50,8 +50,10 @@ interface IncidentType {
 interface PaymentConfiguration {
     id: string | number;
     name: string;
-    type: string;
-    config: Record<string, unknown>;
+    code: string;
+    description: string;
+    applicable_claim_types?: string;
+    terms_and_conditions: string;
     active: number;
     created_at?: string;
     updated_at?: string;
@@ -194,7 +196,9 @@ export const getPaymentConfigurationById = (id: string): Promise<ApiResponse<Pay
 
 export const storePaymentConfiguration = (payload: Omit<PaymentConfiguration, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<PaymentConfiguration>> => Http.post(`/admin/payment-configurations`, payload);
 
-export const updatePaymentConfiguration = (id: string, payload: Partial<PaymentConfiguration>): Promise<ApiResponse<PaymentConfiguration>> => Http.put(`/admin/payment-configurations/${id}`, payload);
+export const updatePaymentConfiguration = (id: string, payload: Partial<PaymentConfiguration>): Promise<ApiResponse<PaymentConfiguration>> => Http.patch(`/admin/payment-configurations/${id}`, payload);
+
+export const togglePaymentConfigurationStatus = (id: string): Promise<ApiResponse<PaymentConfiguration>> => Http.patch(`/admin/payment-configurations/update-status/${id}`);
 
 export const deletePaymentConfiguration = (id: string): Promise<ApiResponse<void>> => Http.delete(`/admin/payment-configurations/${id}`);
 
@@ -209,7 +213,6 @@ export const getClaims = (
   filters?: {
     search?: string;
     status?: string;
-    assigned_agent?: string;
     claim_type?: string;
     start_date?: string;
     end_date?: string;
@@ -222,7 +225,6 @@ export const getClaims = (
 
   if (filters?.search) params.append('search', filters.search);
   if (filters?.status && filters.status !== 'all') params.append('status', filters.status);
-  if (filters?.assigned_agent && filters.assigned_agent !== 'all') params.append('assigned_agent', filters.assigned_agent);
   if (filters?.claim_type && filters.claim_type !== 'all') params.append('claim_type', filters.claim_type);
   if (filters?.start_date) params.append('start_date', filters.start_date);
   if (filters?.end_date) params.append('end_date', filters.end_date);
@@ -288,7 +290,10 @@ export const requestAdditionalInformation = (payload: {
 }): Promise<ApiResponse<unknown>> => Http.post(`/admin/claims/request-additional-information`, payload);
 
 // get claim assignments (for agent filter)
-export const getClaimAssignments = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claim-assignments`);
+export const getClaimAssignments = (search?: string): Promise<ApiResponse<unknown>> => {
+  const url = search ? `/admin/claim-assignments?search=${encodeURIComponent(search)}` : '/admin/claim-assignments';
+  return Http.get(url);
+};
 
 // get claim assignments with claims data
 export const getClaimAssignmentsWithClaims = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claim-assignments/claims`);
@@ -304,6 +309,26 @@ interface ClaimAssignmentStatistics {
 
 // get claim assignments statistics
 export const getClaimAssignmentStatistics = (): Promise<ApiResponse<ClaimAssignmentStatistics>> => Http.get(`/admin/claim-assignments/statistics`);
+
+// assign claim to agent
+export const assignClaim = (claimId: string, agentId: string, specialInstructions?: string): Promise<ApiResponse<unknown>> => 
+  Http.post(`/admin/claim-assignments`, {
+    claim_id: claimId,
+    agent_id: agentId,
+    special_instructions: specialInstructions || ""
+  });
+
+// update claim assignment
+export const updateClaimAssignment = (claimAssignmentId: string, claimId: string, agentId?: string): Promise<ApiResponse<unknown>> => {
+  // Try sending just the agent_id since we're reassigning
+  const payload: { agent_id?: number } = {};
+  
+  if (agentId) {
+    payload.agent_id = parseInt(agentId);
+  }
+  
+  return Http.patch(`/admin/claim-assignments/update-assignment/${claimAssignmentId}`, payload);
+};
 
 // Audit Log interfaces
 interface AuditLog {
@@ -413,7 +438,9 @@ export const editUser = (userId: string, payload: {
   role?: string;
 }): Promise<ApiResponse<unknown>> => Http.patch(`/admin/user-management/update/${userId}`, payload);
 
-
+// RBAC - Permissions and Roles API
+export const getPermissions = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/rbac/permissions`);
+export const getRoles = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/rbac/roles`);
 
 
 

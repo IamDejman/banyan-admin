@@ -70,7 +70,7 @@ export default function LoginPage() {
       // cookie().setCookie('userType', res?.user?.role);
       cookie().setCookie('userData', JSON.stringify(res?.user));
       setIsLoading(false);
-      router.push('/dashboard');
+      router.push('/dashboard/claims');
     } catch (err: unknown) {
       const error = err as ApiError;
       setIsLoading(false);

@@ -19,7 +19,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     }
 
     if (user && allowedRoles && !allowedRoles.includes(user.role)) {
-      router.push('/dashboard');
+      router.push('/dashboard/claims');
     }
   }, [user, loading, router, allowedRoles]);
 

@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Filter, Loader2 } from "lucide-react";
 import { getAuditLogs } from "@/app/services/dashboard";
 import { toast } from "@/components/ui/use-toast";
+// import { formatDateTime } from "@/lib/utils/text-formatting"; // Removed unused import
+
 
 // API Response interfaces
 interface ApiAuditLog {
@@ -34,8 +36,10 @@ interface TransformedAuditLog {
   userType: string;
   action: string;
   description: string;
-  causerId: number;
+  causerId?: number;
   userName: string;
+  ipAddress?: string;
+  status?: string;
 }
 
 // Error interface for proper typing
@@ -77,19 +81,25 @@ export default function AuditLogsPage() {
       setLoading(true);
       try {
         console.log('Fetching audit logs...');
-        const res = await getAuditLogs();
+        // Add timeout to prevent hanging
+        const res = await Promise.race([
+          getAuditLogs(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), 10000)
+          )
+        ]);
         console.log('Audit logs response:', res);
+        console.log('Response status:', (res as { status?: number })?.status || 'No status');
         console.log('Response type:', typeof res);
         console.log('Response keys:', res ? Object.keys(res) : 'null');
 
         // Extract audit logs data from API response
         let auditLogsData = null;
-        if (res && res.data && Array.isArray(res.data)) {
-          auditLogsData = res.data;
-        } else if (Array.isArray(res)) {
-          auditLogsData = res;
-        } else if (res && Array.isArray(res)) {
-          auditLogsData = res;
+        const response = res as { data?: unknown[] } | unknown[];
+        if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+          auditLogsData = response.data;
+        } else if (Array.isArray(response)) {
+          auditLogsData = response;
         }
 
         console.log('Extracted audit logs data:', auditLogsData);
@@ -97,28 +107,33 @@ export default function AuditLogsPage() {
         console.log('Length:', auditLogsData?.length);
 
         if (auditLogsData && auditLogsData.length > 0) {
-          const transformedLogs = auditLogsData.map((log: ApiAuditLog) => {
+          const transformedLogs = auditLogsData.map((log: unknown) => {
+            const apiLog = log as ApiAuditLog;
             // Extract user name from description or use fallback
             let userName = 'System';
-            if (log.causer_type.includes('User')) {
+            const causerType = apiLog.causer_type || '';
+            
+            if (causerType.includes('User')) {
               // Try to extract name from description (e.g., "John Doe logged in" or "User John Doe updated...")
-              const nameMatch = log.description.match(/(?:User\s+)?([A-Za-z\s]+?)(?:\s+(?:logged|accessed|updated|created|submitted|verified|rejected))/i);
+              const nameMatch = (apiLog.description || '').match(/(?:User\s+)?([A-Za-z\s]+?)(?:\s+(?:logged|accessed|updated|created|submitted|verified|rejected))/i);
               if (nameMatch && nameMatch[1]) {
                 userName = nameMatch[1].trim();
               } else {
                 // Fallback to User ID if no name found
-                userName = `User #${log.causer_id}`;
+                userName = `User #${apiLog.causer_id || 'Unknown'}`;
               }
             }
             
             return {
-              id: log.id,
-              timestamp: new Date(log.created_at),
-              userType: log.causer_type.includes('User') ? 'user' : 'system',
-              action: log.properties?.action || 'Unknown Action',
-              description: log.description || 'No description available',
-              causerId: log.causer_id,
-              userName: userName
+              id: apiLog.id,
+              timestamp: new Date(apiLog.created_at || new Date().toISOString()),
+              userType: causerType.includes('User') ? 'user' : 'system',
+              action: apiLog.properties?.action || 'Unknown Action',
+              description: apiLog.description || 'No description available',
+              causerId: apiLog.causer_id,
+              userName: userName,
+              ipAddress: 'Unknown',
+              status: apiLog.properties?.status || 'unknown'
             };
           });
           
@@ -131,15 +146,26 @@ export default function AuditLogsPage() {
         }
       } catch (error: unknown) {
         console.error('Error fetching audit logs:', error);
-        console.error('Error type:', typeof error);
-        console.error('Error details:', error);
         
         let errorMsg = 'Failed to fetch audit logs';
         if (error && typeof error === 'object') {
           const err = error as ApiError;
-          if (err.response) {
-            console.error('Response error:', err.response);
-            errorMsg = err.response.data?.message || err.response.statusText || `HTTP ${err.response.status}`;
+          if (err.message === 'Request timeout') {
+            errorMsg = 'Request timed out. The server may be slow or unavailable.';
+          } else if (err.response) {
+            const status = err.response.status;
+            if (status === 500) {
+              errorMsg = 'Server error. Please try again later or contact support.';
+            } else if (status === 401) {
+              errorMsg = 'Unauthorized. Please log in again.';
+            } else if (status === 403) {
+              errorMsg = 'Access denied. You do not have permission to view audit logs.';
+            } else if (status === 404) {
+              errorMsg = 'Audit logs endpoint not found.';
+            } else {
+              errorMsg = err.response.data?.message || err.response.statusText || `HTTP ${status}`;
+            }
+            console.error('Response error:', { status, data: err.response.data });
           } else if (err.message) {
             errorMsg = err.message;
           }
@@ -150,6 +176,7 @@ export default function AuditLogsPage() {
           description: errorMsg,
           variant: "destructive",
         });
+        // Set empty data when API fails
         setAuditLogs([]);
       } finally {
         setLoading(false);
@@ -181,10 +208,15 @@ export default function AuditLogsPage() {
   }
 
   function formatTimestamp(timestamp: Date) {
-    return timestamp.toLocaleDateString() + " " + timestamp.toLocaleTimeString([], {
+    // Format: DD Mmm YYYY HH:MM
+    return timestamp.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    });
+      minute: '2-digit',
+      hour12: false
+    }).replace(',', '');
   }
 
   return (
@@ -246,18 +278,16 @@ export default function AuditLogsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12 sm:w-auto">S/N</TableHead>
-                  <TableHead className="hidden sm:table-cell">Timestamp</TableHead>
-                  <TableHead className="hidden md:table-cell">User Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">User Type</TableHead>
-                  <TableHead className="hidden lg:table-cell">Action/Activity</TableHead>
-                  <TableHead className="hidden md:table-cell">Description</TableHead>
+                  <TableHead>User Role</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Timestamp</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={4} className="text-center py-8">
                       <div className="text-center">
                         <Loader2 className="h-8 w-8 text-gray-400 mx-auto mb-2 animate-spin" />
                         <p className="text-sm text-muted-foreground">Loading audit logs...</p>
@@ -266,7 +296,7 @@ export default function AuditLogsPage() {
                   </TableRow>
                 ) : filteredLogs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={4} className="text-center py-8">
                       <div className="text-center">
                         <Filter className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                         <p className="text-sm text-muted-foreground">No audit logs found</p>
@@ -274,28 +304,16 @@ export default function AuditLogsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredLogs.map((log, index) => (
+                  filteredLogs.map((log) => (
                     <TableRow key={log.id}>
-                      <TableCell className="text-xs sm:text-sm">{index + 1}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
-                        {formatTimestamp(log.timestamp)}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <span className="text-sm sm:text-base">
-                          {log.userName}
-                        </span>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell>
                         <Badge className={getUserTypeBadge(log.userType)}>
                           {log.userType}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell text-xs sm:text-sm">
-                        {log.action}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-xs sm:text-sm">
-                        {log.description}
-                      </TableCell>
+                      <TableCell>{log.action}</TableCell>
+                      <TableCell>{log.description}</TableCell>
+                      <TableCell>{formatTimestamp(log.timestamp)}</TableCell>
                     </TableRow>
                   ))
                 )}
@@ -305,30 +323,22 @@ export default function AuditLogsPage() {
           
           {/* Mobile Audit Logs Cards */}
           <div className="sm:hidden space-y-3 p-4">
-            {filteredLogs.map((log, index) => (
+            {filteredLogs.map((log) => (
               <div key={log.id} className="border rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">#{index + 1}</span>
                   <Badge className={getUserTypeBadge(log.userType)}>
                     {log.userType}
                   </Badge>
+                  <span className="text-xs text-muted-foreground">{formatTimestamp(log.timestamp)}</span>
                 </div>
                 <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">User:</span>
-                    <span>{log.userName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Time:</span>
-                    <span>{formatTimestamp(log.timestamp)}</span>
-                  </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Action:</span>
                     <span>{log.action}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div>
                     <span className="text-muted-foreground">Description:</span>
-                    <span className="text-right">{log.description}</span>
+                    <p className="text-sm mt-1">{log.description}</p>
                   </div>
                 </div>
               </div>

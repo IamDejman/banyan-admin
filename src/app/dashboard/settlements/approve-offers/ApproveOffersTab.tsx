@@ -1,17 +1,18 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, CheckSquare, X } from "lucide-react";
+import { Eye, CheckSquare, X, Search } from "lucide-react";
 
-import { approveSettlementOffer, rejectSettlementOffer } from "@/app/services/dashboard";
+import { approveSettlementOffer, rejectSettlementOffer, getSettlementsWithStatus } from "@/app/services/dashboard";
 import { useToast } from "@/components/ui/use-toast";
 
 import { Settlement } from "@/lib/types/settlement";
+import { formatDate } from "@/lib/utils/text-formatting";
 
 
 interface ApproveOffersTabProps {
@@ -26,17 +27,66 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
   const availableSettlements = settlements.length > 0 ? settlements : [];
   const [modal, setModal] = useState<{ mode: "view" | "approve" | "reject"; offer: Settlement } | null>(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [claimTypeFilter, setClaimTypeFilter] = useState<string>("all");
+  const [settlementsData, setSettlementsData] = useState<Settlement[]>([]);
+  // const [settlementsLoading, setSettlementsLoading] = useState(false); // Removed unused variable
   const { toast } = useToast();
 
+  // Function to fetch approved settlements from API
+  const fetchApprovedSettlements = async () => {
+    try {
+      // setSettlementsLoading(true); // Removed unused
+      const response = await getSettlementsWithStatus('settlement_approved');
+      console.log('Approved settlements API response:', response);
+      
+      // Extract data from the nested response structure
+      let settlementsArray = [];
+      if (response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
+        settlementsArray = response.data.data;
+      } else if (Array.isArray(response)) {
+        settlementsArray = response;
+      }
+      
+      setSettlementsData(settlementsArray);
+    } catch (error) {
+      console.error('Error fetching approved settlements:', error);
+      setSettlementsData([]);
+    } finally {
+      // setSettlementsLoading(false); // Removed unused
+    }
+  };
+
+  // Fetch approved settlements on component mount
+  useEffect(() => {
+    fetchApprovedSettlements();
+  }, []);
 
 
-  const filteredOffers = availableSettlements.filter((offer: Settlement) => {
-    const matchesSearch = offer.client.toLowerCase().includes(search.toLowerCase()) ||
-      offer.id.toString().toLowerCase().includes(search.toLowerCase()) ||
-      offer.claim_type.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || offer.status.toLowerCase() === statusFilter;
-    return matchesSearch && matchesStatus;
+
+  // Extract unique claim types from settlements data
+  const extractUniqueClaimTypes = (settlementsData: Settlement[]): string[] => {
+    const claimTypeSet = new Set<string>();
+    settlementsData.forEach((settlement: Settlement) => {
+      if (settlement.claim_type) {
+        claimTypeSet.add(settlement.claim_type.toLowerCase());
+      }
+    });
+    return Array.from(claimTypeSet).sort();
+  };
+
+  const availableClaimTypes = extractUniqueClaimTypes(settlementsData);
+
+  const filteredOffers = settlementsData.filter((offer: Settlement) => {
+    const searchLower = search.toLowerCase();
+    const matchesSearch = !search || (
+      offer.client.toLowerCase().includes(searchLower) ||
+      offer.id.toString().toLowerCase().includes(searchLower) ||
+      offer.claim_type.toLowerCase().includes(searchLower) ||
+      (offer as Settlement & { amount?: number }).amount?.toString().toLowerCase().includes(searchLower)
+    );
+    const matchesClaimType = claimTypeFilter === "all" || 
+      (offer.claim_type && offer.claim_type.toLowerCase() === claimTypeFilter);
+    return matchesSearch && matchesClaimType;
   });
 
   function getDaysLeft(expiresAt: Date) {
@@ -126,21 +176,26 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
       )}
 
       <div className="flex gap-4 items-center">
-        <Input
-          placeholder="Search by client name or offer ID..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-64"
-        />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by status" />
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by Claim ID, Client name, or amount..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-8 w-full"
+          />
+        </div>
+        <Select value={claimTypeFilter} onValueChange={setClaimTypeFilter}>
+          <SelectTrigger className="w-full lg:w-48">
+            <SelectValue placeholder="Filter by Claim Type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="submitted">Submitted</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="all">All Claim Types</SelectItem>
+            {availableClaimTypes.map((claimType) => (
+              <SelectItem key={claimType} value={claimType}>
+                {claimType.charAt(0).toUpperCase() + claimType.slice(1)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -153,7 +208,7 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Offer ID</TableHead>
+                <TableHead>Claim ID</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
@@ -179,7 +234,7 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
                   <TableCell>
                     {offer.expiry_period ? getDaysLeft(new Date(offer.expiry_period)) : "N/A"}
                   </TableCell>
-                  <TableCell>{offer?.created_at ? new Date(offer.created_at).toLocaleDateString() : "N/A"}</TableCell>
+                  <TableCell>{offer?.created_at ? formatDate(offer.created_at) : "N/A"}</TableCell>
 
                   <TableCell>
                     <div className="flex gap-2">

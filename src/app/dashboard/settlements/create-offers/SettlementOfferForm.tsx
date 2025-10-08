@@ -7,9 +7,12 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Upload, FileText } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { X, Upload, FileText, Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import type { SettlementOffer } from "@/lib/types/settlement";
-import { getApprovedClaims } from '@/app/services/dashboard';
+import { getApprovedClaims, getPaymentConfigurations } from '@/app/services/dashboard';
 
 // Interface for the actual claims data structure from API
 interface ApiClaim {
@@ -32,16 +35,29 @@ interface ClaimsApiResponse {
   };
 }
 
+// Interface for Payment Configuration
+interface PaymentConfiguration {
+  id: string | number;
+  name: string;
+  type: string;
+  config: Record<string, unknown>;
+  active: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface SettlementOfferFormProps {
   existingOffer?: SettlementOffer;
-  onSubmit: (offer: Omit<SettlementOffer, "id" | "offerId" | "createdAt" | "createdBy">) => void;
+  onSubmit: (offer: Omit<SettlementOffer, "id" | "offerId" | "createdAt" | "createdBy">, action: 'draft' | 'submit') => void;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }
 
 export default function SettlementOfferForm({
   existingOffer,
   onSubmit,
   onCancel,
+  isSubmitting = false,
 }: SettlementOfferFormProps) {
   const [selectedClaimId, setSelectedClaimId] = useState<string>(existingOffer?.claimId || "");
   const [assessedAmount, setAssessedAmount] = useState(existingOffer?.assessedAmount || 0);
@@ -49,8 +65,8 @@ export default function SettlementOfferForm({
   const [serviceFeePercentage, setServiceFeePercentage] = useState(existingOffer?.serviceFeePercentage || 0);
   const [finalAmount, setFinalAmount] = useState(existingOffer?.finalAmount || 0);
   const [paymentMethod, setPaymentMethod] = useState<SettlementOffer["paymentMethod"]>(existingOffer?.paymentMethod || "BANK_TRANSFER");
-  const [paymentTimeline, setPaymentTimeline] = useState(existingOffer?.paymentTimeline || 7);
-  const [offerValidityPeriod, setOfferValidityPeriod] = useState(existingOffer?.offerValidityPeriod || 14);
+  const [paymentDueDate, setPaymentDueDate] = useState<Date | undefined>();
+  const [offerExpiryDate, setOfferExpiryDate] = useState<Date | undefined>();
   const [specialConditions, setSpecialConditions] = useState(existingOffer?.specialConditions || "");
   const [supportingDocuments, setSupportingDocuments] = useState<string[]>(existingOffer?.supportingDocuments || []);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -143,24 +159,59 @@ export default function SettlementOfferForm({
     });
   }, [existingOffer?.claimId]);
 
+  // Fetch payment methods from API
+  useEffect(() => {
+    console.log("🔄 Fetching payment configurations from API...");
+    getPaymentConfigurations().then((res: unknown) => {
+      console.log("✅ Raw payment configurations response:", res);
 
-  function handleSubmit(e: React.FormEvent) {
+      let paymentData: PaymentConfiguration[] = [];
+
+      if (Array.isArray(res)) {
+        paymentData = res;
+      } else if (res && typeof res === 'object' && 'data' in res) {
+        const response = res as { data?: PaymentConfiguration[] };
+        paymentData = response.data || [];
+      }
+
+      console.log("📊 Processed payment configurations data:", paymentData);
+      console.log("📈 Number of payment configurations found:", paymentData.length);
+      
+      // Note: This API returns payment fee structures, not payment methods
+      // We'll use the default payment methods for now
+    }).catch((error) => {
+      console.error("❌ Error fetching payment configurations:", error);
+    });
+  }, []);
+
+
+  function handleSubmit(e: React.FormEvent, action: 'draft' | 'submit' = 'submit') {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
 
+    // For draft, only validate required fields
     if (!selectedClaimId) newErrors.claimId = "Please select a claim";
-    if (assessedAmount <= 0) newErrors.assessedAmount = "Assessed amount must be greater than 0";
-    if (deductions < 0) newErrors.deductions = "Deductions cannot be negative";
-    if (serviceFeePercentage < 0) newErrors.serviceFeePercentage = "Service fee cannot be negative";
-    if (finalAmount <= 0) newErrors.finalAmount = "Final amount must be greater than 0";
-    if (!paymentMethod) newErrors.paymentMethod = "Please select a payment method";
-    if (paymentTimeline <= 0) newErrors.paymentTimeline = "Payment timeline must be greater than 0";
-    if (offerValidityPeriod <= 0) newErrors.offerValidityPeriod = "Offer validity period must be greater than 0";
+    
+    // For submit, validate all required fields
+    if (action === 'submit') {
+      if (assessedAmount <= 0) newErrors.assessedAmount = "Assessed amount must be greater than 0";
+      if (deductions < 0) newErrors.deductions = "Deductions cannot be negative";
+      if (serviceFeePercentage < 0) newErrors.serviceFeePercentage = "Service fee cannot be negative";
+      if (finalAmount <= 0) newErrors.finalAmount = "Final amount must be greater than 0";
+      if (!paymentMethod) newErrors.paymentMethod = "Please select a payment method";
+      if (!paymentDueDate) newErrors.paymentDueDate = "Please select payment due date";
+      if (!offerExpiryDate) newErrors.offerExpiryDate = "Please select offer expiry date";
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
+
+    // Calculate timeline and validity period from dates
+    const today = new Date();
+    const paymentTimeline = paymentDueDate ? Math.ceil((paymentDueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    const offerValidityPeriod = offerExpiryDate ? Math.ceil((offerExpiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
     const offerData = {
       claimId: selectedClaimId,
@@ -174,13 +225,13 @@ export default function SettlementOfferForm({
       paymentTimeline,
       offerValidityPeriod,
       specialConditions,
-      status: existingOffer?.status || "DRAFT",
+      status: (action === 'draft' ? "DRAFT" : "SUBMITTED") as SettlementOffer["status"],
       supportingDocuments,
     };
 
     console.log(offerData, "offerData__");
 
-    onSubmit(offerData);
+    onSubmit(offerData, action);
   }
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -227,7 +278,7 @@ export default function SettlementOfferForm({
 
         {/* Client Details (Auto-populated) */}
         {selectedClaim && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
             <div>
               <Label className="text-sm font-medium">Client Name</Label>
               <p className="text-sm">{selectedClaim?.client?.first_name} {selectedClaim?.client?.last_name}</p>
@@ -235,10 +286,6 @@ export default function SettlementOfferForm({
             <div>
               <Label className="text-sm font-medium">Claim Type</Label>
               <p className="text-sm">{selectedClaim?.claim_type_details?.name}</p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Assessed Amount</Label>
-              <p className="text-sm">₦{selectedClaim?.estimated_value.toLocaleString()}</p>
             </div>
           </div>
         )}
@@ -309,47 +356,67 @@ export default function SettlementOfferForm({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="paymentMethod">Payment Method *</Label>
-              <Select value={paymentMethod} onValueChange={(value: SettlementOffer["paymentMethod"]) => setPaymentMethod(value)}>
+              <Select value={paymentMethod} onValueChange={(value: string) => setPaymentMethod(value as SettlementOffer["paymentMethod"])}>
                 <SelectTrigger className={errors.paymentMethod ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
-                  <SelectItem value="CHEQUE">Cheque</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                  <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
               {errors.paymentMethod && <p className="text-red-500 text-sm mt-1">{errors.paymentMethod}</p>}
             </div>
 
             <div>
-              <Label htmlFor="paymentTimeline">Payment Timeline (days) *</Label>
-              <Select value={paymentTimeline.toString()} onValueChange={(value) => setPaymentTimeline(Number(value))}>
-                <SelectTrigger className={errors.paymentTimeline ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select timeline" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">7 days</SelectItem>
-                  <SelectItem value="14">14 days</SelectItem>
-                  <SelectItem value="30">30 days</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.paymentTimeline && <p className="text-red-500 text-sm mt-1">{errors.paymentTimeline}</p>}
+              <Label htmlFor="paymentDueDate">Payment Due Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal ${errors.paymentDueDate ? "border-red-500" : ""}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {paymentDueDate ? format(paymentDueDate, "PPP") : "Select payment due date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={paymentDueDate}
+                    onSelect={setPaymentDueDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {errors.paymentDueDate && <p className="text-red-500 text-sm mt-1">{errors.paymentDueDate}</p>}
             </div>
 
             <div>
-              <Label htmlFor="validityPeriod">Offer Validity Period (days) *</Label>
-              <Select value={offerValidityPeriod.toString()} onValueChange={(value) => setOfferValidityPeriod(Number(value))}>
-                <SelectTrigger className={errors.offerValidityPeriod ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select validity period" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">7 days</SelectItem>
-                  <SelectItem value="14">14 days</SelectItem>
-                  <SelectItem value="21">21 days</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.offerValidityPeriod && <p className="text-red-500 text-sm mt-1">{errors.offerValidityPeriod}</p>}
+              <Label htmlFor="offerExpiryDate">Offer Expiry Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal ${errors.offerExpiryDate ? "border-red-500" : ""}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {offerExpiryDate ? format(offerExpiryDate, "PPP") : "Select offer expiry date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={offerExpiryDate}
+                    onSelect={setOfferExpiryDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {errors.offerExpiryDate && <p className="text-red-500 text-sm mt-1">{errors.offerExpiryDate}</p>}
             </div>
           </div>
 
@@ -408,14 +475,14 @@ export default function SettlementOfferForm({
 
         {/* Action Buttons */}
         <div className="flex gap-2 justify-end">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" variant="outline">
-            Save Draft
+          <Button type="button" variant="outline" onClick={(e) => handleSubmit(e, 'draft')} disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save Draft"}
           </Button>
-          <Button type="submit">
-            Submit for Approval
+          <Button type="button" onClick={(e) => handleSubmit(e, 'submit')} disabled={isSubmitting}>
+            {isSubmitting ? "Submitting..." : "Submit for Approval"}
           </Button>
         </div>
       </form>

@@ -1,10 +1,11 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Permission, Role } from "@/lib/types/permission";
+import { getPermissions, getRoles } from "@/app/services/dashboard";
 
 const mockPermissions: Permission[] = [
   {
@@ -113,7 +114,7 @@ const mockRoles: Role[] = [
 ];
 
 export default function PermissionsClient() {
-  const [permissions] = useState<Permission[]>(mockPermissions);
+  const [permissions, setPermissions] = useState<Permission[]>(mockPermissions);
   const [roles, setRoles] = useState<Role[]>(mockRoles);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [modal, setModal] = useState<{ mode: "add" | "edit" | "view"; role: Role | null } | null>(null);
@@ -122,6 +123,100 @@ export default function PermissionsClient() {
     description: "",
     permissions: [],
   });
+  const [loading, setLoading] = useState(true);
+  const [rolesLoading, setRolesLoading] = useState(true);
+
+  // Fetch permissions from API
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        setLoading(true);
+        const response = await getPermissions();
+        console.log('Permissions API response:', response);
+        
+        // Handle different possible response structures
+        let permissionsData: Permission[] = [];
+        if (response && typeof response === 'object' && 'data' in response) {
+          if (Array.isArray(response.data)) {
+            permissionsData = response.data;
+          }
+        } else if (Array.isArray(response)) {
+          permissionsData = response;
+        }
+        
+        // If API returns empty array, use mock data
+        if (permissionsData.length === 0) {
+          console.log('No permissions from API, using mock data');
+          setPermissions(mockPermissions);
+        } else {
+          setPermissions(permissionsData);
+        }
+      } catch (error) {
+        console.error('Error fetching permissions:', error);
+        // Fall back to mock data on error
+        setPermissions(mockPermissions);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchPermissions();
+  }, []);
+
+  // Fetch roles from API
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        setRolesLoading(true);
+        const response = await getRoles();
+        console.log('Roles API response:', response);
+        
+        // Handle different possible response structures
+        let rolesData: Role[] = [];
+        if (response && typeof response === 'object' && 'data' in response) {
+          if (Array.isArray(response.data)) {
+            // Map API roles to our Role interface
+            rolesData = response.data.map((role: { id: number | string; name: string; description?: string; permissions?: Array<{ id?: string | number } | string>; is_default?: boolean; created_at?: string; updated_at?: string }) => ({
+              id: role.id.toString(),
+              name: role.name,
+              description: role.description || `${role.name} role`,
+              permissions: Array.isArray(role.permissions) ? role.permissions.map((p: { id?: string | number } | string) => (typeof p === 'object' ? p.id?.toString() : p) || '') : [],
+              isDefault: role.is_default || false,
+              createdAt: role.created_at || new Date().toISOString(),
+              updatedAt: role.updated_at || new Date().toISOString(),
+            }));
+          }
+        } else if (Array.isArray(response)) {
+          // Direct array response
+          rolesData = response.map((role: { id: number | string; name: string; description?: string; permissions?: Array<{ id?: string | number } | string>; is_default?: boolean; created_at?: string; updated_at?: string }) => ({
+            id: role.id.toString(),
+            name: role.name,
+            description: role.description || `${role.name} role`,
+            permissions: Array.isArray(role.permissions) ? role.permissions.map((p: { id?: string | number } | string) => (typeof p === 'object' ? p.id?.toString() : p) || '') : [],
+            isDefault: role.is_default || false,
+            createdAt: role.created_at || new Date().toISOString(),
+            updatedAt: role.updated_at || new Date().toISOString(),
+          }));
+        }
+        
+        // If API returns data, use it; otherwise use mock data
+        if (rolesData.length > 0) {
+          setRoles(rolesData);
+        } else {
+          console.log('No roles from API, using mock data');
+          setRoles(mockRoles);
+        }
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+        // Fall back to mock data on error
+        setRoles(mockRoles);
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+    
+    fetchRoles();
+  }, []);
 
   const filtered = permissions.filter((permission) => {
     return categoryFilter === "all" || permission.category === categoryFilter;
@@ -191,21 +286,31 @@ export default function PermissionsClient() {
             </div>
           </div>
           <div className="p-6">
-            <div className="space-y-2">
-              {filtered.map((permission) => (
-                <div key={permission.id} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50">
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{permission.name}</div>
-                    <div className="text-xs text-muted-foreground">{permission.description}</div>
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">Loading permissions...</p>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No permissions found</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filtered.map((permission) => (
+                  <div key={permission.id} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-50">
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{permission.name}</div>
+                      <div className="text-xs text-muted-foreground">{permission.description}</div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Badge variant="secondary" className="text-xs px-2 py-0">
+                        {permission.action}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Badge variant="secondary" className="text-xs px-2 py-0">
-                      {permission.action}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </Card>
 
@@ -215,42 +320,52 @@ export default function PermissionsClient() {
             <h3 className="text-lg font-semibold">Roles</h3>
           </div>
           <div className="p-6">
-            <div className="space-y-3">
-              {roles.map((role) => (
-                <div key={role.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-sm">{role.name}</h4>
-                        {role.isDefault && (
-                          <Badge variant="secondary" className="text-xs">Default</Badge>
-                        )}
+            {rolesLoading ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">Loading roles...</p>
+              </div>
+            ) : roles.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No roles found</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {roles.map((role) => (
+                  <div key={role.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-sm">{role.name}</h4>
+                          {role.isDefault && (
+                            <Badge variant="secondary" className="text-xs">Default</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">{role.description}</p>
+                        <div className="text-xs text-muted-foreground">
+                          Created {new Date(role.createdAt).toLocaleDateString()}
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">{role.description}</p>
-                      <div className="text-xs text-muted-foreground">
-                        Created {new Date(role.createdAt).toLocaleDateString()}
+                      <div className="flex gap-1 ml-4">
+                        <Button size="sm" variant="ghost" onClick={() => { setModal({ mode: "view", role }); setFormData({ name: role.name, description: role.description, permissions: role.permissions }); }}>
+                          View
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setModal({ mode: "edit", role }); setFormData({ name: role.name, description: role.description, permissions: role.permissions }); }}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteRole(role.id)} className="text-red-600 hover:text-red-700">
+                          Delete
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex gap-1 ml-4">
-                      <Button size="sm" variant="ghost" onClick={() => { setModal({ mode: "view", role }); setFormData({ name: role.name, description: role.description, permissions: role.permissions }); }}>
-                        View
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => { setModal({ mode: "edit", role }); setFormData({ name: role.name, description: role.description, permissions: role.permissions }); }}>
-                        Edit
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDeleteRole(role.id)} className="text-red-600 hover:text-red-700">
-                        Delete
-                      </Button>
+                    <div className="mt-2">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        {role.permissions.length} permissions
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-2">
-                    <div className="text-xs text-muted-foreground mb-1">
-                      {role.permissions.length} permissions
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </Card>
       </div>

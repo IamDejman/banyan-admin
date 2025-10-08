@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, BarChart3, Users, Shield, Activity, Mail, Send } from "lucide-react";
+import { FileText, Users, DollarSign, TrendingUp, Mail, Send } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const reportTypes = [
@@ -16,28 +16,22 @@ const reportTypes = [
     icon: FileText,
   },
   {
-    value: "performance",
-    label: "Performance Report",
-    description: "Agent and system performance metrics",
-    icon: BarChart3,
-  },
-  {
     value: "users",
     label: "Users Report",
     description: "User activity and management data",
     icon: Users,
   },
   {
-    value: "audit",
-    label: "Audit Logs Report",
-    description: "System audit trails and security logs",
-    icon: Shield,
+    value: "settlement",
+    label: "Settlement Report",
+    description: "Settlement offers and processing data",
+    icon: TrendingUp,
   },
   {
-    value: "activity",
-    label: "Activity Report",
-    description: "System activity and usage statistics",
-    icon: Activity,
+    value: "financial",
+    label: "Financial Report",
+    description: "Financial metrics and payment data",
+    icon: DollarSign,
   },
 ];
 
@@ -46,7 +40,6 @@ export default function ReportsPage() {
   const [selectedReportType, setSelectedReportType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [email, setEmail] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
 
@@ -54,12 +47,12 @@ export default function ReportsPage() {
   useEffect(() => {
     if (pathname.includes('/claims')) {
       setSelectedReportType('claims');
-    } else if (pathname.includes('/performance')) {
-      setSelectedReportType('performance');
     } else if (pathname.includes('/users')) {
       setSelectedReportType('users');
-    } else if (pathname.includes('/system')) {
-      setSelectedReportType('audit'); // Using audit for system reports
+    } else if (pathname.includes('/settlement')) {
+      setSelectedReportType('settlement');
+    } else if (pathname.includes('/financial')) {
+      setSelectedReportType('financial');
     }
   }, [pathname]);
 
@@ -67,7 +60,7 @@ export default function ReportsPage() {
   const IconComponent = selectedReport?.icon || FileText;
 
 
-  const isFormValid = selectedReportType && startDate && endDate && email;
+  const isFormValid = selectedReportType && startDate && endDate;
 
   function handleSendToEmail() {
     if (!isFormValid) {
@@ -77,11 +70,11 @@ export default function ReportsPage() {
     setIsGenerating(true);
     setIsEmailSent(false);
     
-    // Simulate sending report to email
+    // Simulate sending report to logged-in admin's email
     setTimeout(() => {
       setIsGenerating(false);
       setIsEmailSent(true);
-      console.log(`Sending ${selectedReportType} report to ${email} from ${startDate} to ${endDate}`);
+      console.log(`Sending ${selectedReportType} report to logged-in admin from ${startDate} to ${endDate}`);
       
       // Reset success message after 3 seconds
       setTimeout(() => {
@@ -101,7 +94,7 @@ export default function ReportsPage() {
           <div>
             <h2 className="text-lg sm:text-xl font-semibold mb-4">Generate Report</h2>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Report Type */}
               <div className="space-y-2">
                 <Label htmlFor="reportType">Report Type *</Label>
@@ -112,27 +105,11 @@ export default function ReportsPage() {
                   <SelectContent>
                     {reportTypes.map((report) => (
                       <SelectItem key={report.value} value={report.value}>
-                        <div className="flex items-center gap-2">
-                          <report.icon className="h-4 w-4" />
-                          <span>{report.label}</span>
-                        </div>
+                        {report.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Email Address */}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full"
-                />
               </div>
 
               {/* Start Date */}
@@ -186,7 +163,7 @@ export default function ReportsPage() {
               </Button>
               {isEmailSent && (
                 <p className="text-sm text-green-600 mt-2">
-                  Report has been sent to {email}
+                  Report has been sent to your registered email address
                 </p>
               )}
             </div>
@@ -228,16 +205,11 @@ export default function ReportsPage() {
       {/* Report Types Information */}
       <Card className="p-6">
         <h2 className="text-lg font-semibold mb-4">Available Reports</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {reportTypes.map((report) => {
-            const Icon = report.icon;
             return (
               <div key={report.value} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-3 mb-2">
-                  <Icon className="h-5 w-5 text-primary" />
-                  <h3 className="font-medium">{report.label}</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">{report.description}</p>
+                <h3 className="font-medium text-center">{report.label}</h3>
               </div>
             );
           })}

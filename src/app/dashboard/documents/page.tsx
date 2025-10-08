@@ -13,6 +13,7 @@ import {
   FileText
 } from 'lucide-react';
 import { listDocuments } from '@/app/services/dashboard';
+import { formatDate } from '@/lib/utils/text-formatting';
 
 // Define proper types for documents
 interface Document {
@@ -39,6 +40,7 @@ export default function DocumentsPage() {
   const [viewModal, setViewModal] = useState<ModalState>({ isOpen: false, document: null });
   const [search, setSearch] = useState("");
   const [fileTypeFilter, setFileTypeFilter] = useState("all");
+  const [availableFileTypes, setAvailableFileTypes] = useState<string[]>([]);
 
   const filteredDocuments = documents.filter((doc: Document) => {
     const matchesSearch =
@@ -52,7 +54,13 @@ export default function DocumentsPage() {
   });
 
   const handleViewDocument = (doc: Document) => {
-    setViewModal({ isOpen: true, document: doc });
+    if (doc.document_url) {
+      // Open document in new tab
+      window.open(doc.document_url, '_blank');
+    } else {
+      // Show modal if no direct URL
+      setViewModal({ isOpen: true, document: doc });
+    }
   };
 
   const getFileTypeIcon = (fileType: string | null) => {
@@ -89,7 +97,18 @@ export default function DocumentsPage() {
 
   const getSubmissionDate = (createdAt: string) => {
     if (!createdAt) return "N/A";
-    return new Date(createdAt).toLocaleDateString();
+    return formatDate(createdAt);
+  };
+
+  // Extract unique file types from documents data
+  const extractUniqueFileTypes = (documentsData: Document[]): string[] => {
+    const fileTypeSet = new Set<string>();
+    documentsData.forEach((doc: Document) => {
+      if (doc.file_type) {
+        fileTypeSet.add(doc.file_type.toLowerCase());
+      }
+    });
+    return Array.from(fileTypeSet).sort();
   };
 
   useEffect(() => {
@@ -103,6 +122,11 @@ export default function DocumentsPage() {
       } else if (res && typeof res === 'object' && 'data' in res) {
         documentsData = (res as { data?: Document[] }).data || [];
       }
+      
+      // Extract and set available file types from API response
+      const uniqueFileTypes = extractUniqueFileTypes(documentsData);
+      setAvailableFileTypes(uniqueFileTypes);
+      
       setDocuments(documentsData);
     });
   }, []);
@@ -136,11 +160,11 @@ export default function DocumentsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="pdf">PDF</SelectItem>
-                  <SelectItem value="doc">DOC</SelectItem>
-                  <SelectItem value="docx">DOCX</SelectItem>
-                  <SelectItem value="jpg">JPG</SelectItem>
-                  <SelectItem value="png">PNG</SelectItem>
+                  {availableFileTypes.map((fileType) => (
+                    <SelectItem key={fileType} value={fileType}>
+                      {fileType.toUpperCase()}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -155,18 +179,19 @@ export default function DocumentsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Claim ID</TableHead>
+                  <TableHead className="w-32">Claim ID</TableHead>
                   <TableHead>Document Type</TableHead>
-                  <TableHead>Submission Date</TableHead>
-                  <TableHead>File Type</TableHead>
-                  <TableHead>Size</TableHead>
+                  <TableHead className="w-36">Client</TableHead>
+                  <TableHead className="w-28">File Type</TableHead>
+                  <TableHead className="w-20">Size</TableHead>
+                  <TableHead className="w-28">Submission Date</TableHead>
                   <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredDocuments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       <div className="text-center">
                         <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                         <p className="text-sm text-muted-foreground">No documents found</p>
@@ -176,9 +201,13 @@ export default function DocumentsPage() {
                 ) : (
                   filteredDocuments.map((doc) => (
                     <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.claim_id}</TableCell>
-                      <TableCell>{doc.document_type}</TableCell>
-                      <TableCell>{getSubmissionDate(doc.created_at || '')}</TableCell>
+                      <TableCell className="font-medium text-sm">{doc.claim_id}</TableCell>
+                      <TableCell className="text-sm max-w-48 truncate" title={doc.document_type}>
+                        {doc.document_type}
+                      </TableCell>
+                      <TableCell className="text-sm truncate" title={doc.client || 'N/A'}>
+                        {doc.client || 'N/A'}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {getFileTypeIcon(doc.file_type || null)}
@@ -186,8 +215,15 @@ export default function DocumentsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-xs">{getFileSize(doc.file_size || null)}</TableCell>
+                      <TableCell className="text-xs">{getSubmissionDate(doc.created_at || '')}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => handleViewDocument(doc)}>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleViewDocument(doc)}
+                          className="h-8 w-8 p-0"
+                          title="View Document"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -287,12 +323,38 @@ export default function DocumentsPage() {
 
               {/* Document Preview */}
               <div className="space-y-4">
-                <h4 className="font-semibold">Document Preview</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold">Document Preview</h4>
+                  {viewModal.document?.document_url && (
+                    <Button 
+                      onClick={() => window.open(viewModal.document?.document_url || '', '_blank')}
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Open Document
+                    </Button>
+                  )}
+                </div>
                 <div className="border rounded-lg p-4 bg-gray-50 min-h-[200px] sm:min-h-[300px] flex items-center justify-center">
                   <div className="text-center">
                     <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-sm text-muted-foreground">Document will open in new tab</p>
-                    <p className="text-xs text-muted-foreground cursor-pointer" onClick={() => window.open(viewModal.document?.document_url || '', '_blank')}>Click to view full document</p>
+                    <p className="text-sm text-muted-foreground">
+                      {viewModal.document?.document_url 
+                        ? "Click 'Open Document' to view in new tab" 
+                        : "Document preview not available"
+                      }
+                    </p>
+                    {viewModal.document?.document_url && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => window.open(viewModal.document?.document_url || '', '_blank')}
+                        className="mt-2"
+                      >
+                        View Full Document
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

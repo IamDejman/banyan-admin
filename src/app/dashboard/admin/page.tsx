@@ -15,8 +15,10 @@ import {
   Search, 
   X
 } from "lucide-react";
-import { getClaims, getAgents, getAllUsers, getClaimAssignmentsWithClaims, getClaimAssignmentStatistics } from '@/app/services/dashboard';
+import { getClaims, getAgents, getAllUsers, getClaimAssignments, getClaimAssignmentStatistics, assignClaim, updateClaimAssignment } from '@/app/services/dashboard';
+import { useToast } from '@/components/ui/use-toast';
 import { formatStatus } from '@/lib/utils/text-formatting';
+import { useDebounce } from '@/hooks/useDebounce';
 
 // Mock data for assignments (commented out as not used)
 /*
@@ -99,6 +101,7 @@ const mockAgentWorkloads = [
 
 
 export default function AdminPage() {
+  const { toast } = useToast();
   const [assignments, setAssignments] = useState<Array<{
     id: string;
     claimId: string;
@@ -112,7 +115,9 @@ export default function AdminPage() {
   }>>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 500);
   const [filter, setFilter] = useState("all");
+  const [availableStatuses, setAvailableStatuses] = useState<string[]>([]);
   const [showNewAssignmentModal, setShowNewAssignmentModal] = useState(false);
   const [unassignedClaims, setUnassignedClaims] = useState<Array<{id: string, claim_number: string, client: {first_name: string, last_name: string}, claim_type_details: {name: string}}>>([]);
   const [unassignedClaimsLoading, setUnassignedClaimsLoading] = useState(false);
@@ -127,22 +132,52 @@ export default function AdminPage() {
     active_assignments: 0
   });
   const [statisticsLoading, setStatisticsLoading] = useState(false);
+  
+  // Form state for new assignment modal
+  const [newAssignment, setNewAssignment] = useState({
+    claimId: '',
+    agentId: '',
+    specialInstructions: ''
+  });
+  const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
+
+  // Reassignment modal state
+  const [showReassignmentModal, setShowReassignmentModal] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<{
+    id: string;
+    claimId: string;
+    clientName: string;
+    assignedAgent: string;
+    originalAssignment?: { claim_id?: string };
+  } | null>(null);
+  const [newAgentId, setNewAgentId] = useState('');
+  const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
 
   // Fetch claim assignments and statistics on component mount
   useEffect(() => {
     fetchClaimAssignments();
     fetchStatistics();
+    fetchAgents(); // Also fetch agents on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Debounced search effect for assigned claims
+  useEffect(() => {
+    if (debouncedSearch !== '') {
+      console.log('Search API called with:', debouncedSearch);
+      fetchClaimAssignments(debouncedSearch);
+    } else if (debouncedSearch === '' && search === '') {
+      console.log('Clearing search');
+      fetchClaimAssignments();
+    }
+  }, [debouncedSearch, search]);
+
   const filteredAssignments = assignments.filter((assignment) => {
-    const matchesSearch = 
-      assignment.claimId.toLowerCase().includes(search.toLowerCase()) ||
-      assignment.clientName.toLowerCase().includes(search.toLowerCase()) ||
-      assignment.assignedAgent.toLowerCase().includes(search.toLowerCase());
+    // Only filter by status since search is now handled server-side
+    const claimStatus = assignment.status;
+    const matchesFilter = filter === "all" || (claimStatus && String(claimStatus).toLowerCase() === filter);
     
-    const matchesFilter = filter === "all" || assignment.status.toLowerCase() === filter;
-    
-    return matchesSearch && matchesFilter;
+    return matchesFilter;
   });
 
   // const filteredWorkloads = workloads.filter((workload) => {
@@ -155,6 +190,8 @@ export default function AdminPage() {
   function getStatusBadge(status: string) {
     const config = {
       Active: { label: "Active", variant: "default" as const },
+      Pending: { label: "Pending", variant: "secondary" as const },
+      Approved: { label: "Approved", variant: "default" as const },
       Overdue: { label: "Overdue", variant: "destructive" as const },
       Completed: { label: "Completed", variant: "secondary" as const },
       Excellent: { label: "Excellent", variant: "default" as const, color: "text-green-600" },
@@ -162,7 +199,7 @@ export default function AdminPage() {
       Alert: { label: "Alert", variant: "destructive" as const, color: "text-red-600" },
     };
     
-    const badgeConfig = config[status as keyof typeof config] || config.Active;
+    const badgeConfig = config[status as keyof typeof config] || { label: status, variant: "default" as const };
     return <Badge variant={badgeConfig.variant}>{formatStatus(badgeConfig.label)}</Badge>;
   }
 
@@ -186,36 +223,132 @@ export default function AdminPage() {
     setShowNewAssignmentModal(false);
   };
 
-  const handleReassignClaim = (assignment: { id: string; claimId: string; assignedAgent: string }) => {
-    // For now, we'll show an alert. In a real implementation, this would open a reassignment modal
-    alert(`Reassign claim ${assignment.claimId} from ${assignment.assignedAgent} to another agent.\n\nThis feature will open a reassignment modal where you can select a new agent.`);
+  const handleReassignClaim = (assignment: {
+    id: string;
+    claimId: string;
+    clientName: string;
+    assignedAgent: string;
+    originalAssignment?: { claim_id?: string };
+  }) => {
+    setSelectedAssignment(assignment);
+    setNewAgentId('');
+    setShowReassignmentModal(true);
+    
+    // Ensure agents are loaded when opening reassignment modal
+    if (agents.length === 0 && !agentsLoading) {
+      fetchAgents();
+    }
+  };
+
+  const handleUpdateAssignment = async () => {
+    if (!selectedAssignment || !newAgentId) {
+      toast({
+        title: "Error",
+        description: "Please select a new agent.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdatingAssignment(true);
+    try {
+      // Extract claim ID from the assignment - use the original claim_id from the API response
+      const claimId = selectedAssignment.originalAssignment?.claim_id || selectedAssignment.claimId?.replace('CLM-', '') || selectedAssignment.id;
+      
+      console.log('Reassignment debug:', {
+        selectedAssignment,
+        claimId,
+        newAgentId,
+        assignmentId: selectedAssignment.id,
+        payload: {
+          agent_id: parseInt(newAgentId)
+        }
+      });
+      
+      const response = await updateClaimAssignment(
+        selectedAssignment.id.toString(),
+        claimId,
+        newAgentId
+      );
+      
+      if (response) {
+        toast({
+          title: "Assignment Updated Successfully",
+          description: `The claim has been reassigned to the selected agent.`,
+        });
+        
+        // Close modal and reset form
+        setShowReassignmentModal(false);
+        setSelectedAssignment(null);
+        setNewAgentId('');
+        
+        // Refresh assignments to show the updated assignment
+        fetchClaimAssignments();
+        
+        // Refresh statistics to update counts
+        fetchStatistics();
+      }
+    } catch (error) {
+      console.error('Error updating assignment:', error);
+      const errorResponse = error as { response?: { data?: { message?: string }; status?: number; headers?: unknown }; message?: string };
+      console.error('API Response:', errorResponse?.response?.data);
+      console.error('API Status:', errorResponse?.response?.status);
+      console.error('API Headers:', errorResponse?.response?.headers);
+      
+      const errorMessage = errorResponse?.response?.data?.message || errorResponse?.message || "Failed to update assignment. Please try again.";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingAssignment(false);
+    }
   };
 
   const fetchUnassignedClaims = async () => {
     setUnassignedClaimsLoading(true);
     try {
       console.log('Fetching unassigned claims...');
-      const res = await getClaims();
-      console.log('Claims response:', res);
+      
+      // First, get all claims
+      const claimsRes = await getClaims();
+      console.log('Claims response:', claimsRes);
+      
+      // Then, get all assignments
+      const assignmentsRes = await getClaimAssignments();
+      console.log('Assignments response:', assignmentsRes);
       
       // Extract claims data from response
       let claimsData = [];
-      if (res && res.data && Array.isArray(res.data)) {
-        claimsData = res.data;
-      } else if (Array.isArray(res)) {
-        claimsData = res;
-      } else if (res && typeof res === 'object' && 'data' in res && res.data && typeof res.data === 'object' && 'data' in res.data && Array.isArray(res.data.data)) {
-        claimsData = res.data.data;
+      if (claimsRes && claimsRes.data && Array.isArray(claimsRes.data)) {
+        claimsData = claimsRes.data;
+      } else if (Array.isArray(claimsRes)) {
+        claimsData = claimsRes;
+      } else if (claimsRes && typeof claimsRes === 'object' && 'data' in claimsRes && claimsRes.data && typeof claimsRes.data === 'object' && 'data' in claimsRes.data && Array.isArray(claimsRes.data.data)) {
+        claimsData = claimsRes.data.data;
       }
       
+      // Extract assignments data from response
+      let assignmentsData = [];
+      if (assignmentsRes && assignmentsRes.data && Array.isArray(assignmentsRes.data)) {
+        assignmentsData = assignmentsRes.data;
+      } else if (Array.isArray(assignmentsRes)) {
+        assignmentsData = assignmentsRes;
+      }
+      
+      // Get claim IDs that are already assigned
+      const assignedClaimIds = new Set(assignmentsData.map((assignment: { claim_id: string | number }) => assignment.claim_id));
+      
       // Filter for unassigned claims with pending or approved status
-      const unassigned = claimsData.filter((claim: { assigned_agent?: string | null; status: string }) => {
-        const isUnassigned = !claim.assigned_agent || claim.assigned_agent === '' || claim.assigned_agent === null;
+      const unassigned = claimsData.filter((claim: { id: string | number; status: string }) => {
+        const isUnassigned = !assignedClaimIds.has(claim.id);
         const hasValidStatus = claim.status === 'pending' || claim.status === 'approved';
         return isUnassigned && hasValidStatus;
       });
       
       console.log('Unassigned claims:', unassigned);
+      console.log('Assigned claim IDs:', assignedClaimIds);
       setUnassignedClaims(unassigned);
     } catch (error) {
       console.error('Error fetching unassigned claims:', error);
@@ -336,12 +469,14 @@ export default function AdminPage() {
     }
   };
 
-  const fetchClaimAssignments = async () => {
+  const fetchClaimAssignments = async (searchTerm?: string) => {
     setAssignmentsLoading(true);
     try {
-      console.log('Fetching claim assignments...');
-      const res = await getClaimAssignmentsWithClaims();
+      console.log('Fetching claim assignments with search:', searchTerm);
+      const res = await getClaimAssignments(searchTerm);
       console.log('Claim assignments response:', res);
+      console.log('Response type:', typeof res);
+      console.log('Response keys:', res ? Object.keys(res) : 'No response');
       
       // Check if response indicates an error
       if (res && res.status && Number(res.status) >= 400) {
@@ -350,45 +485,209 @@ export default function AdminPage() {
         return;
       }
       
-      // Extract claims data from response
-      let claimsData = [];
+      // Extract assignments data from response
+      let assignmentsData = [];
+      console.log('Attempting to extract assignments data from response...');
+      
       if (res && res.data && Array.isArray(res.data)) {
-        claimsData = res.data;
+        console.log('Using res.data (Array)');
+        assignmentsData = res.data;
       } else if (Array.isArray(res)) {
-        claimsData = res;
+        console.log('Using res directly (Array)');
+        assignmentsData = res;
       } else if (res && typeof res === 'object' && 'data' in res && res.data && typeof res.data === 'object' && 'data' in res.data && Array.isArray(res.data.data)) {
-        claimsData = res.data.data;
+        console.log('Using res.data.data (Nested Array)');
+        assignmentsData = res.data.data;
+      } else {
+        console.log('No valid data structure found. Response structure:', {
+          isArray: Array.isArray(res),
+          hasData: res && 'data' in res,
+          dataType: res?.data ? typeof res.data : 'no data',
+          dataIsArray: res?.data ? Array.isArray(res.data) : false,
+          fullResponse: res
+        });
       }
       
-      // Transform API data to match our table structure and filter for assigned claims only
-      const transformedAssignments = claimsData
-        .filter((claim: { assigned_agent?: string | null }) => {
-          // Only include claims that have an assigned agent (not empty or 'Unassigned')
-          const assignedAgent = claim.assigned_agent;
-          return assignedAgent && assignedAgent.trim() !== '' && assignedAgent.toLowerCase() !== 'unassigned';
-        })
-        .map((claim: { 
-          id: string | number; 
-          claim_number: string; 
-          client: { first_name: string; last_name: string }; 
-          claim_type_details: { name: string }; 
-          assigned_agent: string; 
-          status: string; 
-          created_at: string; 
+      console.log('Extracted assignmentsData:', assignmentsData);
+      console.log('AssignmentsData length:', assignmentsData.length);
+      
+      // Debug: Log the raw API response to understand the structure
+      console.log('Raw API response data:', assignmentsData);
+      console.log('First assignment structure:', assignmentsData[0]);
+      
+      // Extract unique statuses from assignments data
+      const extractUniqueStatuses = (assignmentsData: Array<{ claim?: { status?: string }; status?: string }>): string[] => {
+        const statusSet = new Set<string>();
+        assignmentsData.forEach((assignment: { claim?: { status?: string }; status?: string }) => {
+          const claim = assignment.claim || {};
+          if (claim.status) {
+            statusSet.add(claim.status.toLowerCase());
+          }
+        });
+        // Return all unique statuses found in the API response
+        return Array.from(statusSet).sort();
+      };
+
+      const uniqueStatuses = extractUniqueStatuses(assignmentsData);
+      setAvailableStatuses(uniqueStatuses);
+
+      // Transform assignments data to match our table structure
+      const transformedAssignments = assignmentsData
+        .map((assignment: {
+          id: string | number;
+          claim_id?: string;
+          agent_id?: string;
+          claim?: {
+            id?: string;
+            status?: string;
+            client?: { first_name?: string; last_name?: string; name?: string } | string;
+            client_name?: string;
+            customer_name?: string;
+            claim_type_details?: { name?: string } | string;
+            claim_type?: string;
+            type?: string;
+            claim_number?: string;
+            claim_id?: string;
+            number?: string;
+            description?: string;
+            submission_date?: string;
+            created_at?: string;
+          };
+          agent?: { name?: string; first_name?: string; last_name?: string; full_name?: string } | string;
+          assigned_agent?: string;
+          agent_name?: string;
+          assigned_to?: string;
+          status?: string;
+          created_at?: string;
+          reason?: string;
           special_instructions?: string;
-          submission_date?: string;
-          description?: string;
-        }) => ({
-          id: claim.id.toString(),
-          claimId: claim.claim_number || `CLM-${claim.id}`,
-          clientName: claim.client ? `${claim.client.first_name} ${claim.client.last_name}` : 'Unknown Client',
-          claimType: claim.claim_type_details?.name || 'Unknown',
-          assignedAgent: claim.assigned_agent,
-          dateAssigned: new Date(claim.submission_date || claim.created_at || new Date()),
-          status: claim.status === 'pending' ? 'Active' : claim.status === 'approved' ? 'Completed' : 'Pending',
-          assignmentReason: 'New claim',
-          specialInstructions: claim.description || 'No special instructions'
-        }));
+        }) => {
+          // Debug: Log each assignment's structure
+          console.log('Processing assignment:', {
+            id: assignment.id,
+            claim_id: assignment.claim_id,
+            agent_id: assignment.agent_id,
+            claim: assignment.claim,
+            agent: assignment.agent,
+            full_assignment: assignment,
+            all_assignment_keys: Object.keys(assignment)
+          });
+          
+          // Extract claim data from assignment
+          const claim = assignment.claim || {};
+          
+          console.log('Claim extraction debug:', {
+            assignment_claim: assignment.claim,
+            claim_status: claim.status,
+            assignment_keys: Object.keys(assignment),
+            claim_keys: claim ? Object.keys(claim) : 'no claim'
+          });
+          
+          // Handle different possible client data structures
+          let clientName = 'Unknown Client';
+          if (claim.client) {
+            if (typeof claim.client === 'string') {
+              clientName = claim.client;
+            } else if (claim.client.first_name && claim.client.last_name) {
+              clientName = `${claim.client.first_name} ${claim.client.last_name}`;
+            } else if (claim.client.name) {
+              clientName = claim.client.name;
+            }
+          } else if (claim.client_name) {
+            clientName = claim.client_name;
+          } else if (claim.customer_name) {
+            clientName = claim.customer_name;
+          }
+          
+          // Handle different possible claim type structures
+          let claimType = 'Unknown';
+          if (claim.claim_type_details) {
+            if (typeof claim.claim_type_details === 'string') {
+              claimType = claim.claim_type_details;
+            } else if (claim.claim_type_details.name) {
+              claimType = claim.claim_type_details.name;
+            }
+          } else if (claim.claim_type) {
+            claimType = claim.claim_type;
+          } else if (claim.type) {
+            claimType = claim.type;
+          }
+          
+          // Handle different possible claim number structures
+          let claimId = `CLM-${claim.id || assignment.claim_id}`;
+          if (claim.claim_number) {
+            claimId = String(claim.claim_number);
+          } else if (assignment.claim_id) {
+            claimId = `CLM-${assignment.claim_id}`;
+          } else if (claim.claim_id) {
+            claimId = String(claim.claim_id);
+          } else if (claim.number) {
+            claimId = String(claim.number);
+          }
+          
+          // Handle status mapping - keep original statuses
+          let mappedStatus = claim.status || assignment.status || 'unknown';
+          
+          // Only capitalize first letter, don't change the actual status
+          if (mappedStatus && typeof mappedStatus === 'string') {
+            mappedStatus = mappedStatus.charAt(0).toUpperCase() + mappedStatus.slice(1);
+          }
+          
+          console.log('Status extraction debug:', {
+            claim_status: claim.status,
+            assignment_status: assignment.status,
+            final_mappedStatus: mappedStatus,
+            claim_object: claim,
+            assignment_object: assignment
+          });
+          
+          // Handle different possible assigned agent structures
+          let assignedAgent = 'Unassigned';
+          
+          // Check for direct assigned_agent field first
+          if (assignment.assigned_agent && assignment.assigned_agent.trim() !== '') {
+            assignedAgent = assignment.assigned_agent;
+          } else if (assignment.agent) {
+            if (typeof assignment.agent === 'string' && assignment.agent.trim() !== '') {
+              assignedAgent = assignment.agent;
+            } else if (typeof assignment.agent === 'object' && assignment.agent.name && assignment.agent.name.trim() !== '') {
+              assignedAgent = assignment.agent.name;
+            } else if (typeof assignment.agent === 'object' && assignment.agent.first_name && assignment.agent.last_name) {
+              assignedAgent = `${assignment.agent.first_name} ${assignment.agent.last_name}`;
+            } else if (typeof assignment.agent === 'object' && assignment.agent.full_name && assignment.agent.full_name.trim() !== '') {
+              assignedAgent = assignment.agent.full_name;
+            }
+          } else if (assignment.agent_name && assignment.agent_name.trim() !== '') {
+            assignedAgent = assignment.agent_name;
+          } else if (assignment.assigned_to && assignment.assigned_to.trim() !== '') {
+            assignedAgent = assignment.assigned_to;
+          } else if (assignment.agent_id) {
+            // If we have agent_id but no name, try to get from agents list
+            assignedAgent = `Agent ID: ${assignment.agent_id}`;
+          }
+          
+          console.log('Agent extraction debug:', {
+            assigned_agent: assignment.assigned_agent,
+            assignment_agent: assignment.agent,
+            agent_name: assignment.agent_name,
+            assigned_to: assignment.assigned_to,
+            agent_id: assignment.agent_id,
+            final_assignedAgent: assignedAgent
+          });
+          
+                return {
+                  id: assignment.id.toString(),
+                  claimId: claimId,
+                  clientName: clientName,
+                  claimType: claimType,
+                  assignedAgent: assignedAgent,
+                  dateAssigned: new Date(assignment.created_at || claim.submission_date || claim.created_at || new Date()),
+                  status: mappedStatus,
+                  assignmentReason: assignment.reason || 'New assignment',
+                  specialInstructions: assignment.special_instructions || claim.description || 'No special instructions',
+                  originalAssignment: assignment // Store original assignment data for API calls
+                };
+        });
       
       console.log('Transformed assignments (assigned only):', transformedAssignments);
       setAssignments(transformedAssignments);
@@ -400,11 +699,60 @@ export default function AdminPage() {
     }
   };
 
+  const handleCreateAssignment = async () => {
+    if (!newAssignment.claimId || !newAssignment.agentId) {
+      toast({
+        title: "Error",
+        description: "Please select both a claim and an agent to create the assignment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreatingAssignment(true);
+    try {
+      // Call the API to assign the claim
+      const response = await assignClaim(newAssignment.claimId, newAssignment.agentId, newAssignment.specialInstructions);
+      
+      if (response) {
+        // Show success notification
+        toast({
+          title: "Claim Assigned Successfully",
+          description: `The claim has been successfully assigned to the selected agent.`,
+        });
+        
+        // Reset form
+        setNewAssignment({
+          claimId: '',
+          agentId: '',
+          specialInstructions: ''
+        });
+        
+        // Close modal
+        setShowNewAssignmentModal(false);
+        
+        // Refresh assignments to show the new assignment
+        fetchClaimAssignments();
+        
+        // Refresh statistics to update counts
+        fetchStatistics();
+      }
+    } catch (error) {
+      console.error('Error creating assignment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign agent to claim. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingAssignment(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Assign Claims</h1>
-        <p className="text-muted-foreground">Manage claim assignments, agent workloads, and status configurations</p>
       </div>
 
       {/* Quick Stats */}
@@ -464,11 +812,19 @@ export default function AdminPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search assignments, agents, or statuses..."
+                placeholder="Search by agent name, client name, claim ID, or claim type..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-10"
               />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
             <Select value={filter} onValueChange={setFilter}>
               <SelectTrigger className="w-48">
@@ -476,11 +832,11 @@ export default function AdminPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="overdue">Overdue</SelectItem>
-                <SelectItem value="excellent">Excellent</SelectItem>
-                <SelectItem value="good">Good</SelectItem>
-                <SelectItem value="alert">Alert</SelectItem>
+                {availableStatuses.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {formatStatus(status)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -554,7 +910,10 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Select Claim</label>
-                <Select>
+                <Select 
+                  value={newAssignment.claimId} 
+                  onValueChange={(value) => setNewAssignment({...newAssignment, claimId: value})}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a claim" />
                   </SelectTrigger>
@@ -576,7 +935,10 @@ export default function AdminPage() {
               
               <div>
                 <label className="text-sm font-medium">Assign to Agent</label>
-                <Select>
+                <Select 
+                  value={newAssignment.agentId} 
+                  onValueChange={(value) => setNewAssignment({...newAssignment, agentId: value})}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Choose an agent" />
                   </SelectTrigger>
@@ -603,25 +965,102 @@ export default function AdminPage() {
                   className="w-full p-2 border rounded-md" 
                   rows={3}
                   placeholder="Any special notes or instructions..."
+                  value={newAssignment.specialInstructions}
+                  onChange={(e) => setNewAssignment({...newAssignment, specialInstructions: e.target.value})}
                 />
               </div>
             </div>
             
             <div className="flex gap-2 justify-end mt-6">
-              <Button variant="outline" onClick={handleCloseNewAssignmentModal}>
+              <Button variant="outline" onClick={handleCloseNewAssignmentModal} disabled={isCreatingAssignment}>
                 Cancel
               </Button>
-              <Button onClick={() => {
-                alert('Assignment created successfully!');
-                handleCloseNewAssignmentModal();
-              }}>
-                Create Assignment
+              <Button onClick={handleCreateAssignment} disabled={isCreatingAssignment}>
+                {isCreatingAssignment ? 'Creating...' : 'Create Assignment'}
               </Button>
             </div>
           </div>
         </div>
       )}
 
+
+      {/* Reassignment Modal */}
+      {showReassignmentModal && selectedAssignment && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        >
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Reassign Claim</h3>
+              <button
+                onClick={() => setShowReassignmentModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  <strong>Current Assignment:</strong><br />
+                  Claim: {selectedAssignment.claimId}<br />
+                  Client: {selectedAssignment.clientName}<br />
+                  Current Agent: {selectedAssignment.assignedAgent}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Select New Agent</label>
+                <Select 
+                  value={newAgentId} 
+                  onValueChange={setNewAgentId}
+                  disabled={agentsLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={agentsLoading ? "Loading agents..." : "Choose an agent"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agentsLoading ? (
+                      <SelectItem value="loading" disabled>
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2"></div>
+                          Loading agents...
+                        </div>
+                      </SelectItem>
+                    ) : agents.length === 0 ? (
+                      <SelectItem value="no-agents" disabled>No agents available</SelectItem>
+                    ) : (
+                      agents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.first_name} {agent.last_name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowReassignmentModal(false)}
+                disabled={isUpdatingAssignment}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateAssignment}
+                disabled={isUpdatingAssignment || !newAgentId}
+              >
+                {isUpdatingAssignment ? "Updating..." : "Update Assignment"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

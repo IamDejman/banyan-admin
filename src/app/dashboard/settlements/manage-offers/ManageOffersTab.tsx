@@ -1,45 +1,108 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Edit, RotateCcw } from "lucide-react";
+import { Eye, Edit, RotateCcw, Search } from "lucide-react";
 import PaymentProcessingForm from "./PaymentProcessingForm";
 import type {  ClientResponse, PaymentDetails } from "@/lib/types/settlement";
 import { Settlement } from "@/lib/types/settlement";
+import { formatDate } from "@/lib/utils/text-formatting";
+import { getSettlementsWithStatus } from "@/app/services/dashboard";
 
-interface ManageOffersTabProps {
-  settlements: Settlement[];
-  loading: boolean;
-}
-
+// Removed unused interface ManageOffersTabProps
 
 
-export default function ManageOffersTab({ settlements, loading }: ManageOffersTabProps) {
-  const availableSettlements = settlements.length > 0 ? settlements : [];
 
-  const [offers, setOffers] = useState<Settlement[]>(availableSettlements);
+export default function ManageOffersTab({ loading }: { loading: boolean }) {
+  // const availableSettlements = settlements.length > 0 ? settlements : []; // Removed unused variable
+
+  // const [offers, setOffers] = useState<Settlement[]>(availableSettlements); // Removed unused variable
+  const [settlementsData, setSettlementsData] = useState<Settlement[]>([]);
+  // const [settlementsLoading, setSettlementsLoading] = useState(false); // Removed unused variable
   const [modal, setModal] = useState<{ mode: "view" | "edit" | "payment" | "manage" | "payment-processing"; offer: Settlement } | null>(null);
   const [search, setSearch] = useState("");
+  const [claimTypeFilter, setClaimTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Function to fetch managed settlements from API (settlement_presented, settlement_accepted, settlement_rejected, settlement_paid)
+  const fetchManagedSettlements = async () => {
+    try {
+      // setSettlementsLoading(true); // Removed unused
+      // Fetch settlements with multiple statuses
+      const statuses = ['settlement_presented', 'settlement_accepted', 'settlement_rejected', 'settlement_paid'];
+      const allSettlements = [];
+      
+      for (const status of statuses) {
+        try {
+          const response = await getSettlementsWithStatus(status);
+          console.log(`${status} settlements API response:`, response);
+          
+          // Extract data from the nested response structure
+          let settlementsArray = [];
+          if (response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
+            settlementsArray = response.data.data;
+          } else if (Array.isArray(response)) {
+            settlementsArray = response;
+          }
+          
+          allSettlements.push(...settlementsArray);
+        } catch (error) {
+          console.error(`Error fetching ${status} settlements:`, error);
+        }
+      }
+      
+      setSettlementsData(allSettlements);
+    } catch (error) {
+      console.error('Error fetching managed settlements:', error);
+      setSettlementsData([]);
+    } finally {
+      // setSettlementsLoading(false); // Removed unused
+    }
+  };
+
+  // Fetch managed settlements on component mount
+  useEffect(() => {
+    fetchManagedSettlements();
+  }, []);
 
   // Use settlements data if available, otherwise fall back to mock data
 
-  const filteredOffers = offers.filter((offer) => {
-    const matchesSearch = offer.client.toLowerCase().includes(search.toLowerCase()) ||
-      offer.id.toString().toLowerCase().includes(search.toLowerCase());
+  // Extract unique claim types from settlements data
+  const extractUniqueClaimTypes = (settlementsData: Settlement[]): string[] => {
+    const claimTypeSet = new Set<string>();
+    settlementsData.forEach((settlement: Settlement) => {
+      if (settlement.claim_type) {
+        claimTypeSet.add(settlement.claim_type.toLowerCase());
+      }
+    });
+    return Array.from(claimTypeSet).sort();
+  };
+
+  const availableClaimTypes = extractUniqueClaimTypes(settlementsData);
+
+  const filteredOffers = settlementsData.filter((offer) => {
+    const searchLower = search.toLowerCase();
+    const matchesSearch = !search || (
+      offer.client.toLowerCase().includes(searchLower) ||
+      offer.id.toString().toLowerCase().includes(searchLower) ||
+      offer.claim_type?.toLowerCase().includes(searchLower) ||
+      (offer as Settlement & { amount?: number }).amount?.toString().toLowerCase().includes(searchLower)
+    );
+    
+    const matchesClaimType = claimTypeFilter === "all" || 
+      (offer.claim_type && offer.claim_type.toLowerCase() === claimTypeFilter);
+    
     const matchesStatus = statusFilter === "all" ||
-      (statusFilter === "pending" && !offer.send_status) ||
-      (statusFilter === "accepted" && offer.send_status === "sent") ||
-      (statusFilter === "rejected" && offer.send_status === "rejected") ||
-      (statusFilter === "counter" && offer.send_status === "counter_offered") ||
-      (statusFilter === "expired" && offer.expired) ||
-      (statusFilter === "payment_processing" && offer.send_status === "payment_processing") ||
-      (statusFilter === "paid" && offer.send_status === "paid"); 
-    return matchesSearch && matchesStatus;
+      (statusFilter === "settlement_presented" && offer.status === "settlement_presented") ||
+      (statusFilter === "settlement_accepted" && offer.status === "settlement_accepted") ||
+      (statusFilter === "settlement_rejected" && offer.status === "settlement_rejected") ||
+      (statusFilter === "settlement_paid" && offer.status === "settlement_paid");
+    
+    return matchesSearch && matchesClaimType && matchesStatus;
   });
 
   function getDaysLeft(expiresAt: Date) {
@@ -93,13 +156,7 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
     return <Badge variant="secondary">Pending Response</Badge>;
   }
 
-  function handleMarkExpired(offerId: string) {
-    setOffers(prev => prev.map(offer =>
-      offer.id === Number(offerId)
-        ? { ...offer, expired: true }
-        : offer
-    ));
-  }
+  // Removed unused handleMarkExpired function
 
   function handlePaymentProcessing(offer: Settlement) {
     setModal({ mode: "payment-processing", offer });
@@ -138,28 +195,43 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
         </Card>
       )} */}
 
-      <div className="flex gap-4 items-center">
-        <Input
-          placeholder="Search by client name or offer ID..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-64"
-        />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending">Pending Response</SelectItem>
-            <SelectItem value="accepted">Accepted</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-            <SelectItem value="counter">Counter-Offered</SelectItem>
-            <SelectItem value="expired">Expired</SelectItem>
-            <SelectItem value="payment_processing">Payment Processing</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4 flex-1">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by Claim ID, Client name, or amount..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-8 w-full"
+            />
+          </div>
+          <Select value={claimTypeFilter} onValueChange={setClaimTypeFilter}>
+            <SelectTrigger className="w-full lg:w-48">
+              <SelectValue placeholder="Filter by Claim Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Claim Types</SelectItem>
+              {availableClaimTypes.map((claimType) => (
+                <SelectItem key={claimType} value={claimType}>
+                  {claimType.charAt(0).toUpperCase() + claimType.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full lg:w-48">
+              <SelectValue placeholder="Filter by Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="settlement_presented">Presented</SelectItem>
+              <SelectItem value="settlement_accepted">Accepted</SelectItem>
+              <SelectItem value="settlement_rejected">Rejected</SelectItem>
+              <SelectItem value="settlement_paid">Paid</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Card>
@@ -170,7 +242,7 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Offer ID</TableHead>
+                <TableHead>Claim ID</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
@@ -215,16 +287,7 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      {!offer.client_response && offer.expiry_period && new Date() > new Date(offer.expiry_period) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleMarkExpired(offer.id.toString())}
-                          title="Mark as Expired"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                      )}
+                      {/* Removed Mark as Expired button - function was removed */}
                       {offer.client_response?.responseType === "ACCEPTED" && offer.status !== "PAYMENT_PROCESSING" && offer.status !== "PAID" && (
                         <Button
                           size="sm"
@@ -284,7 +347,7 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
                       <span className="font-medium">Status:</span> {getStatusBadge(modal.offer)}
                     </div>
                     <div>
-                      <span className="font-medium">Expires:</span> {modal.offer.expiry_period ? new Date(modal.offer.expiry_period).toLocaleDateString() : "N/A"}
+                      <span className="font-medium">Expires:</span> {modal.offer.expiry_period ? formatDate(modal.offer.expiry_period) : "N/A"}
                     </div>
                     <div>
                       <span className="font-medium">Days Left:</span> {modal.offer.expiry_period ? getDaysLeft(new Date(modal.offer.expiry_period)) : "N/A"}
@@ -299,7 +362,7 @@ export default function ManageOffersTab({ settlements, loading }: ManageOffersTa
                           <span className="font-medium">Response Type:</span> {modal.offer.client_response.responseType}
                         </div>
                         <div>
-                          <span className="font-medium">Response Date:</span> {modal.offer.client_response.responseDate.toLocaleDateString()}
+                          <span className="font-medium">Response Date:</span> {formatDate(modal.offer.client_response.responseDate)}
                         </div>
                         {modal.offer.client_response.counterOfferAmount && (
                           <div>

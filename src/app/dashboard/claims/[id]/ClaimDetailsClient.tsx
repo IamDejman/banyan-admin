@@ -22,6 +22,7 @@ import {
 import Link from 'next/link';
 import { getClaimById, approveClaim, requestAdditionalInformation } from '@/app/services/dashboard';
 import { ApiError } from '@/lib/types/settlement';
+import { formatStatus, formatDateTime, formatDate } from '@/lib/utils/text-formatting';
 
 // Define proper types for API response data
 interface ApiClaimDocument {
@@ -172,6 +173,7 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
     if (claimId) {
       fetchClaimData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claimId]);
 
   console.log(claimData, "claim__111");
@@ -202,46 +204,30 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
     const today = new Date();
     const daysSinceSubmission = Math.floor((today.getTime() - submissionDate.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Format status to sentence case
-    const formatStatus = (status: string) => {
-      return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
-    };
-
-    // Format submission date to DD Mmm YYYY HH:MM
-    const formatSubmissionDate = (dateString: string) => {
-      const date = new Date(dateString);
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = date.toLocaleDateString('en-US', { month: 'short' });
-      const year = date.getFullYear();
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      return `${day} ${month} ${year} ${hours}:${minutes}`;
-    };
-
     return {
       id: claim.claim_number,
       clientName: `${claim.client?.first_name || ''} ${claim.client?.last_name || ''}`.trim(),
       clientEmail: claim.client?.email || 'N/A',
       clientPhone: claim.client?.phone || 'N/A',
-      submissionDate: formatSubmissionDate(claim.submission_date),
+      submissionDate: formatDateTime(claim.submission_date),
       claimType: claim.claim_type_details?.name || 'Unknown',
       status: formatStatus(claim.status),
       documentStatus,
       estimatedValue: parseFloat(String(claim.estimated_value || '0').replace(/,/g, '')),
       description: claim.description || 'No description provided',
       incidentLocation: claim.incident_location,
-      incidentDate: new Date(claim.incident_date).toLocaleDateString(),
+      incidentDate: formatDate(claim.incident_date),
       documents: claim.documents?.map((doc: ApiClaimDocument): TransformedClaimDocument => ({
         id: doc.id,
         name: doc.document_type,
         type: 'pdf',
         size: 'N/A',
-        uploadedDate: new Date(doc.created_at).toLocaleDateString(),
+        uploadedDate: formatDate(doc.created_at),
         isUploaded: doc.document_uploaded,
         document_url: doc.document_url,
       })) || [],
       timeline: claim.claim_history?.map((history: ApiClaimHistory): TransformedClaimTimeline => ({
-        date: new Date(history.created_at).toLocaleDateString(),
+        date: formatDate(history.created_at),
         action: history.description,
         description: `Status: ${history.status}`,
       })) || [],

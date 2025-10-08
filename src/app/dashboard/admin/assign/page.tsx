@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useToast } from '@/components/ui/use-toast';
+import { assignClaim } from '@/app/services/dashboard';
 
 const mockClaims = [
   { id: 'CLAIM-201', type: 'Property', assignedTo: null },
@@ -15,10 +17,54 @@ const mockAgents = ['Agent A', 'Agent B', 'Agent C'];
 export default function AssignClaimsPage() {
   const [selectedClaims, setSelectedClaims] = useState<string[]>([]);
   const [selectedAgent, setSelectedAgent] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const assignClaims = () => {
-    // No API, just mock
-    alert(`Assigned ${selectedClaims.length} claim(s) to ${selectedAgent}`);
+  const assignClaims = async () => {
+    if (selectedClaims.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one claim to assign.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedAgent) {
+      toast({
+        title: "Error",
+        description: "Please select an agent to assign the claims to.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Assign each selected claim
+      await Promise.all(
+        selectedClaims.map(claimId => assignClaim(claimId, selectedAgent))
+      );
+
+      // Show success notification
+      toast({
+        title: "Claims Assigned Successfully",
+        description: `Successfully assigned ${selectedClaims.length} claim(s) to ${selectedAgent}.`,
+      });
+
+      // Clear selections and reset form
+      setSelectedClaims([]);
+      setSelectedAgent('');
+    } catch (error) {
+      console.error('Error assigning claims:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign claims. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -62,7 +108,12 @@ export default function AssignClaimsPage() {
               <option value="">Select Agent</option>
               {mockAgents.map(agent => <option key={agent} value={agent}>{agent}</option>)}
             </select>
-            <Button onClick={assignClaims} disabled={!selectedAgent || selectedClaims.length === 0}>Assign Selected</Button>
+            <Button 
+              onClick={assignClaims} 
+              disabled={!selectedAgent || selectedClaims.length === 0 || isLoading}
+            >
+              {isLoading ? 'Assigning...' : 'Assign Selected'}
+            </Button>
           </div>
         </CardContent>
       </Card>

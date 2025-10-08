@@ -5,12 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Check, X, ChevronDown, ChevronRight, UserX, Loader2, Edit } from "lucide-react";
+import { Plus, Check, X, ChevronDown, ChevronRight, UserX, Loader2, Edit, Search } from "lucide-react";
 import AdminForm from "./AdminForm";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { Admin, UserStatus } from "@/lib/types/user";
 import { getAdmins, getAllUsers, createAdmin, disableUser, searchAdmins, editUser } from "@/app/services/dashboard";
-import { formatStatus } from "@/lib/utils/text-formatting";
+import { formatStatus, formatDateTime, formatDate } from "@/lib/utils/text-formatting";
 import { useToast } from "@/components/ui/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
 
@@ -185,6 +185,7 @@ export default function AdminsPage() {
     } else {
       fetchAdmins();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
   const handleSearch = async (searchTerm: string) => {
@@ -244,7 +245,8 @@ export default function AdminsPage() {
     const matchesSearch = 
       admin.firstName.toLowerCase().includes(search.toLowerCase()) ||
       admin.lastName.toLowerCase().includes(search.toLowerCase()) ||
-      admin.email.toLowerCase().includes(search.toLowerCase());
+      admin.email.toLowerCase().includes(search.toLowerCase()) ||
+      admin.phone.toLowerCase().includes(search.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || admin.status === statusFilter;
     
@@ -385,12 +387,22 @@ export default function AdminsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4 flex-1">
               <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search admins..."
+                  placeholder="Search by name, email and phone..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full"
+                  className="pl-10 pr-10 w-full"
                 />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -462,7 +474,7 @@ export default function AdminsPage() {
                         <TableCell className="hidden sm:table-cell">{admin.email}</TableCell>
                         <TableCell className="hidden md:table-cell">{admin.phone}</TableCell>
                         <TableCell className="hidden lg:table-cell">
-                          {admin.lastLogin ? new Date(admin.lastLogin).toLocaleDateString() : "Never"}
+                          {admin.lastLogin ? formatDate(admin.lastLogin) : "Never"}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           <Badge className={!admin.disabled ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
@@ -500,36 +512,34 @@ export default function AdminsPage() {
                       {expandedRows.includes(admin.id) && (
                         <TableRow>
                           <TableCell colSpan={6} className="bg-gray-50">
-                            <div className="p-4 space-y-4">
-                              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                                <div className="space-y-2">
-                                  <h4 className="font-semibold text-sm">Contact Information</h4>
-                                  <div className="space-y-1 text-sm">
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Email:</span>
-                                      <span>{admin.email}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Phone:</span>
-                                      <span>{admin.phone}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Last Login:</span>
-                                      <span>{admin.lastLogin ? new Date(admin.lastLogin).toLocaleDateString() : "Never"}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="space-y-2">
-                                  <h4 className="font-semibold text-sm">Permissions</h4>
-                                  <div className="flex flex-wrap gap-1">
+                            <div className="p-3 space-y-2">
+                              {/* Admin Details List */}
+                              <ul className="space-y-2 max-w-md">
+                                <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                                  <span className="text-sm font-medium text-gray-600">Email:</span>
+                                  <span className="text-sm text-gray-900">{admin.email}</span>
+                                </li>
+                                <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                                  <span className="text-sm font-medium text-gray-600">Phone:</span>
+                                  <span className="text-sm text-gray-900">{admin.phone}</span>
+                                </li>
+                                <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                                  <span className="text-sm font-medium text-gray-600">Last Login:</span>
+                                  <span className="text-sm text-gray-900">
+                                    {admin.lastLogin ? formatDateTime(admin.lastLogin) : 'Never'}
+                                  </span>
+                                </li>
+                                <li className="flex justify-between items-start py-1">
+                                  <span className="text-sm font-medium text-gray-600">Permissions:</span>
+                                  <div className="flex flex-wrap gap-1 ml-4">
                                     {admin.permissions.map((permission) => (
                                       <Badge key={permission} variant="secondary" className="text-xs">
                                         {permissionLabels[permission as keyof typeof permissionLabels]}
                                       </Badge>
                                     ))}
                                   </div>
-                                </div>
-                              </div>
+                                </li>
+                              </ul>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -580,7 +590,7 @@ export default function AdminsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Last Login:</span>
-                    <span>{admin.lastLogin ? new Date(admin.lastLogin).toLocaleDateString() : "Never"}</span>
+                    <span>{admin.lastLogin ? formatDate(admin.lastLogin) : "Never"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-2">
@@ -654,16 +664,7 @@ export default function AdminsPage() {
               <div>
                 <span className="text-sm text-gray-600">Last Login: </span>
                 <span className="text-sm text-gray-900">
-                  {expandedAdmin.lastLogin ? 
-                    new Date(expandedAdmin.lastLogin).toLocaleDateString('en-GB', {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: false
-                    }).replace(/,/g, '') : 'Never'
-                  }
+                  {expandedAdmin.lastLogin ? formatDateTime(expandedAdmin.lastLogin) : 'Never'}
                 </span>
               </div>
 
@@ -671,11 +672,7 @@ export default function AdminsPage() {
               <div>
                 <span className="text-sm text-gray-600">Date Created: </span>
                 <span className="text-sm text-gray-900">
-                  {new Date(expandedAdmin.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
+                  {formatDate(expandedAdmin.createdAt)}
                 </span>
               </div>
 

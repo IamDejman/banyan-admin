@@ -5,12 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 // import { Badge } from "@/components/ui/badge";
-import { Plus, Check, X, ChevronDown, ChevronRight, Edit } from "lucide-react";
+import { Plus, Check, X, ChevronDown, ChevronRight, Edit, Search } from "lucide-react";
 import AgentForm from "./AgentForm";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { Agent, UserStatus } from "@/lib/types/user";
 import { getAgents, createAgent, disableUser, searchAgents, editUser } from "@/app/services/dashboard";
-// import { formatStatus, toSentenceCase } from "@/lib/utils/text-formatting";
+import { formatDateTime, formatDate } from "@/lib/utils/text-formatting";
 import { useToast } from "@/components/ui/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
 
@@ -97,6 +97,7 @@ export default function AgentsPage() {
     } else {
       fetchAgents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
   const handleSearch = async (searchTerm: string) => {
@@ -233,7 +234,8 @@ export default function AgentsPage() {
   const filteredAgents = agents.filter((agent) =>
     agent.firstName.toLowerCase().includes(search.toLowerCase()) ||
     agent.lastName.toLowerCase().includes(search.toLowerCase()) ||
-    agent.email.toLowerCase().includes(search.toLowerCase())
+    agent.email.toLowerCase().includes(search.toLowerCase()) ||
+    agent.phone.toLowerCase().includes(search.toLowerCase())
   );
 
   async function handleCreateAgent(agentData: { firstName: string; lastName: string; email: string; phoneNumber: string; password?: string }) {
@@ -421,12 +423,24 @@ export default function AgentsPage() {
             </div>
           )}
           <div className="flex gap-4 items-center mb-6">
-            <Input
-              placeholder="Search by name or email..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="flex-1 max-w-md"
-            />
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search by name, email and phone..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-10 pr-10 flex-1 h-10 text-sm"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -511,49 +525,38 @@ export default function AgentsPage() {
                   {expandedRows.includes(agent.id) && (
                     <TableRow>
                       <TableCell colSpan={5} className="bg-muted/50">
-                        <div className="p-6 space-y-6">
-                          {/* Name */}
-                          <div className="text-center">
-                            <h3 className="text-xl font-semibold text-gray-900">
-                              {agent.firstName} {agent.lastName}
-                            </h3>
-                          </div>
-                          
-                          {/* Email and Phone */}
-                          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                            <div className="flex items-center gap-2">
+                        <div className="p-3 space-y-2">
+                          {/* User Details List */}
+                          <ul className="space-y-2 max-w-md">
+                            <li className="flex justify-between items-center py-1 border-b border-gray-200">
                               <span className="text-sm font-medium text-gray-600">Email:</span>
                               <span className="text-sm text-gray-900">{agent.email}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
+                            </li>
+                            <li className="flex justify-between items-center py-1 border-b border-gray-200">
                               <span className="text-sm font-medium text-gray-600">Phone:</span>
                               <span className="text-sm text-gray-900">{agent.phone}</span>
-                            </div>
-                          </div>
-                          
-                          {/* Claims Counts */}
-                          <div className="flex justify-center gap-8">
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-blue-600">{agent.assignedClaims.length}</div>
-                              <div className="text-sm text-gray-600">Assigned Claims</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-green-600">{agent.completedClaims.length}</div>
-                              <div className="text-sm text-gray-600">Completed Claims</div>
-                            </div>
-                          </div>
-                          
-                          {/* Date Created */}
-                          <div className="text-center">
-                            <span className="text-sm font-medium text-gray-600">Date Created:</span>
-                            <span className="text-sm text-gray-900 ml-2">
-                              {new Date(agent.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </span>
-                          </div>
+                            </li>
+                            <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                              <span className="text-sm font-medium text-gray-600">Assigned Claims:</span>
+                              <span className="text-sm font-bold text-blue-600">{agent.assignedClaims.length}</span>
+                            </li>
+                            <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                              <span className="text-sm font-medium text-gray-600">Completed Claims:</span>
+                              <span className="text-sm font-bold text-green-600">{agent.completedClaims.length}</span>
+                            </li>
+                            <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                              <span className="text-sm font-medium text-gray-600">Last Login:</span>
+                              <span className="text-sm text-gray-900">
+                                {agent.lastLogin ? formatDateTime(agent.lastLogin) : 'Never'}
+                              </span>
+                            </li>
+                            <li className="flex justify-between items-center py-1">
+                              <span className="text-sm font-medium text-gray-600">Date Created:</span>
+                              <span className="text-sm text-gray-900">
+                                {formatDate(agent.createdAt)}
+                              </span>
+                            </li>
+                          </ul>
                         </div>
                       </TableCell>
                     </TableRow>

@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isAuthenticated && !publicRoutes.includes(pathname)) {
         router.push('/login');
       } else if (isAuthenticated && publicRoutes.includes(pathname)) {
-        router.push('/dashboard');
+        router.push('/dashboard/claims');
       }
     }
   }, [isAuthenticated, isLoading, pathname, router]);

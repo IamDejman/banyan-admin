@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Edit, Clock, CheckCircle, TrendingUp } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Eye, Edit, Clock, Search } from "lucide-react"; // Removed unused CheckCircle, TrendingUp
 import SettlementOfferForm from "./SettlementOfferForm";
 import { createSettlementOffer, getSettlementsWithStatus } from "@/app/services/dashboard";
 import { Settlement, } from "@/lib/types/settlement";
-import { formatStatus } from "@/lib/utils/text-formatting";
+import { formatStatus, formatDate } from "@/lib/utils/text-formatting";
 
 // Interface for the form data
 interface SettlementFormData {
@@ -43,6 +44,10 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
   const [settlementsLoading, setSettlementsLoading] = useState(false);
   const [modal, setModal] = useState<{ mode: "create" | "view" | "edit"; offer?: Settlement } | null>(null);
   const [search, setSearch] = useState("");
+  const [claimTypeFilter, setClaimTypeFilter] = useState<string>("all");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
   console.log(availableSettlements, "availableSettlements__");
 
@@ -78,15 +83,33 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
   }, [availableSettlements]);
 
 
-  // Filter settlements data based on search
+  // Extract unique claim types from settlements data
+  const extractUniqueClaimTypes = (settlementsData: Settlement[]): string[] => {
+    const claimTypeSet = new Set<string>();
+    settlementsData.forEach((settlement: Settlement) => {
+      if (settlement.claim_type) {
+        claimTypeSet.add(settlement.claim_type.toLowerCase());
+      }
+    });
+    return Array.from(claimTypeSet).sort();
+  };
+
+  const availableClaimTypes = extractUniqueClaimTypes(settlementsData);
+
+  // Filter settlements data based on search and claim type
   const filteredSettlements = settlementsData.filter((settlement) => {
-    if (!search) return true;
     const searchLower = search.toLowerCase();
-    return (
+    const matchesSearch = !search || (
       (settlement as { client_name?: string })?.client_name?.toLowerCase().includes(searchLower) ||
       settlement?.id?.toString().toLowerCase().includes(searchLower) ||
-      settlement?.claim_type?.toLowerCase().includes(searchLower)
+      settlement?.claim_type?.toLowerCase().includes(searchLower) ||
+      (settlement as Settlement & { amount?: number }).amount?.toString().toLowerCase().includes(searchLower)
     );
+    
+    const matchesClaimType = claimTypeFilter === "all" || 
+      (settlement.claim_type && settlement.claim_type.toLowerCase() === claimTypeFilter);
+    
+    return matchesSearch && matchesClaimType;
   });
 
   // const filteredOffers = offers.filter((offer) =>
@@ -95,32 +118,50 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
   //   offer.claim_type.toLowerCase().includes(search.toLowerCase())
   // );
 
-  async function handleCreateOffer(newOffer: SettlementFormData) {
+  async function handleCreateOffer(newOffer: SettlementFormData, action: 'draft' | 'submit' = 'submit') {
     try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      setSubmitSuccess(null);
+      
       console.log(newOffer, "newOffer__");
       const payload = {
-        claim_id: newOffer.claimId,
+        claim_id: parseInt(newOffer.claimId),
         offer_amount: newOffer.finalAmount,
-        status: "submitted",
+        status: action === 'draft' ? "draft" : "submitted",
         assessed_claim_value: newOffer.assessedAmount,
         deductions: newOffer.deductions,
         service_fee_percentage: newOffer.serviceFeePercentage,
-        payment_method: newOffer.paymentMethod.toLowerCase(),
-        payment_timeline: newOffer.paymentTimeline,
-        offer_validity_period: newOffer.offerValidityPeriod,
+        payment_method: newOffer.paymentMethod,
+        payment_timeline: newOffer.paymentTimeline.toString(),
+        offer_validity_period: newOffer.offerValidityPeriod.toString(),
         special_conditions: newOffer.specialConditions,
         supporting_documents: newOffer.supportingDocuments,
       }
       console.log(payload, "payload__");
       const response = await createSettlementOffer(payload);
       console.log(response, "response__");
+      
+      setSubmitSuccess(`Settlement offer ${action === 'draft' ? 'saved as draft' : 'submitted for approval'} successfully!`);
       if (refetch) {
         refetch();
       }
-      setModal(null);
+      
+      // Close modal after a short delay to show success message
+      setTimeout(() => {
+        setModal(null);
+        setSubmitSuccess(null);
+      }, 2000);
     } catch (error) {
       console.error(error, "error__");
-      setModal(null);
+      const errorResponse = error as { response?: { data?: { message?: string } }; message?: string };
+      setSubmitError(
+        errorResponse?.response?.data?.message || 
+        errorResponse?.message || 
+        "Failed to create settlement offer. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -159,12 +200,12 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
         <Card>
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Active Offers</p>
+                <p className="text-sm font-medium text-muted-foreground">Created Offers</p>
                 <p className="text-2xl font-bold">0</p>
               </div>
               <div className="text-blue-600 font-bold text-lg">₦</div>
@@ -176,7 +217,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
           <div className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Pending Approval</p>
+                <p className="text-sm font-medium text-muted-foreground">Offers Pending Approval</p>
                 <p className="text-2xl font-bold">0</p>
               </div>
               <Clock className="h-4 w-4 text-orange-600" />
@@ -184,29 +225,6 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
           </div>
         </Card>
 
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Ready to Present</p>
-                <p className="text-2xl font-bold">0</p>
-              </div>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Settled</p>
-                <p className="text-2xl font-bold">₦0</p>
-              </div>
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
-            </div>
-          </div>
-        </Card>
       </div>
 
       {/* Loading State */}
@@ -224,18 +242,38 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">View Created Offers</h3>
           </div>
-          <Input
-            placeholder="Search offers by client name, offer ID, or claim type..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-64"
-          />
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4 flex-1">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by Claim ID, Client name, or amount..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-8 w-full"
+                />
+              </div>
+              <Select value={claimTypeFilter} onValueChange={setClaimTypeFilter}>
+                <SelectTrigger className="w-full lg:w-48">
+                  <SelectValue placeholder="Filter by Claim Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Claim Types</SelectItem>
+                  {availableClaimTypes.map((claimType) => (
+                    <SelectItem key={claimType} value={claimType}>
+                      {claimType.charAt(0).toUpperCase() + claimType.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Offer ID</TableHead>
+                <TableHead>Claim ID</TableHead>
                 <TableHead>Client Name</TableHead>
                 <TableHead>Claim Type</TableHead>
                 <TableHead>Amount</TableHead>
@@ -265,7 +303,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                   <TableCell>{settlement.claim_type || 'N/A'}</TableCell>
                   <TableCell>₦{settlement.offer_amount || (settlement as { final_amount?: string | number }).final_amount || '0'}</TableCell>
                   <TableCell>{getStatusBadge(settlement.status || 'settlement_offered')}</TableCell>
-                  <TableCell>{settlement?.created_at ? new Date(settlement.created_at).toLocaleDateString() : 'N/A'}</TableCell>
+                  <TableCell>{settlement?.created_at ? formatDate(settlement.created_at) : 'N/A'}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -314,9 +352,27 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
             {modal.mode === "create" && (
               <>
                 <h3 className="text-lg font-semibold mb-4">New Settlement Offer Form</h3>
+                
+                {submitError && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-700 text-sm">{submitError}</p>
+                  </div>
+                )}
+                
+                {submitSuccess && (
+                  <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-700 text-sm">{submitSuccess}</p>
+                  </div>
+                )}
+                
                 <SettlementOfferForm
                   onSubmit={handleCreateOffer}
-                  onCancel={() => setModal(null)}
+                  onCancel={() => {
+                    setModal(null);
+                    setSubmitError(null);
+                    setSubmitSuccess(null);
+                  }}
+                  isSubmitting={isSubmitting}
                 />
               </>
             )}
@@ -356,7 +412,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                       <div>Payment Method: {modal.offer.payment_method.replace('_', ' ')}</div>
                       <div>Payment Timeline: {modal.offer.payment_timeline} days</div>
                       <div>Validity Period: {modal.offer.offer_validity_period} days</div>
-                      <div>Created: {modal.offer.created_at ? new Date(modal.offer.created_at).toLocaleDateString() : "N/A"}</div>
+                      <div>Created: {modal.offer.created_at ? formatDate(modal.offer.created_at) : "N/A"}</div>
                     </div>
                   </div>
 

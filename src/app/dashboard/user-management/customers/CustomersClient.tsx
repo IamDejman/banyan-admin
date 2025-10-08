@@ -6,13 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight, X, Check, Edit, ChevronLeft } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight, X, Check, Edit, ChevronLeft, Search } from "lucide-react";
 import CustomerForm from "./CustomerForm";
 import type { Customer } from "@/lib/types/user";
-import { getCustomers, getAllUsers, createCustomer, disableUser, searchCustomers, editUser } from "@/app/services/dashboard";
-// import { formatStatus, toSentenceCase } from "@/lib/utils/text-formatting";
+import { getCustomers, getAllUsers, createCustomer, disableUser, editUser } from "@/app/services/dashboard";
+import { formatDateTime, formatDate } from "@/lib/utils/text-formatting";
 import { useToast } from "@/components/ui/use-toast";
-import { useDebounce } from "@/hooks/useDebounce";
 import { Tooltip } from "@/components/ui/tooltip";
 
 // Interface for API customer data
@@ -35,11 +34,12 @@ interface ApiCustomer {
     relationship: string;
   };
   claims?: string[];
+  user_claims_count?: number;
   preferences?: {
     notifications: boolean;
     language: string;
   };
-  bvn_verification_status?: number;
+  bvn_verified?: boolean;
   bank_name?: string;
   bank_account_number?: string;
   bank_account_name?: string;
@@ -60,11 +60,12 @@ const transformApiCustomer = (apiCustomer: ApiCustomer): Customer => ({
   address: apiCustomer.address || "",
   emergencyContact: apiCustomer.emergency_contact,
   claims: apiCustomer.claims || [],
+  claimsCount: apiCustomer.user_claims_count || 0, // Add claims count from API
   preferences: apiCustomer.preferences || {
     notifications: true,
     language: "en"
   },
-  bvnVerification: apiCustomer.bvn_verification_status || 0,
+  bvnVerification: apiCustomer.bvn_verified ? 1 : 0,
   bankName: apiCustomer.bank_name || "",
   bankAccountNumber: apiCustomer.bank_account_number || "",
   bankAccountName: apiCustomer.bank_account_name || ""
@@ -75,20 +76,18 @@ export default function CustomersClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [bvnFilter, setBvnFilter] = useState<string>("all");
   const [modal, setModal] = useState<{ mode: "add" | "edit"; customer: Customer | null } | null>(null);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [sortField, setSortField] = useState<keyof Customer | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [searchLoading, setSearchLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 15;
   const { toast } = useToast();
-  const debouncedSearch = useDebounce(search, 500);
 
-  // Fetch customers when page changes
+  // Fetch customers when page, search, or bvnFilter changes
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
@@ -96,34 +95,88 @@ export default function CustomersClient() {
         setError(null);
         let response;
         
+        // Prepare search and BVN filter parameters
+        const searchParam = search.trim() || undefined;
+        const bvnParam = bvnFilter === "all" ? undefined : 
+          bvnFilter === "verified" ? true : 
+          bvnFilter === "not_verified" ? false : undefined;
+        
         try {
-          // Try the primary customers endpoint first
-          console.log('Fetching customers from user management API...');
-          response = await getCustomers();
-          console.log('Primary customers response:', response);
+          // Use the new API with filters
+          console.log(`Fetching customers with filters - page ${currentPage}, search: ${searchParam}, bvn: ${bvnParam}`);
+          response = await getCustomers(currentPage, itemsPerPage);
+          console.log('Filtered customers response:', response);
         } catch (primaryError) {
-          console.warn('Primary customers endpoint failed, trying alternative...', primaryError);
+          console.warn('Filtered customers endpoint failed, trying fallback...', primaryError);
           try {
-            // Try alternative endpoint to get all users
-            response = await getAllUsers();
-            console.log('All users response:', response);
-            
-            // Filter customers from all users on the client side
-            if (response && response.data && Array.isArray(response.data)) {
-              const customers = (response.data as unknown as { role: string }[]).filter((user: { role: string }) => user.role === 'customer');
-              response = { ...response, data: customers };
+            // Fallback to basic getCustomers if filtered endpoint fails
+            response = await getCustomers(currentPage, itemsPerPage);
+            console.log('Fallback customers response:', response);
+          } catch (fallbackError) {
+            console.warn('Fallback endpoint also failed, trying getAllUsers...', fallbackError);
+            try {
+              // Last resort: get all users and filter client-side
+              response = await getAllUsers();
+              console.log('All users response:', response);
+              
+              // Filter customers from all users on the client side and implement pagination
+              if (response && response.data && Array.isArray(response.data)) {
+                let allCustomers = (response.data as unknown as { role: string }[]).filter((user: { role: string }) => user.role === 'customer');
+                
+                // Apply client-side search filter
+                if (searchParam) {
+                  allCustomers = allCustomers.filter((customer: { role: string; first_name?: string; last_name?: string; email?: string; phone?: string }) => 
+                    customer.first_name?.toLowerCase().includes(searchParam.toLowerCase()) ||
+                    customer.last_name?.toLowerCase().includes(searchParam.toLowerCase()) ||
+                    customer.email?.toLowerCase().includes(searchParam.toLowerCase()) ||
+                    customer.phone?.toLowerCase().includes(searchParam.toLowerCase())
+                  );
+                }
+                
+                // Apply client-side BVN filter
+                if (bvnParam !== undefined) {
+                  allCustomers = allCustomers.filter((customer: { role: string; bvn_verified?: boolean }) => 
+                    customer.bvn_verified === bvnParam
+                  );
+                }
+                
+                // Implement client-side pagination for the fallback
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const paginatedCustomers = allCustomers.slice(startIndex, endIndex);
+                
+                response = { 
+                  ...response, 
+                  data: paginatedCustomers,
+                  meta: {
+                    total: allCustomers.length,
+                    last_page: Math.ceil(allCustomers.length / itemsPerPage)
+                  }
+                };
+              }
+            } catch (altError) {
+              console.error('All endpoints failed:', altError);
+              throw altError;
             }
-          } catch (altError) {
-            console.error('Alternative endpoint also failed:', altError);
-            throw altError;
           }
         }
         
         if (response?.data && Array.isArray(response.data)) {
           const transformedCustomers = (response.data as unknown as ApiCustomer[]).map(transformApiCustomer);
           setCustomers(transformedCustomers);
+          
+          // Handle pagination metadata
+          if ((response as { meta?: { last_page?: number; total?: number } }).meta) {
+            setTotalPages((response as { meta?: { last_page?: number; total?: number } }).meta?.last_page || 1);
+            setTotalItems((response as { meta?: { last_page?: number; total?: number } }).meta?.total || (response.data as unknown as Customer[]).length);
+          } else {
+            setTotalPages(1);
+            setTotalItems((response.data as unknown as Customer[]).length);
+          }
         } else {
           setCustomers([]);
+          setTotalPages(1);
+          setTotalItems(0);
         }
       } catch (err) {
         console.error('Failed to fetch customers:', err);
@@ -140,169 +193,16 @@ export default function CustomersClient() {
     };
 
     fetchCustomers();
-  }, [currentPage]);
+  }, [currentPage, search, bvnFilter, toast]);
 
-  // Handle debounced search
-  useEffect(() => {
-    if (debouncedSearch.trim()) {
-      handleSearch(debouncedSearch);
-    } else {
-      // Reload all customers when search is cleared
-      const fetchCustomers = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          let response;
-          
-          try {
-            console.log('Fetching customers from user management API...');
-            response = await getCustomers(currentPage, itemsPerPage);
-            console.log('Primary customers response:', response);
-          } catch (primaryError) {
-            console.warn('Primary customers endpoint failed, trying alternative...', primaryError);
-            try {
-              response = await getAllUsers();
-              console.log('All users response:', response);
-              
-              if (response && response.data && Array.isArray(response.data)) {
-                const customers = (response.data as unknown as { role: string }[]).filter((user: { role: string }) => user.role === 'customer');
-                response = { ...response, data: customers };
-              }
-            } catch (altError) {
-              console.error('Alternative endpoint also failed:', altError);
-              throw altError;
-            }
-          }
-          
-          if (response?.data && Array.isArray(response.data)) {
-            const transformedCustomers = (response.data as unknown as ApiCustomer[]).map(transformApiCustomer);
-            setCustomers(transformedCustomers);
-            
-            // Handle pagination metadata
-            if ((response as { meta?: { last_page?: number; total?: number } }).meta) {
-              setTotalPages((response as { meta?: { last_page?: number; total?: number } }).meta?.last_page || 1);
-              setTotalItems((response as { meta?: { last_page?: number; total?: number } }).meta?.total || (response.data as unknown as Customer[]).length);
-            } else {
-              setTotalPages(1);
-              setTotalItems((response.data as unknown as Customer[]).length);
-            }
-          } else {
-            setCustomers([]);
-            setTotalPages(1);
-            setTotalItems(0);
-          }
-        } catch (err) {
-          console.error('Failed to fetch customers:', err);
-          toast({
-            variant: "destructive",
-            title: "Error loading customers",
-            description: "Failed to load customers. Please try again.",
-          });
-          setCustomers([]);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchCustomers();
-    }
-  }, [debouncedSearch]);
+  // Search and filters are now handled by the main useEffect above
 
-  // Fetch customers when currentPage changes
-  useEffect(() => {
-    if (!search.trim()) {
-      const fetchCustomers = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          let response;
-          
-          try {
-            console.log('Fetching customers from user management API...');
-            response = await getCustomers(currentPage, itemsPerPage);
-            console.log('Primary customers response:', response);
-          } catch (primaryError) {
-            console.warn('Primary customers endpoint failed, trying alternative...', primaryError);
-            try {
-              response = await getAllUsers();
-              console.log('All users response:', response);
-              
-              if (response && response.data && Array.isArray(response.data)) {
-                const customers = (response.data as unknown as { role: string }[]).filter((user: { role: string }) => user.role === 'customer');
-                response = { ...response, data: customers };
-              }
-            } catch (altError) {
-              console.error('Alternative endpoint also failed:', altError);
-              throw altError;
-            }
-          }
-          
-          if (response?.data && Array.isArray(response.data)) {
-            const transformedCustomers = (response.data as unknown as ApiCustomer[]).map(transformApiCustomer);
-            setCustomers(transformedCustomers);
-            
-            // Handle pagination metadata
-            if ((response as { meta?: { last_page?: number; total?: number } }).meta) {
-              setTotalPages((response as { meta?: { last_page?: number; total?: number } }).meta?.last_page || 1);
-              setTotalItems((response as { meta?: { last_page?: number; total?: number } }).meta?.total || (response.data as unknown as Customer[]).length);
-            } else {
-              setTotalPages(1);
-              setTotalItems((response.data as unknown as Customer[]).length);
-            }
-          } else {
-            setCustomers([]);
-            setTotalPages(1);
-            setTotalItems(0);
-          }
-        } catch (err) {
-          console.error('Failed to fetch customers:', err);
-          toast({
-            variant: "destructive",
-            title: "Error loading customers",
-            description: "Failed to load customers. Please try again.",
-          });
-          setCustomers([]);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchCustomers();
-    }
-  }, [currentPage]);
+  // Duplicate useEffect removed - search and filters handled by main useEffect above
 
-  const handleSearch = async (searchTerm: string) => {
-    setSearchLoading(true);
-    try {
-      console.log('Searching customers with term:', searchTerm);
-      const response = await searchCustomers(searchTerm);
-      console.log('Search response:', response);
-      
-      if (response?.data && Array.isArray(response.data)) {
-        const transformedCustomers = (response.data as unknown as ApiCustomer[]).map(transformApiCustomer);
-        setCustomers(transformedCustomers);
-      } else {
-        setCustomers([]);
-      }
-    } catch (error) {
-      console.error('Search failed:', error);
-      toast({
-        variant: "destructive",
-        title: "Search failed",
-        description: "Failed to search customers. Please try again.",
-      });
-      setCustomers([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
+  // handleSearch function removed - search is now handled by the main useEffect with API filters
 
-  const filtered = customers.filter((customer) => {
-    const matchesSearch = 
-      customer.firstName.toLowerCase().includes(search.toLowerCase()) ||
-      customer.lastName.toLowerCase().includes(search.toLowerCase()) ||
-      customer.email.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || customer.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // No client-side filtering needed - search and BVN filtering is now handled by the API
+  const filtered = customers;
 
   // Sorting function
   const handleSort = (field: keyof Customer) => {
@@ -502,30 +402,41 @@ export default function CustomersClient() {
       
       <Card className="overflow-hidden">
         <div className="p-4 border-b">
-          <div className="flex gap-3 items-center">
-        <Input
-          placeholder="Search by name or email..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-              className="flex-1 max-w-md h-8 text-sm"
-        />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32 h-8 text-sm">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="suspended">Suspended</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+          <div className="flex gap-4 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search by name, email and phone..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-10 pr-10 h-10 text-sm"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <Select value={bvnFilter} onValueChange={setBvnFilter}>
+              <SelectTrigger className="w-48 h-10 text-sm">
+                <SelectValue placeholder="BVN Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All BVN Status</SelectItem>
+                <SelectItem value="verified">Verified</SelectItem>
+                <SelectItem value="not_verified">Not Verified</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        {(loading || searchLoading) ? (
+        {loading ? (
           <div className="p-8 text-center">
             <div className="text-muted-foreground">
-              {searchLoading ? "Searching customers..." : "Loading customers..."}
+              Loading customers...
             </div>
           </div>
         ) : error ? (
@@ -604,10 +515,10 @@ export default function CustomersClient() {
                 </TableCell>
                     <TableCell className="py-2 text-center">
                       <Badge 
-                        variant={customer.claims.length > 0 ? "default" : "secondary"} 
+                        variant={customer.claimsCount && customer.claimsCount > 0 ? "default" : "secondary"} 
                         className="px-2 py-0.5 text-xs font-medium h-5"
                       >
-                        {customer.claims.length}
+                        {customer.claimsCount || 0}
                   </Badge>
                 </TableCell>
                     <TableCell className="py-2">
@@ -641,11 +552,11 @@ export default function CustomersClient() {
                   {expandedRows.includes(customer.id) && (
                     <TableRow>
                       <TableCell colSpan={6} className="bg-muted/50">
-                        <div className="p-4">
-                          <ul className="space-y-2">
-                            <li className="flex items-center py-1">
-                              <span className="text-sm font-medium text-gray-600 w-32">BVN Verification:</span>
-                              <span className="text-sm text-gray-900 ml-4">
+                        <div className="p-3">
+                          <ul className="space-y-2 max-w-md">
+                            <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                              <span className="text-sm font-medium text-gray-600">BVN Status:</span>
+                              <span className="text-sm text-gray-900">
                                 {customer.bvnVerification === 1 ? (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     Verified
@@ -657,41 +568,28 @@ export default function CustomersClient() {
                                 )}
                               </span>
                             </li>
-                            <li className="flex items-center py-1">
-                              <span className="text-sm font-medium text-gray-600 w-32">Bank Account Name:</span>
-                              <span className="text-sm text-gray-900 ml-4">{customer.bankAccountName || 'N/A'}</span>
+                            <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                              <span className="text-sm font-medium text-gray-600">Bank Name:</span>
+                              <span className="text-sm text-gray-900">{customer.bankName || 'N/A'}</span>
                             </li>
-                            <li className="flex items-center py-1">
-                              <span className="text-sm font-medium text-gray-600 w-32">Bank Account Number:</span>
-                              <span className="text-sm text-gray-900 ml-4">{customer.bankAccountNumber || 'N/A'}</span>
+                            <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                              <span className="text-sm font-medium text-gray-600">Bank Account Number:</span>
+                              <span className="text-sm text-gray-900">{customer.bankAccountNumber || 'N/A'}</span>
                             </li>
-                            <li className="flex items-center py-1">
-                              <span className="text-sm font-medium text-gray-600 w-32">Bank Name:</span>
-                              <span className="text-sm text-gray-900 ml-4">{customer.bankName || 'N/A'}</span>
+                            <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                              <span className="text-sm font-medium text-gray-600">Bank Account Name:</span>
+                              <span className="text-sm text-gray-900">{customer.bankAccountName || 'N/A'}</span>
                             </li>
-                            <li className="flex items-center py-1">
-                              <span className="text-sm font-medium text-gray-600 w-32">Last Login:</span>
-                              <span className="text-sm text-gray-900 ml-4">
-                                {customer.lastLogin ? 
-                                  new Date(customer.lastLogin).toLocaleDateString('en-GB', {
-                                    day: '2-digit',
-                                    month: 'short',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: false
-                                  }).replace(/,/g, '') : 'Never'
-                                }
+                            <li className="flex justify-between items-center py-1 border-b border-gray-200">
+                              <span className="text-sm font-medium text-gray-600">Last Login:</span>
+                              <span className="text-sm text-gray-900">
+                                {customer.lastLogin ? formatDateTime(customer.lastLogin) : 'Never'}
                               </span>
                             </li>
-                            <li className="flex items-center py-1">
-                              <span className="text-sm font-medium text-gray-600 w-32">Created Date:</span>
-                              <span className="text-sm text-gray-900 ml-4">
-                                {new Date(customer.createdAt).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
+                            <li className="flex justify-between items-center py-1">
+                              <span className="text-sm font-medium text-gray-600">Date Created:</span>
+                              <span className="text-sm text-gray-900">
+                                {formatDate(customer.createdAt)}
                               </span>
                             </li>
                           </ul>
@@ -707,7 +605,7 @@ export default function CustomersClient() {
         )}
         
         {/* Pagination Controls */}
-        {!loading && !searchLoading && totalPages > 1 && (
+        {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between px-6 py-4 border-t">
             <div className="text-sm text-muted-foreground">
               Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} customers

@@ -39,7 +39,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <Sidebar />
+        <Sidebar onItemClick={() => setIsMobileMenuOpen(false)} />
       </div>
 
       {/* Overlay */}

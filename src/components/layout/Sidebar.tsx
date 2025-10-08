@@ -8,11 +8,6 @@ import { ChevronRight } from 'lucide-react';
 // Sidebar navigation structure
 const navigationSections = [
   {
-    name: 'Dashboard',
-    href: '/dashboard',
-    items: [],
-  },
-  {
     name: 'Claims Management',
     items: [
       {
@@ -63,6 +58,10 @@ const navigationSections = [
         name: 'Claim Types',
         href: '/dashboard/system-config/claim-types',
       },
+      {
+        name: 'Payment Configurations',
+        href: '/dashboard/system-config/payment-configurations',
+      },
     ],
   },
   // --- User Management ---
@@ -101,9 +100,37 @@ const navigationSections = [
   },
 ];
 
-export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
+interface SidebarProps {
+  collapsed?: boolean;
+  onItemClick?: () => void;
+}
+
+export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
   const [expandedSections, setExpandedSections] = React.useState<string[]>([]);
   const pathname = usePathname();
+
+  // Auto-expand sections when pathname matches a submenu item
+  React.useEffect(() => {
+    const sectionsToExpand: string[] = [];
+    
+    navigationSections.forEach((section) => {
+      if (section.items && section.items.length > 0) {
+        // Check if any submenu item matches the current pathname
+        const hasActiveSubmenu = section.items.some(item => pathname === item.href);
+        if (hasActiveSubmenu) {
+          sectionsToExpand.push(section.name);
+        }
+      }
+    });
+    
+    if (sectionsToExpand.length > 0) {
+      setExpandedSections(prev => {
+        // Merge new sections with existing ones, removing duplicates
+        const merged = [...new Set([...prev, ...sectionsToExpand])];
+        return merged;
+      });
+    }
+  }, [pathname]);
 
   const toggleSection = (sectionName: string) => {
     setExpandedSections(prev =>
@@ -130,7 +157,13 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
                 <Link
                   href={section.href || '#'}
                   className={`py-3 px-3 rounded-lg hover:bg-gray-100 font-medium flex-1 text-sm sm:text-base transition-all duration-200 ${pathname === section.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
-                  onClick={() => hasSubmenu ? toggleSection(section.name) : undefined}
+                  onClick={() => {
+                    if (hasSubmenu) {
+                      toggleSection(section.name);
+                    } else {
+                      onItemClick?.();
+                    }
+                  }}
                 >
                   {section.name}
                 </Link>
@@ -151,6 +184,7 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
                       key={item.name} 
                       href={item.href} 
                       className={`py-2 px-3 rounded-md hover:bg-gray-50 text-xs sm:text-sm transition-all duration-200 ${pathname === item.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
+                      onClick={() => onItemClick?.()}
                     >
                       {item.name}
                     </Link>

@@ -44,6 +44,7 @@ export type Customer = BaseUser & {
     relationship: string;
   };
   claims: string[];
+  claimsCount?: number; // Total number of claims from user_claims_count API field
   preferences: {
     notifications: boolean;
     language: string;

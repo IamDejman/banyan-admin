@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = () => {
     // For demo purposes, just set the user
     setUser(mockUser);
-    router.push('/dashboard');
+    router.push('/dashboard/claims');
   };
 
   const logout = () => {

@@ -3,6 +3,7 @@
 import { useClaimsStore } from '@/lib/store/claims-store';
 import { ClaimStatus } from '@/lib/types/claims';
 import { format } from 'date-fns';
+import { formatDateTime } from '@/lib/utils/text-formatting';
 import {
   FileIcon,
   User,
@@ -168,7 +169,7 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
               <div>
                 <p className="font-medium">{audit.action}</p>
                 <p className="text-sm text-gray-500">
-                  By {audit.performedBy} on {new Date(audit.timestamp).toLocaleString()}
+                  By {audit.performedBy} on {formatDateTime(audit.timestamp)}
                 </p>
                 {audit.notes && <p className="text-sm mt-1">{audit.notes}</p>}
               </div>
@@ -191,7 +192,7 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
                   </p>
                 </div>
                 <span className="text-sm text-gray-500">
-                  {new Date(comm.timestamp).toLocaleString()}
+                  {formatDateTime(comm.timestamp)}
                 </span>
               </div>
               <p className="text-sm">{comm.content}</p>

@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { X, Plus, ChevronDown, ChevronRight, Edit, Trash2 } from "lucide-react";
 import type { ClaimType } from "@/lib/types/claim-types";
 import { getClaimTypes } from "@/app/services/dashboard";
+import { formatDate } from "@/lib/utils/text-formatting";
 
 // Interface for the API response structure
 interface ClaimTypeApiResponse {
@@ -241,7 +242,7 @@ export default function ClaimTypesClient() {
                                   <div>
                                     <span className="text-sm font-medium text-muted-foreground">Created:</span>
                                     <p className="text-sm">
-                                      {claimType.created_at ? new Date(claimType.created_at).toLocaleDateString() : 'N/A'}
+                                      {claimType.created_at ? formatDate(claimType.created_at) : 'N/A'}
                                     </p>
                                   </div>
                                 </div>

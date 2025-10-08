@@ -2,6 +2,8 @@
  * Utility functions for text formatting
  */
 
+import { format } from 'date-fns';
+
 /**
  * Converts text to sentence case
  * - First letter capitalized
@@ -114,4 +116,68 @@ export function formatRole(role: string | null | undefined): string {
   
   const lowerRole = role.toLowerCase();
   return roleMap[lowerRole] || toSentenceCase(role);
+}
+
+/**
+ * Formats a date to DD Mmm YYYY format (e.g., "15 Jan 2024")
+ * @param date - Date object, date string, or timestamp
+ * @returns Formatted date string
+ */
+export function formatDate(date: Date | string | number | null | undefined): string {
+  if (!date) return 'N/A';
+  
+  try {
+    const dateObj = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+    
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      return 'Invalid Date';
+    }
+    
+    return format(dateObj, 'dd MMM yyyy');
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
+  }
+}
+
+/**
+ * Formats a date to DD Mmm YYYY HH:MM format (e.g., "15 Jan 2024 14:30")
+ * @param date - Date object, date string, or timestamp
+ * @returns Formatted datetime string
+ */
+export function formatDateTime(date: Date | string | number | null | undefined): string {
+  if (!date) return 'N/A';
+  
+  try {
+    const dateObj = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+    
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      return 'Invalid Date';
+    }
+    
+    return format(dateObj, 'dd MMM yyyy HH:mm');
+  } catch (error) {
+    console.error('Error formatting datetime:', error);
+    return 'Invalid Date';
+  }
+}
+
+/**
+ * Formats a date for display in tables with consistent styling
+ * @param date - Date object, date string, or timestamp
+ * @returns Formatted date string
+ */
+export function formatDateForTable(date: Date | string | number | null | undefined): string {
+  return formatDate(date);
+}
+
+/**
+ * Formats a datetime for display in tables with consistent styling
+ * @param date - Date object, date string, or timestamp
+ * @returns Formatted datetime string
+ */
+export function formatDateTimeForTable(date: Date | string | number | null | undefined): string {
+  return formatDateTime(date);
 }
