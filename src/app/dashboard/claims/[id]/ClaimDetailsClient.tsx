@@ -287,6 +287,10 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
       setQuestion('');
       setShowRequestInfoModal(false);
       
+      // Refresh the claim data to show updated information
+      console.log('Refreshing claim data after information request...');
+      await fetchClaimData();
+      
     } catch (error) {
       console.error('Error sending request:', error);
       const errorMessage = (error as ApiError)?.response?.data?.message || (error as ApiError)?.message || 'Failed to send request';

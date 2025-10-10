@@ -12,7 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { X, Upload, FileText, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { SettlementOffer } from "@/lib/types/settlement";
-import { getApprovedClaims, getPaymentConfigurations } from '@/app/services/dashboard';
+import { getApprovedClaims } from '@/app/services/dashboard';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
 // Interface for the actual claims data structure from API
 interface ApiClaim {
@@ -35,16 +36,6 @@ interface ClaimsApiResponse {
   };
 }
 
-// Interface for Payment Configuration
-interface PaymentConfiguration {
-  id: string | number;
-  name: string;
-  type: string;
-  config: Record<string, unknown>;
-  active: number;
-  created_at?: string;
-  updated_at?: string;
-}
 
 interface SettlementOfferFormProps {
   existingOffer?: SettlementOffer;
@@ -64,7 +55,7 @@ export default function SettlementOfferForm({
   const [deductions, setDeductions] = useState(existingOffer?.deductions || 0);
   const [serviceFeePercentage, setServiceFeePercentage] = useState(existingOffer?.serviceFeePercentage || 0);
   const [finalAmount, setFinalAmount] = useState(existingOffer?.finalAmount || 0);
-  const [paymentMethod, setPaymentMethod] = useState<SettlementOffer["paymentMethod"]>(existingOffer?.paymentMethod || "BANK_TRANSFER");
+  const [paymentMethod, setPaymentMethod] = useState<SettlementOffer["paymentMethod"] | "">(existingOffer?.paymentMethod || "");
   const [paymentDueDate, setPaymentDueDate] = useState<Date | undefined>();
   const [offerExpiryDate, setOfferExpiryDate] = useState<Date | undefined>();
   const [specialConditions, setSpecialConditions] = useState(existingOffer?.specialConditions || "");
@@ -72,6 +63,9 @@ export default function SettlementOfferForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [claims, setClaims] = useState<ApiClaim[]>([]);
   const [selectedClaim, setSelectedClaim] = useState<ApiClaim | null>(null);
+  
+  // Use the payment methods hook
+  const { paymentMethods, loading: paymentMethodsLoading, error: paymentMethodsError } = usePaymentMethods();
 
   console.log(selectedClaim, "selectedClaim__");
   // Handle claim selection change
@@ -159,30 +153,6 @@ export default function SettlementOfferForm({
     });
   }, [existingOffer?.claimId]);
 
-  // Fetch payment methods from API
-  useEffect(() => {
-    console.log("🔄 Fetching payment configurations from API...");
-    getPaymentConfigurations().then((res: unknown) => {
-      console.log("✅ Raw payment configurations response:", res);
-
-      let paymentData: PaymentConfiguration[] = [];
-
-      if (Array.isArray(res)) {
-        paymentData = res;
-      } else if (res && typeof res === 'object' && 'data' in res) {
-        const response = res as { data?: PaymentConfiguration[] };
-        paymentData = response.data || [];
-      }
-
-      console.log("📊 Processed payment configurations data:", paymentData);
-      console.log("📈 Number of payment configurations found:", paymentData.length);
-      
-      // Note: This API returns payment fee structures, not payment methods
-      // We'll use the default payment methods for now
-    }).catch((error) => {
-      console.error("❌ Error fetching payment configurations:", error);
-    });
-  }, []);
 
 
   function handleSubmit(e: React.FormEvent, action: 'draft' | 'submit' = 'submit') {
@@ -221,7 +191,7 @@ export default function SettlementOfferForm({
       deductions,
       serviceFeePercentage,
       finalAmount,
-      paymentMethod,
+      paymentMethod: paymentMethod as SettlementOffer["paymentMethod"],
       paymentTimeline,
       offerValidityPeriod,
       specialConditions,
@@ -361,11 +331,26 @@ export default function SettlementOfferForm({
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="cheque">Cheque</SelectItem>
-                  <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  {paymentMethodsLoading ? (
+                    <SelectItem value="" disabled>Loading payment methods...</SelectItem>
+                  ) : paymentMethodsError ? (
+                    <SelectItem value="" disabled>Error loading payment methods</SelectItem>
+                  ) : paymentMethods.length === 0 ? (
+                    <SelectItem value="" disabled>No payment methods available</SelectItem>
+                  ) : (
+                    paymentMethods.map((method) => (
+                      <SelectItem key={method.id} value={method.code}>
+                        <div className="flex flex-col">
+                          <span>{method.name}</span>
+                          {method.description && (
+                            <span className="text-xs text-muted-foreground">
+                              {method.description}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {errors.paymentMethod && <p className="text-red-500 text-sm mt-1">{errors.paymentMethod}</p>}

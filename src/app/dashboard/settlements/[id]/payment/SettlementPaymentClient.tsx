@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ArrowLeft, FileText, Clock, Shield, XCircle, CheckCircle2 } from 'lucide-react';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
 
 const settlement = {
@@ -43,28 +44,6 @@ const settlement = {
 };
 
 
-const paymentMethods = [
-  {
-    id: 'BANK_TRANSFER',
-    name: 'Bank Transfer',
-    description: 'Direct bank transfer to client account',
-    processingTime: '1-2 business days',
-  },
-  {
-    id: 'CHECK',
-    name: 'Check',
-    description: 'Physical check mailed to client address',
-    processingTime: '3-5 business days',
-  },
-  {
-    id: 'WIRE_TRANSFER',
-    name: 'Wire Transfer',
-    description: 'Same-day wire transfer to client account',
-    processingTime: 'Same day',
-  },
-];
-
-
 const userRole = 'FINANCIAL_OFFICER';
 
 interface SettlementPaymentClientProps {
@@ -74,6 +53,9 @@ interface SettlementPaymentClientProps {
 export default function SettlementPaymentClient({ settlementId }: SettlementPaymentClientProps) {
   const router = useRouter();
   console.log('Processing payment for settlement:', settlementId);
+  
+  // Use the payment methods hook
+  const { paymentMethods, loading: paymentMethodsLoading, error: paymentMethodsError } = usePaymentMethods();
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentAmount, setPaymentAmount] = useState(settlement.amount.toString());
@@ -232,16 +214,24 @@ export default function SettlementPaymentClient({ settlementId }: SettlementPaym
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent>
-                  {paymentMethods.map((method) => (
-                    <SelectItem key={method.id} value={method.id}>
-                      <div className="flex flex-col">
-                        <span>{method.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {method.description}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {paymentMethodsLoading ? (
+                    <SelectItem value="" disabled>Loading payment methods...</SelectItem>
+                  ) : paymentMethodsError ? (
+                    <SelectItem value="" disabled>Error loading payment methods</SelectItem>
+                  ) : paymentMethods.length === 0 ? (
+                    <SelectItem value="" disabled>No payment methods available</SelectItem>
+                  ) : (
+                    paymentMethods.map((method) => (
+                      <SelectItem key={method.id} value={method.code}>
+                        <div className="flex flex-col">
+                          <span>{method.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {method.description}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

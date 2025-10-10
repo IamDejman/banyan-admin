@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, AlertCircle, Clock, XCircle } from "lucide-react";
 import type { Settlement, PaymentDetails } from "@/lib/types/settlement";
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
 interface PaymentProcessingFormProps {
   offer: Settlement;
@@ -21,7 +22,10 @@ export default function PaymentProcessingForm({
   onSubmit,
   onCancel,
 }: PaymentProcessingFormProps) {
-  const [paymentMethod, setPaymentMethod] = useState<PaymentDetails["paymentMethod"]>("BANK_TRANSFER");
+  // Use the payment methods hook
+  const { paymentMethods, loading: paymentMethodsLoading, error: paymentMethodsError } = usePaymentMethods();
+  
+  const [paymentMethod, setPaymentMethod] = useState<PaymentDetails["paymentMethod"] | "">("");
   const [transactionReference, setTransactionReference] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
@@ -59,7 +63,7 @@ export default function PaymentProcessingForm({
       paymentId: `PAY-${Date.now()}`,
       paymentDate: new Date(),
       paymentAmount: parseFloat(offer.offer_amount) || 0,
-      paymentMethod,
+      paymentMethod: paymentMethod as PaymentDetails["paymentMethod"],
       transactionReference: transactionReference.trim(),
       bankName: bankName.trim() || undefined,
       accountNumber: accountNumber.trim() || undefined,
@@ -118,12 +122,29 @@ export default function PaymentProcessingForm({
               <Label htmlFor="paymentMethod">Payment Method *</Label>
               <Select value={paymentMethod} onValueChange={(value: PaymentDetails["paymentMethod"]) => setPaymentMethod(value)}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="cheque">Cheque</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  {paymentMethodsLoading ? (
+                    <SelectItem value="" disabled>Loading payment methods...</SelectItem>
+                  ) : paymentMethodsError ? (
+                    <SelectItem value="" disabled>Error loading payment methods</SelectItem>
+                  ) : paymentMethods.length === 0 ? (
+                    <SelectItem value="" disabled>No payment methods available</SelectItem>
+                  ) : (
+                    paymentMethods.map((method) => (
+                      <SelectItem key={method.id} value={method.code}>
+                        <div className="flex flex-col">
+                          <span>{method.name}</span>
+                          {method.description && (
+                            <span className="text-xs text-muted-foreground">
+                              {method.description}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

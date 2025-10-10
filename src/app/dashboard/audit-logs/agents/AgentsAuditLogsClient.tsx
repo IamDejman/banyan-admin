@@ -220,9 +220,17 @@ export default function AgentsAuditLogsClient() {
               <TableRow key={log.id}>
                 <TableCell>
                   <div className="text-sm">
-                    {new Date(log.timestamp).toLocaleDateString()}
+                    {new Date(log.timestamp).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: '2-digit'
+                    })}
                     <div className="text-xs text-muted-foreground">
-                      {new Date(log.timestamp).toLocaleTimeString()}
+                      {new Date(log.timestamp).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
                     </div>
                   </div>
                 </TableCell>
@@ -291,7 +299,14 @@ export default function AgentsAuditLogsClient() {
                 </div>
                 <div>
                   <span className="font-medium">Timestamp:</span>
-                  <div className="text-sm">{new Date(selectedLog.timestamp).toLocaleString()}</div>
+                  <div className="text-sm">{new Date(selectedLog.timestamp).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  })}</div>
                 </div>
                 <div>
                   <span className="font-medium">IP Address:</span>

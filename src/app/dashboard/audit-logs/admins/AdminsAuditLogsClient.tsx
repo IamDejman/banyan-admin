@@ -105,7 +105,14 @@ export default function AdminsAuditLogsClient() {
   }
 
   function formatTimestamp(timestamp: string) {
-    return new Date(timestamp).toLocaleString();
+    return new Date(timestamp).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   }
 
 

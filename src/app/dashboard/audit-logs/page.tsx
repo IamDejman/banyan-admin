@@ -208,14 +208,14 @@ export default function AuditLogsPage() {
   }
 
   function formatTimestamp(timestamp: Date) {
-    // Format: DD Mmm YYYY HH:MM
-    return timestamp.toLocaleDateString('en-GB', {
+    // Format: DD Mmm YYYY HH:MM AM/PM
+    return timestamp.toLocaleDateString('en-US', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false
+      hour12: true
     }).replace(',', '');
   }
 

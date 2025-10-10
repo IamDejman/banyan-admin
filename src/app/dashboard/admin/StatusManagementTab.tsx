@@ -223,9 +223,17 @@ export default function StatusManagementTab() {
                   <TableCell>{getCategoryBadge(status.category)}</TableCell>
                   <TableCell>{status.usageCount.toLocaleString()}</TableCell>
                   <TableCell>
-                    {status.lastUsed.toLocaleDateString()}
+                    {status.lastUsed.toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: '2-digit'
+                    })}
                     <div className="text-xs text-muted-foreground">
-                      {status.lastUsed.toLocaleTimeString()}
+                      {status.lastUsed.toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
                     </div>
                   </TableCell>
                   <TableCell>{status.workflow}</TableCell>

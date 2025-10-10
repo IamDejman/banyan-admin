@@ -142,7 +142,7 @@ export function formatDate(date: Date | string | number | null | undefined): str
 }
 
 /**
- * Formats a date to DD Mmm YYYY HH:MM format (e.g., "15 Jan 2024 14:30")
+ * Formats a date to DD Mmm YYYY HH:MM AM/PM format (e.g., "15 Jan 2024 02:30 PM")
  * @param date - Date object, date string, or timestamp
  * @returns Formatted datetime string
  */
@@ -157,7 +157,7 @@ export function formatDateTime(date: Date | string | number | null | undefined):
       return 'Invalid Date';
     }
     
-    return format(dateObj, 'dd MMM yyyy HH:mm');
+    return format(dateObj, 'dd MMM yyyy hh:mm a');
   } catch (error) {
     console.error('Error formatting datetime:', error);
     return 'Invalid Date';
@@ -183,9 +183,9 @@ export function formatDateTimeForTable(date: Date | string | number | null | und
 }
 
 /**
- * Formats a datetime for claim history display (DD Mmm YYYY HH:MM)
+ * Formats a datetime for claim history display (DD Mmm YYYY HH:MM AM/PM)
  * @param date - Date object, date string, or timestamp
- * @returns Formatted datetime string in DD Mmm YYYY HH:MM format
+ * @returns Formatted datetime string in DD Mmm YYYY HH:MM AM/PM format
  */
 export function formatTimestampForHistory(date: Date | string | number | null | undefined): string {
   if (!date) return 'N/A';
@@ -198,15 +198,8 @@ export function formatTimestampForHistory(date: Date | string | number | null | 
       return 'Invalid Date';
     }
     
-    // Format as DD Mmm YYYY HH:MM (e.g., "15 Jan 2024 14:30")
-    return dateObj.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).replace(',', '');
+    // Format as DD Mmm YYYY HH:MM AM/PM (e.g., "15 Jan 2024 02:30 PM")
+    return format(dateObj, 'dd MMM yyyy hh:mm a');
   } catch (error) {
     console.error('Error formatting timestamp for history:', error);
     return 'Invalid Date';
