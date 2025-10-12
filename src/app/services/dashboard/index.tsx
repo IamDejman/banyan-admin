@@ -104,7 +104,7 @@ export const getInsurerById = (id: string): Promise<ApiResponse<Insurer>> => Htt
 export const storeInsurer = (payload: Omit<Insurer, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Insurer>> => Http.post(`/admin/insurers`, payload);
 
 
-export const updateInsurer = (id: string, payload: Partial<Insurer>): Promise<ApiResponse<Insurer>> => Http.put(`/admin/insurers/${id}`, payload);
+export const updateInsurer = (id: string, payload: Partial<Insurer>): Promise<ApiResponse<Insurer>> => Http.patch(`/admin/insurers/${id}`, payload);
 
 
 export const deleteInsurer = (id: string): Promise<ApiResponse<void>> => Http.delete(`/admin/insurers/${id}`);
@@ -169,7 +169,7 @@ export const getClaimTypeById = (id: string): Promise<ApiResponse<ClaimType>> =>
 export const storeClaimType = (payload: Omit<ClaimType, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<ClaimType>> => Http.post(`/admin/claim-types`, payload);
 
 
-export const updateClaimType = (id: string, payload: Partial<ClaimType>): Promise<ApiResponse<ClaimType>> => Http.put(`/admin/claim-types/${id}`, payload);
+export const updateClaimType = (id: string, payload: Partial<ClaimType>): Promise<ApiResponse<ClaimType>> => Http.patch(`/admin/claim-types/${id}`, payload);
 
 
 export const deleteClaimType = (id: string): Promise<ApiResponse<void>> => Http.delete(`/admin/claim-types/${id}`);
@@ -184,7 +184,7 @@ export const getIncidentTypeById = (id: string): Promise<ApiResponse<IncidentTyp
 
 export const storeIncidentType = (payload: Omit<IncidentType, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<IncidentType>> => Http.post(`/admin/incident-types`, payload);
 
-export const updateIncidentType = (id: string, payload: Partial<IncidentType>): Promise<ApiResponse<IncidentType>> => Http.put(`/admin/incident-types/${id}`, payload);
+export const updateIncidentType = (id: string, payload: Partial<IncidentType>): Promise<ApiResponse<IncidentType>> => Http.patch(`/admin/incident-types/${id}`, payload);
 
 export const deleteIncidentType = (id: string): Promise<ApiResponse<void>> => Http.delete(`/admin/incident-types/${id}`);
 
