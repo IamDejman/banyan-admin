@@ -447,10 +447,6 @@ export default function ClaimDetailsClient({ claimId }: ClaimDetailsClientProps)
                 <span className="text-sm font-medium">Incident Location:</span>
                 <span className="text-sm">{transformedClaim.incidentLocation}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">Estimated Value:</span>
-                <span className="text-sm">₦{transformedClaim.estimatedValue.toLocaleString()}</span>
-              </div>
             </div>
           </div>
 

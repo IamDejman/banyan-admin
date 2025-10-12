@@ -215,11 +215,11 @@ export default function SettlementPaymentClient({ settlementId }: SettlementPaym
                 </SelectTrigger>
                 <SelectContent>
                   {paymentMethodsLoading ? (
-                    <SelectItem value="" disabled>Loading payment methods...</SelectItem>
+                    <SelectItem value="loading" disabled>Loading payment methods...</SelectItem>
                   ) : paymentMethodsError ? (
-                    <SelectItem value="" disabled>Error loading payment methods</SelectItem>
+                    <SelectItem value="error" disabled>Error loading payment methods</SelectItem>
                   ) : paymentMethods.length === 0 ? (
-                    <SelectItem value="" disabled>No payment methods available</SelectItem>
+                    <SelectItem value="none" disabled>No payment methods available</SelectItem>
                   ) : (
                     paymentMethods.map((method) => (
                       <SelectItem key={method.id} value={method.code}>

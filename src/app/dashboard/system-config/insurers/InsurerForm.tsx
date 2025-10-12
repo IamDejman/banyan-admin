@@ -30,11 +30,23 @@ export default function InsurerForm({ insurer, claimTypes, onSubmit, onCancel }:
   const [status] = useState<boolean>(insurer?.status ?? true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Function to validate email addresses
+  const validateEmails = (emailString: string): boolean => {
+    if (!emailString.trim()) return false;
+    
+    const emails = emailString.split(';').map(email => email.trim()).filter(email => email.length > 0);
+    if (emails.length === 0) return false;
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emails.every(email => emailRegex.test(email));
+  };
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
     if (!name.trim()) newErrors.name = "Name is required";
     if (!contact_email.trim()) newErrors.contact_email = "Contact email is required";
+    if (!validateEmails(contact_email)) newErrors.contact_email = "Please enter valid email addresses separated by semicolons (;)";
     if (!contact_phone.trim()) newErrors.contact_phone = "Contact phone is required";
     if (!address.trim()) newErrors.address = "Address is required";
     if (supported_claim_types.length === 0) newErrors.supported_claim_types = "At least one supported claim type is required";
@@ -98,12 +110,21 @@ export default function InsurerForm({ insurer, claimTypes, onSubmit, onCancel }:
             <Label htmlFor="contact_email">Contact Email *</Label>
             <Input
               id="contact_email"
-              type="email"
+              type="text"
               value={contact_email}
               onChange={(e) => setContactEmail(e.target.value)}
-              placeholder="contact@insurer.com"
+              placeholder="contact@insurer.com; admin@insurer.com"
               className={errors.contact_email ? "border-red-500" : ""}
             />
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800 font-medium">💡 Multiple Emails Support</p>
+              <p className="text-sm text-blue-700 mt-1">
+                You can enter multiple email addresses by separating them with semicolons (;)
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                <strong>Example:</strong> insurance@company.com; claims@company.com; support@company.com
+              </p>
+            </div>
             {errors.contact_email && <p className="text-red-500 text-sm mt-1">{errors.contact_email}</p>}
           </div>
 
