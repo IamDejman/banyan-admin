@@ -7,10 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { X, Upload, FileText, Calendar as CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { AntdDatePickerComponent } from "@/components/ui/antd-date-picker";
+import { X, Upload, FileText } from "lucide-react";
 import type { SettlementOffer } from "@/lib/types/settlement";
 import { getApprovedClaims } from '@/app/services/dashboard';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -66,6 +64,36 @@ export default function SettlementOfferForm({
   
   // Use the payment methods hook
   const { paymentMethods, loading: paymentMethodsLoading, error: paymentMethodsError } = usePaymentMethods();
+
+  // Load saved draft on component mount
+  useEffect(() => {
+    const latestDraftKey = localStorage.getItem('latest-settlement-draft');
+    if (latestDraftKey && !existingOffer) {
+      try {
+        const draftData = localStorage.getItem(latestDraftKey);
+        if (draftData) {
+          const parsedDraft = JSON.parse(draftData);
+          console.log('Loading saved draft:', parsedDraft);
+          
+          // Restore form state from draft
+          if (parsedDraft.claimId) setSelectedClaimId(parsedDraft.claimId);
+          if (parsedDraft.assessedAmount) setAssessedAmount(parsedDraft.assessedAmount);
+          if (parsedDraft.deductions) setDeductions(parsedDraft.deductions);
+          if (parsedDraft.serviceFeePercentage) setServiceFeePercentage(parsedDraft.serviceFeePercentage);
+          if (parsedDraft.finalAmount) setFinalAmount(parsedDraft.finalAmount);
+          if (parsedDraft.paymentMethod) setPaymentMethod(parsedDraft.paymentMethod);
+          if (parsedDraft.paymentDueDate) setPaymentDueDate(new Date(parsedDraft.paymentDueDate));
+          if (parsedDraft.offerExpiryDate) setOfferExpiryDate(new Date(parsedDraft.offerExpiryDate));
+          if (parsedDraft.specialConditions) setSpecialConditions(parsedDraft.specialConditions);
+          if (parsedDraft.supportingDocuments) setSupportingDocuments(parsedDraft.supportingDocuments);
+          
+          alert('Draft loaded successfully! You can continue where you left off.');
+        }
+      } catch (error) {
+        console.error('Error loading draft:', error);
+      }
+    }
+  }, [existingOffer]);
 
   console.log(selectedClaim, "selectedClaim__");
   // Handle claim selection change
@@ -157,13 +185,20 @@ export default function SettlementOfferForm({
 
   function handleSubmit(e: React.FormEvent, action: 'draft' | 'submit' = 'submit') {
     e.preventDefault();
+    console.log('Form submission:', { action, selectedClaimId, paymentDueDate, offerExpiryDate });
     const newErrors: Record<string, string> = {};
 
-    // For draft, only validate required fields
-    if (!selectedClaimId) newErrors.claimId = "Please select a claim";
+    // For draft, only validate basic fields
+    if (action === 'draft') {
+      // For draft, we only require a claim to be selected if other fields are filled
+      if ((assessedAmount > 0 || deductions > 0 || serviceFeePercentage > 0) && !selectedClaimId) {
+        newErrors.claimId = "Please select a claim when entering amounts";
+      }
+    }
     
     // For submit, validate all required fields
     if (action === 'submit') {
+      if (!selectedClaimId) newErrors.claimId = "Please select a claim";
       if (assessedAmount <= 0) newErrors.assessedAmount = "Assessed amount must be greater than 0";
       if (deductions < 0) newErrors.deductions = "Deductions cannot be negative";
       if (serviceFeePercentage < 0) newErrors.serviceFeePercentage = "Service fee cannot be negative";
@@ -185,6 +220,7 @@ export default function SettlementOfferForm({
 
     const offerData = {
       claimId: selectedClaimId,
+      claimNumber: selectedClaim?.claim_number || "",
       clientName: selectedClaim ? `${selectedClaim.client.first_name} ${selectedClaim.client.last_name}` : "",
       claimType: selectedClaim?.claim_type_details?.name || "",
       assessedAmount,
@@ -197,10 +233,34 @@ export default function SettlementOfferForm({
       specialConditions,
       status: (action === 'draft' ? "DRAFT" : "SUBMITTED") as SettlementOffer["status"],
       supportingDocuments,
+      // Add form state data for local storage
+      paymentDueDate: paymentDueDate?.toISOString(),
+      offerExpiryDate: offerExpiryDate?.toISOString(),
+      savedAt: new Date().toISOString(),
     };
 
-    console.log(offerData, "offerData__");
+    console.log('Draft data being saved:', {
+      claimId: selectedClaimId,
+      claimNumber: selectedClaim?.claim_number,
+      selectedClaim: selectedClaim
+    });
 
+    if (action === 'draft') {
+      // Save draft locally to localStorage
+      const draftKey = `settlement-offer-draft-${Date.now()}`;
+      localStorage.setItem(draftKey, JSON.stringify(offerData));
+      
+      // Also save a reference to the latest draft
+      localStorage.setItem('latest-settlement-draft', draftKey);
+      
+      console.log('Draft saved locally:', draftKey);
+      alert('Draft saved successfully! You can continue working on it later.');
+      
+      // Don't call onSubmit for drafts - it's handled locally
+      return;
+    }
+
+    console.log(offerData, "offerData__");
     onSubmit(offerData, action);
   }
 
@@ -358,49 +418,27 @@ export default function SettlementOfferForm({
 
             <div>
               <Label htmlFor="paymentDueDate">Payment Due Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${errors.paymentDueDate ? "border-red-500" : ""}`}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {paymentDueDate ? format(paymentDueDate, "PPP") : "Select payment due date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={paymentDueDate}
-                    onSelect={setPaymentDueDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <AntdDatePickerComponent
+                selected={paymentDueDate}
+                onChange={(date) => setPaymentDueDate(date || undefined)}
+                placeholder="Select payment due date"
+                minDate={new Date()}
+                format="DD/MM/YYYY"
+                className={errors.paymentDueDate ? "border-red-500" : ""}
+              />
               {errors.paymentDueDate && <p className="text-red-500 text-sm mt-1">{errors.paymentDueDate}</p>}
             </div>
 
             <div>
               <Label htmlFor="offerExpiryDate">Offer Expiry Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${errors.offerExpiryDate ? "border-red-500" : ""}`}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {offerExpiryDate ? format(offerExpiryDate, "PPP") : "Select offer expiry date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={offerExpiryDate}
-                    onSelect={setOfferExpiryDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <AntdDatePickerComponent
+                selected={offerExpiryDate}
+                onChange={(date) => setOfferExpiryDate(date || undefined)}
+                placeholder="Select offer expiry date"
+                minDate={new Date()}
+                format="DD/MM/YYYY"
+                className={errors.offerExpiryDate ? "border-red-500" : ""}
+              />
               {errors.offerExpiryDate && <p className="text-red-500 text-sm mt-1">{errors.offerExpiryDate}</p>}
             </div>
           </div>
@@ -463,10 +501,26 @@ export default function SettlementOfferForm({
           <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancel
           </Button>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => {
+              localStorage.removeItem('latest-settlement-draft');
+              alert('Draft cleared successfully!');
+            }}
+            disabled={isSubmitting}
+          >
+            Clear Draft
+          </Button>
           <Button type="button" variant="outline" onClick={(e) => handleSubmit(e, 'draft')} disabled={isSubmitting}>
             {isSubmitting ? "Saving..." : "Save Draft"}
           </Button>
-          <Button type="button" onClick={(e) => handleSubmit(e, 'submit')} disabled={isSubmitting}>
+          <Button 
+            type="button" 
+            onClick={(e) => handleSubmit(e, 'submit')} 
+            disabled={isSubmitting}
+            className="bg-blue-600 text-white hover:bg-blue-700"
+          >
             {isSubmitting ? "Submitting..." : "Submit for Approval"}
           </Button>
         </div>

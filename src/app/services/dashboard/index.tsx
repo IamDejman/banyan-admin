@@ -19,7 +19,7 @@ interface Insurer {
     contact_phone?: string;
     address?: string;
     active: number;
-    supported_claim_types: string;
+    supported_claim_types: string[];
     special_instructions?: string;
     created_at?: string;
     updated_at?: string;

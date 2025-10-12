@@ -105,7 +105,7 @@ export default function InsurersClient() {
         contact_email: updated.contact_email,
         contact_phone: updated.contact_phone,
         address: updated.address,
-        supported_claim_types: JSON.stringify(updated.supported_claim_types),
+        supported_claim_types: updated.supported_claim_types,
         special_instructions: updated.special_instructions,
         active: updated.status ? 1 : 0
       };

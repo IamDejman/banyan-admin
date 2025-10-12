@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Eye, Edit, Clock, Search } from "lucide-react"; // Removed unused CheckCircle, TrendingUp
+import { Plus, Eye, Edit, Clock, Search, FileText, Trash2 } from "lucide-react"; // Removed unused CheckCircle, TrendingUp
 import SettlementOfferForm from "./SettlementOfferForm";
 import { createSettlementOffer, getSettlementsWithStatus } from "@/app/services/dashboard";
 import { Settlement, } from "@/lib/types/settlement";
@@ -42,14 +42,60 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
   const [, setOffers] = useState<Settlement[]>(availableSettlements);
   const [settlementsData, setSettlementsData] = useState<Settlement[]>([]);
   const [settlementsLoading, setSettlementsLoading] = useState(false);
-  const [modal, setModal] = useState<{ mode: "create" | "view" | "edit"; offer?: Settlement } | null>(null);
+  const [modal, setModal] = useState<{ mode: "create" | "view" | "edit" | "drafts"; offer?: Settlement } | null>(null);
   const [search, setSearch] = useState("");
   const [claimTypeFilter, setClaimTypeFilter] = useState<string>("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [drafts, setDrafts] = useState<Array<{
+    key: string;
+    claimId: string;
+    claimNumber: string;
+    clientName: string;
+    claimType: string;
+    assessedAmount: number;
+    deductions: number;
+    serviceFeePercentage: number;
+    finalAmount: number;
+    paymentMethod: string;
+    paymentTimeline: number;
+    offerValidityPeriod: number;
+    specialConditions: string;
+    status: string;
+    supportingDocuments: string[];
+    paymentDueDate?: string;
+    offerExpiryDate?: string;
+    savedAt: Date;
+  }>>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
   console.log(availableSettlements, "availableSettlements__");
+
+  // Function to get saved drafts
+  const getSavedDrafts = () => {
+    const draftKeys = Object.keys(localStorage).filter(key => key.startsWith('settlement-offer-draft-'));
+    const savedDrafts = draftKeys.map(key => {
+      try {
+        const draftData = JSON.parse(localStorage.getItem(key) || '{}');
+        console.log('Loading draft data:', draftData);
+        return {
+          key,
+          ...draftData,
+          savedAt: new Date(draftData.savedAt || key.split('-').pop())
+        };
+      } catch (error) {
+        console.error('Error parsing draft:', error);
+        return null;
+      }
+    }).filter(Boolean);
+    
+    return savedDrafts.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
+  };
+
+  // Load drafts when component mounts
+  useEffect(() => {
+    setDrafts(getSavedDrafts());
+  }, []);
 
   // Use settlements data if available, otherwise fall back to mock data
 
@@ -193,10 +239,24 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
         <div>
           <h2 className="text-2xl font-bold">Create Offers</h2>
         </div>
-        <Button onClick={() => setModal({ mode: "create" })}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create New Offer
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setModal({ mode: "drafts" })}
+            className="flex items-center gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            View Drafts ({drafts.length})
+          </Button>
+          <Button 
+            variant="default" 
+            onClick={() => setModal({ mode: "create" })}
+            className="bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create New Offer
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -451,6 +511,98 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
             )}
 
 
+          </div>
+        </div>
+      )}
+
+      {/* Drafts Modal */}
+      {modal?.mode === "drafts" && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Saved Drafts</h3>
+              <Button variant="outline" onClick={() => setModal(null)}>
+                Close
+              </Button>
+            </div>
+
+            {drafts.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-500">No saved drafts found.</p>
+                <p className="text-sm text-gray-400 mt-2">Create and save a draft to see it here.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {drafts.map((draft, index) => (
+                  <Card key={draft.key} className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-2">
+                          <h4 className="font-medium">
+                            Draft #{index + 1}
+                          </h4>
+                          <Badge variant="secondary">
+                            Saved {new Date(draft.savedAt).toLocaleDateString()}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div>
+                            <strong>Claim Number:</strong> {draft.claimNumber || draft.claimId || 'Not selected'}
+                          </div>
+                          <div>
+                            <strong>Client:</strong> {draft.clientName || 'Not specified'}
+                          </div>
+                          <div>
+                            <strong>Assessed Amount:</strong> ₦{draft.assessedAmount?.toLocaleString() || '0'}
+                          </div>
+                          <div>
+                            <strong>Final Amount:</strong> ₦{draft.finalAmount?.toLocaleString() || '0'}
+                          </div>
+                          {draft.paymentDueDate && (
+                            <div>
+                              <strong>Payment Due:</strong> {new Date(draft.paymentDueDate).toLocaleDateString()}
+                            </div>
+                          )}
+                          {draft.offerExpiryDate && (
+                            <div>
+                              <strong>Expiry Date:</strong> {new Date(draft.offerExpiryDate).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // Load this draft
+                            localStorage.setItem('latest-settlement-draft', draft.key);
+                            setModal({ mode: "create" });
+                            alert('Draft loaded! You can continue editing it.');
+                          }}
+                        >
+                          Load Draft
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // Delete this draft
+                            localStorage.removeItem(draft.key);
+                            setDrafts(getSavedDrafts());
+                            alert('Draft deleted successfully!');
+                          }}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
