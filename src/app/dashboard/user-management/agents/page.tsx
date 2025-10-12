@@ -614,7 +614,7 @@ export default function AgentsPage() {
 
       {modal && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-white rounded shadow-lg p-6 w-full max-w-md relative">
+          <div className="bg-white rounded shadow-lg p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto">
             <Button
               size="icon"
               variant="ghost"

@@ -143,7 +143,7 @@ export default function DashboardLayout({
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
                 <AlertTriangle className="h-5 w-5 text-red-600" />

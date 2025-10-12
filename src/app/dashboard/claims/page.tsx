@@ -619,7 +619,7 @@ export default function ClaimsReviewPage() {
       {/* Filter Modal */}
       {showFilterModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Filter Claims</h3>
               <Button

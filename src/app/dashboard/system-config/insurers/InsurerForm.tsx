@@ -116,15 +116,6 @@ export default function InsurerForm({ insurer, claimTypes, onSubmit, onCancel }:
               placeholder="contact@insurer.com; admin@insurer.com"
               className={errors.contact_email ? "border-red-500" : ""}
             />
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800 font-medium">💡 Multiple Emails Support</p>
-              <p className="text-sm text-blue-700 mt-1">
-                You can enter multiple email addresses by separating them with semicolons (;)
-              </p>
-              <p className="text-xs text-blue-600 mt-1">
-                <strong>Example:</strong> insurance@company.com; claims@company.com; support@company.com
-              </p>
-            </div>
             {errors.contact_email && <p className="text-red-500 text-sm mt-1">{errors.contact_email}</p>}
           </div>
 

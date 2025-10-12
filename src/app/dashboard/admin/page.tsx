@@ -899,7 +899,7 @@ export default function AdminPage() {
       {/* New Assignment Modal */}
       {showNewAssignmentModal && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">New Claim Assignment</h3>
               <Button variant="ghost" size="sm" onClick={handleCloseNewAssignmentModal}>
@@ -990,7 +990,7 @@ export default function AdminPage() {
           className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
         >
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Reassign Claim</h3>
               <button

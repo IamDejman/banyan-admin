@@ -392,7 +392,7 @@ export default function InsurersClient() {
       </Card>
       {modal && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-white rounded shadow-lg p-6 w-full max-w-lg relative">
+          <div className="bg-white rounded shadow-lg p-6 w-full max-w-lg relative max-h-[90vh] overflow-y-auto">
             <Button size="icon" variant="ghost" className="absolute top-2 right-2" onClick={() => setModal(null)}>&times;</Button>
             {modal.mode === "add" && (
               <>
@@ -423,7 +423,7 @@ export default function InsurersClient() {
       {/* Confirmation Dialog */}
       {confirmDialog && confirmDialog.type === "delete" && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-white rounded shadow-lg p-6 w-full max-w-md relative">
+          <div className="bg-white rounded shadow-lg p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
                 <Trash2 className="h-6 w-6 text-red-600" />
