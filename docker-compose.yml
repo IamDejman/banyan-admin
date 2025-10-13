@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Next.js application
+  app:
+    build: .
+    container_name: banyan-admin-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - app-network
+    # Don't expose port directly to host
+    # Apply TCP security hardening
+    sysctls:
+      - net.ipv4.tcp_timestamps=0
+      - net.ipv4.tcp_syncookies=1
+      - net.ipv4.ip_forward=0
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: banyan-admin-nginx
+    restart: unless-stopped
+    ports:
+      # Redirect HTTP to HTTPS
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
