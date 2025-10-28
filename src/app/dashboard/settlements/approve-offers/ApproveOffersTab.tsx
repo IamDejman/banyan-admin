@@ -152,7 +152,7 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Approve Offers</h2>
+          <h2 className="text-2xl font-bold">Approved Offers</h2>
         </div>
       </div>
 
@@ -202,7 +202,7 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
 
       <Card>
         <div className="p-6 border-b">
-          <h3 className="text-lg font-semibold">Pending Approval List</h3>
+          <h3 className="text-lg font-semibold">Approved Offers</h3>
         </div>
         <div className="overflow-x-auto">
           <Table>

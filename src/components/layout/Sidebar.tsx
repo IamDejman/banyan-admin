@@ -37,7 +37,7 @@ const navigationSections = [
         href: '/dashboard/settlements/create-offers',
       },
       {
-        name: 'Approve Offers',
+        name: 'Approved Offers',
         href: '/dashboard/settlements/approve-offers',
       },
       {
@@ -133,11 +133,14 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
   }, [pathname]);
 
   const toggleSection = (sectionName: string) => {
-    setExpandedSections(prev =>
-      prev.includes(sectionName)
-        ? prev.filter(name => name !== sectionName)
-        : [...prev, sectionName]
-    );
+    setExpandedSections(prev => {
+      // If the section is already expanded, collapse it
+      if (prev.includes(sectionName)) {
+        return prev.filter(name => name !== sectionName);
+      }
+      // If the section is not expanded, expand only this section (close others)
+      return [sectionName];
+    });
   };
 
   if (collapsed) {
@@ -146,7 +149,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
   }
 
   return (
-    <nav className="h-full w-full bg-white border-r flex flex-col z-50">
+    <nav className="h-full w-full bg-white border-r flex flex-col">
       <div className="flex flex-col gap-1 sm:gap-2 p-2 sm:p-4 overflow-y-auto">
         {navigationSections.map((section) => {
           const hasSubmenu = section.items && section.items.length > 0;
@@ -172,7 +175,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
                 {hasSubmenu && (
                   <button
                     onClick={() => toggleSection(section.name)}
-                    className="ml-2 focus:outline-none p-2 rounded hover:bg-gray-100 transition-colors touch-manipulation"
+                    className="ml-2 focus:outline-none p-2 rounded hover:bg-gray-100 transition-colors"
                     aria-label={`Toggle ${section.name} menu`}
                   >
                     <ChevronRight size={16} className={`text-gray-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
@@ -185,7 +188,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
                     <Link 
                       key={item.name} 
                       href={item.href} 
-                      className={`py-3 px-3 rounded-md hover:bg-gray-50 text-xs sm:text-sm transition-all duration-200 touch-manipulation ${pathname === item.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
+                      className={`py-3 px-3 rounded-md hover:bg-gray-50 text-xs sm:text-sm transition-all duration-200 ${pathname === item.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
                       onClick={() => onItemClick?.()}
                     >
                       {item.name}

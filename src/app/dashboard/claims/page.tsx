@@ -68,6 +68,8 @@ interface TransformedClaim {
 
 interface Statistics {
   total_pending_claims: number;
+  total_approved_claims: number;
+  total_claims: number;
   settled_claim: number;
 }
 
@@ -108,6 +110,8 @@ export default function ClaimsReviewPage() {
   });
   const [statistics, setStatistics] = useState<Statistics>({
     total_pending_claims: 0,
+    total_approved_claims: 0,
+    total_claims: 0,
     settled_claim: 0,
   });
   const [claims, setClaims] = useState<ApiClaim[]>([]);
@@ -409,14 +413,14 @@ export default function ClaimsReviewPage() {
             <FileText className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{statistics.total_pending_claims + statistics.settled_claim}</div>
+            <div className="text-xl sm:text-2xl font-bold">{statistics.total_claims}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium">
-              Pending Claims
+              Submitted Claims
             </CardTitle>
             <AlertCircle className="h-4 w-4 text-orange-600" />
           </CardHeader>
@@ -433,7 +437,7 @@ export default function ClaimsReviewPage() {
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{statistics.settled_claim}</div>
+            <div className="text-xl sm:text-2xl font-bold">{statistics.total_approved_claims}</div>
           </CardContent>
         </Card>
       </div>

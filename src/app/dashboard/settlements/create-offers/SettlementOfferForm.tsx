@@ -218,6 +218,10 @@ export default function SettlementOfferForm({
     const paymentTimeline = paymentDueDate ? Math.ceil((paymentDueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : 0;
     const offerValidityPeriod = offerExpiryDate ? Math.ceil((offerExpiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
+    // Find the payment method name from the code
+    const selectedPaymentMethod = paymentMethods.find(method => method.code === paymentMethod);
+    const paymentMethodName = selectedPaymentMethod?.name || paymentMethod;
+
     const offerData = {
       claimId: selectedClaimId,
       claimNumber: selectedClaim?.claim_number || "",
@@ -227,7 +231,7 @@ export default function SettlementOfferForm({
       deductions,
       serviceFeePercentage,
       finalAmount,
-      paymentMethod: paymentMethod as SettlementOffer["paymentMethod"],
+      paymentMethod: paymentMethodName as SettlementOffer["paymentMethod"],
       paymentTimeline,
       offerValidityPeriod,
       specialConditions,
@@ -277,101 +281,111 @@ export default function SettlementOfferForm({
   }
 
   return (
-    <Card className="p-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Claim Selection */}
-        <div>
-          <Label htmlFor="claim">Claim Selection *</Label>
-          <Select
-            value={selectedClaimId || ""}
-            onValueChange={handleClaimSelection}
-          >
-            <SelectTrigger className={errors.claimId ? "border-red-500" : ""}>
-              <SelectValue placeholder="Select an approved claim">
-                {selectedClaimId && selectedClaim ? selectedClaim.claim_number +
-                  " - " + selectedClaim.client?.first_name +
-                  " " + selectedClaim.client?.last_name +
-                  " (" + selectedClaim.claim_type_details?.name + ")"
-                  : "Select an approved claim"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {claims.map((claim) => (
-                <SelectItem key={claim.id} value={claim.id}>
-                  {claim.claim_number} - {claim.client?.first_name} {claim.client?.last_name} ({claim.claim_type_details?.name})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.claimId && <p className="text-red-500 text-sm mt-1">{errors.claimId}</p>}
+    <Card className="p-8">
+
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Claim Selection Section */}
+        <div className="space-y-4">
+          <div className="border-b pb-3">
+            <h3 className="text-lg font-semibold text-gray-900">Claim Information</h3>
+          </div>
+          <div className="space-y-4">
+            <Label htmlFor="claim" className="text-sm font-medium">Claim Selection *</Label>
+            <Select
+              value={selectedClaimId || ""}
+              onValueChange={handleClaimSelection}
+            >
+              <SelectTrigger className={`h-12 ${errors.claimId ? "border-red-500" : ""}`}>
+                <SelectValue placeholder="Select an approved claim">
+                  {selectedClaimId && selectedClaim ? selectedClaim.claim_number +
+                    " - " + selectedClaim.client?.first_name +
+                    " " + selectedClaim.client?.last_name +
+                    " (" + selectedClaim.claim_type_details?.name + ")"
+                    : "Select an approved claim"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {claims.map((claim) => (
+                  <SelectItem key={claim.id} value={claim.id}>
+                    {claim.claim_number} - {claim.client?.first_name} {claim.client?.last_name} ({claim.claim_type_details?.name})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.claimId && <p className="text-red-500 text-sm mt-1">{errors.claimId}</p>}
+          </div>
         </div>
 
         {/* Client Details (Auto-populated) */}
         {selectedClaim && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-            <div>
-              <Label className="text-sm font-medium">Client Name</Label>
-              <p className="text-sm">{selectedClaim?.client?.first_name} {selectedClaim?.client?.last_name}</p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Claim Type</Label>
-              <p className="text-sm">{selectedClaim?.claim_type_details?.name}</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Client Name</Label>
+                <p className="text-base font-medium text-gray-900 mt-2">{selectedClaim?.client?.first_name} {selectedClaim?.client?.last_name}</p>
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Claim Type</Label>
+                <p className="text-base font-medium text-gray-900 mt-2">{selectedClaim?.claim_type_details?.name}</p>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Offer Calculation */}
+        {/* Offer Calculation Section */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Offer Calculation</h3>
+          <div className="border-b pb-3">
+            <h3 className="text-lg font-semibold text-gray-900">Offer Calculation</h3>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="assessedAmount">Assessed Claim Value *</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="assessedAmount" className="text-sm font-medium">Assessed Claim Value *</Label>
               <Input
                 id="assessedAmount"
                 type="text"
                 value={assessedAmount}
                 onChange={(e) => setAssessedAmount(Number(e.target.value))}
-                className={errors.assessedAmount ? "border-red-500" : ""}
+                className={`h-12 ${errors.assessedAmount ? "border-red-500" : ""}`}
                 placeholder="₦0"
               />
               {errors.assessedAmount && <p className="text-red-500 text-sm mt-1">{errors.assessedAmount}</p>}
             </div>
 
-            <div>
-              <Label htmlFor="deductions">Deductions (if any)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="deductions" className="text-sm font-medium">Deductions (if any)</Label>
               <Input
                 id="deductions"
                 type="text"
                 value={deductions}
                 onChange={(e) => setDeductions(Number(e.target.value))}
-                className={errors.deductions ? "border-red-500" : ""}
+                className={`h-12 ${errors.deductions ? "border-red-500" : ""}`}
                 placeholder="₦0"
               />
               {errors.deductions && <p className="text-red-500 text-sm mt-1">{errors.deductions}</p>}
             </div>
 
-            <div>
-              <Label htmlFor="serviceFee">Service Fee Percentage *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="serviceFee" className="text-sm font-medium">Service Fee Percentage *</Label>
               <Input
                 id="serviceFee"
                 type="text"
                 value={serviceFeePercentage}
                 onChange={(e) => setServiceFeePercentage(Number(e.target.value))}
-                className={errors.serviceFeePercentage ? "border-red-500" : ""}
+                className={`h-12 ${errors.serviceFeePercentage ? "border-red-500" : ""}`}
                 placeholder="10"
               />
               {errors.serviceFeePercentage && <p className="text-red-500 text-sm mt-1">{errors.serviceFeePercentage}</p>}
             </div>
 
-            <div>
-              <Label htmlFor="finalAmount">Final Offer Amount</Label>
+            <div className="space-y-2">
+              <Label htmlFor="finalAmount" className="text-sm font-medium">Final Offer Amount</Label>
               <Input
                 id="finalAmount"
                 type="text"
                 value={finalAmount}
                 readOnly
-                className="bg-muted"
+                className="h-12 bg-gray-50 font-semibold text-lg text-gray-900"
                 placeholder="₦0"
               />
               {errors.finalAmount && <p className="text-red-500 text-sm mt-1">{errors.finalAmount}</p>}
@@ -379,15 +393,17 @@ export default function SettlementOfferForm({
           </div>
         </div>
 
-        {/* Offer Terms */}
+        {/* Offer Terms Section */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Offer Terms</h3>
+          <div className="border-b pb-3">
+            <h3 className="text-lg font-semibold text-gray-900">Offer Terms</h3>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="paymentMethod">Payment Method *</Label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="paymentMethod" className="text-sm font-medium">Payment Method *</Label>
               <Select value={paymentMethod} onValueChange={(value: string) => setPaymentMethod(value as SettlementOffer["paymentMethod"])}>
-                <SelectTrigger className={errors.paymentMethod ? "border-red-500" : ""}>
+                <SelectTrigger className={`h-12 w-full ${errors.paymentMethod ? "border-red-500" : ""}`}>
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent>
@@ -400,14 +416,7 @@ export default function SettlementOfferForm({
                   ) : (
                     paymentMethods.map((method) => (
                       <SelectItem key={method.id} value={method.code}>
-                        <div className="flex flex-col">
-                          <span>{method.name}</span>
-                          {method.description && (
-                            <span className="text-xs text-muted-foreground">
-                              {method.description}
-                            </span>
-                          )}
-                        </div>
+                        {method.name}
                       </SelectItem>
                     ))
                   )}
@@ -416,78 +425,82 @@ export default function SettlementOfferForm({
               {errors.paymentMethod && <p className="text-red-500 text-sm mt-1">{errors.paymentMethod}</p>}
             </div>
 
-            <div>
-              <Label htmlFor="paymentDueDate">Payment Due Date *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="paymentDueDate" className="text-sm font-medium">Payment Due Date *</Label>
               <AntdDatePickerComponent
                 selected={paymentDueDate}
                 onChange={(date) => setPaymentDueDate(date || undefined)}
                 placeholder="Select payment due date"
                 minDate={new Date()}
                 format="DD/MM/YYYY"
-                className={errors.paymentDueDate ? "border-red-500" : ""}
+                className={`h-12 w-full ${errors.paymentDueDate ? "border-red-500" : ""}`}
               />
               {errors.paymentDueDate && <p className="text-red-500 text-sm mt-1">{errors.paymentDueDate}</p>}
             </div>
 
-            <div>
-              <Label htmlFor="offerExpiryDate">Offer Expiry Date *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="offerExpiryDate" className="text-sm font-medium">Offer Expiry Date *</Label>
               <AntdDatePickerComponent
                 selected={offerExpiryDate}
                 onChange={(date) => setOfferExpiryDate(date || undefined)}
                 placeholder="Select offer expiry date"
                 minDate={new Date()}
                 format="DD/MM/YYYY"
-                className={errors.offerExpiryDate ? "border-red-500" : ""}
+                className={`h-12 w-full ${errors.offerExpiryDate ? "border-red-500" : ""}`}
               />
               {errors.offerExpiryDate && <p className="text-red-500 text-sm mt-1">{errors.offerExpiryDate}</p>}
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="specialConditions">Special Conditions</Label>
+          <div className="space-y-2 mt-6">
+            <Label htmlFor="specialConditions" className="text-sm font-medium">Special Conditions</Label>
             <Textarea
               id="specialConditions"
               value={specialConditions}
               onChange={(e) => setSpecialConditions(e.target.value)}
               placeholder="Any special conditions or terms for this offer..."
-              rows={3}
+              rows={4}
+              className="resize-none"
             />
           </div>
         </div>
 
-        {/* Supporting Documents */}
+        {/* Supporting Documents Section */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Supporting Documents</h3>
+          <div className="border-b pb-3">
+            <h3 className="text-lg font-semibold text-gray-900">Supporting Documents</h3>
+          </div>
 
-          <div>
-            <Label htmlFor="documents">Upload Documents</Label>
-            <div className="flex items-center gap-2">
+          <div className="space-y-4">
+            <Label htmlFor="documents" className="text-sm font-medium">Upload Documents</Label>
+            <div className="flex items-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
               <Input
                 id="documents"
                 type="file"
                 multiple
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 onChange={handleFileUpload}
-                className="cursor-pointer"
+                className="cursor-pointer border-none"
               />
-              <Upload className="h-4 w-4 text-muted-foreground" />
+              <Upload className="h-5 w-5 text-gray-400" />
             </div>
+            <p className="text-xs text-gray-500">Accepted formats: PDF, DOC, DOCX, JPG, PNG (Max 10MB per file)</p>
           </div>
 
           {supportingDocuments.length > 0 && (
-            <div>
+            <div className="space-y-3 mt-4">
               <Label className="text-sm font-medium">Uploaded Documents</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg">
                 {supportingDocuments.map((doc, index) => (
-                  <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                    <FileText className="h-3 w-3" />
-                    {doc}
+                  <Badge key={index} variant="secondary" className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200">
+                    <FileText className="h-4 w-4" />
+                    <span className="text-sm">{doc}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveDocument(doc)}
-                      className="ml-1 hover:text-red-500"
+                      className="ml-1 hover:text-red-500 transition-colors"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-4 w-4" />
                     </button>
                   </Badge>
                 ))}
@@ -497,32 +510,47 @@ export default function SettlementOfferForm({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2 justify-end">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => {
-              localStorage.removeItem('latest-settlement-draft');
-              alert('Draft cleared successfully!');
-            }}
-            disabled={isSubmitting}
-          >
-            Clear Draft
-          </Button>
-          <Button type="button" variant="outline" onClick={(e) => handleSubmit(e, 'draft')} disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save Draft"}
-          </Button>
-          <Button 
-            type="button" 
-            onClick={(e) => handleSubmit(e, 'submit')} 
-            disabled={isSubmitting}
-            className="bg-blue-600 text-white hover:bg-blue-700"
-          >
-            {isSubmitting ? "Submitting..." : "Submit for Approval"}
-          </Button>
+        <div className="border-t pt-6">
+          <div className="flex flex-col sm:flex-row gap-3 justify-end">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onCancel} 
+              disabled={isSubmitting}
+              className="h-11 px-6"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                localStorage.removeItem('latest-settlement-draft');
+                alert('Draft cleared successfully!');
+              }}
+              disabled={isSubmitting}
+              className="h-11 px-6"
+            >
+              Clear Draft
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={(e) => handleSubmit(e, 'draft')} 
+              disabled={isSubmitting}
+              className="h-11 px-6"
+            >
+              {isSubmitting ? "Saving..." : "Save as Draft"}
+            </Button>
+            <Button 
+              type="button" 
+              onClick={(e) => handleSubmit(e, 'submit')} 
+              disabled={isSubmitting}
+              className="h-11 px-6 bg-primary text-white hover:bg-primary/90"
+            >
+              {isSubmitting ? "Submitting..." : "Submit for Approval"}
+            </Button>
+          </div>
         </div>
       </form>
     </Card>

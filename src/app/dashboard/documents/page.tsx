@@ -10,10 +10,11 @@ import {
   Search,
   Eye,
   X,
-  FileText
+  FileText,
+  Image as ImageIcon
 } from 'lucide-react';
 import { listDocuments } from '@/app/services/dashboard';
-import { formatDate } from '@/lib/utils/text-formatting';
+import { formatDateTime } from '@/lib/utils/text-formatting';
 
 // Define proper types for documents
 interface Document {
@@ -76,7 +77,8 @@ export default function DocumentsPage() {
       case 'jpg':
       case 'jpeg':
       case 'gif':
-        return <FileText className="h-4 w-4 text-blue-500" />;
+      case 'webp':
+        return <ImageIcon className="h-4 w-4 text-blue-500" />;
       case 'doc':
       case 'docx':
         return <FileText className="h-4 w-4 text-blue-600" />;
@@ -97,7 +99,7 @@ export default function DocumentsPage() {
 
   const getSubmissionDate = (createdAt: string) => {
     if (!createdAt) return "N/A";
-    return formatDate(createdAt);
+    return formatDateTime(createdAt);
   };
 
   // Extract unique file types from documents data
@@ -180,10 +182,8 @@ export default function DocumentsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-32">Claim ID</TableHead>
-                  <TableHead>Document Type</TableHead>
                   <TableHead className="w-36">Client</TableHead>
                   <TableHead className="w-28">File Type</TableHead>
-                  <TableHead className="w-20">Size</TableHead>
                   <TableHead className="w-28">Submission Date</TableHead>
                   <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
@@ -191,7 +191,7 @@ export default function DocumentsPage() {
               <TableBody>
                 {filteredDocuments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={5} className="text-center py-8">
                       <div className="text-center">
                         <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                         <p className="text-sm text-muted-foreground">No documents found</p>
@@ -202,9 +202,6 @@ export default function DocumentsPage() {
                   filteredDocuments.map((doc) => (
                     <TableRow key={doc.id}>
                       <TableCell className="font-medium text-sm">{doc.claim_id}</TableCell>
-                      <TableCell className="text-sm max-w-48 truncate" title={doc.document_type}>
-                        {doc.document_type}
-                      </TableCell>
                       <TableCell className="text-sm truncate" title={doc.client || 'N/A'}>
                         {doc.client || 'N/A'}
                       </TableCell>
@@ -214,7 +211,6 @@ export default function DocumentsPage() {
                           <span className="text-xs uppercase">{getFileType(doc.file_type || null)}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">{getFileSize(doc.file_size || null)}</TableCell>
                       <TableCell className="text-xs">{getSubmissionDate(doc.created_at || '')}</TableCell>
                       <TableCell>
                         <Button 
@@ -243,10 +239,6 @@ export default function DocumentsPage() {
                 </div>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Document Type:</span>
-                    <span>{doc.document_type}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Submission Date:</span>
                     <span>{getSubmissionDate(doc.created_at || '')}</span>
                   </div>
@@ -256,10 +248,6 @@ export default function DocumentsPage() {
                       {getFileTypeIcon(doc.file_type || null)}
                       <span className="text-xs uppercase">{getFileType(doc.file_type || null)}</span>
                     </div>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Size:</span>
-                    <span>{getFileSize(doc.file_size || null)}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-2">

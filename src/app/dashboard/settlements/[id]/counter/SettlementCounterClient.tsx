@@ -325,8 +325,8 @@ export default function SettlementCounterClient({ settlementId }: SettlementCoun
                   />
                 </div>
                 <Button
-                  variant="outline"
-                  className="w-full"
+                  variant="default"
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={!responseNotes || isSubmitting}
                   onClick={handleNewOffer}
                 >

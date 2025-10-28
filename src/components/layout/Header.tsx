@@ -35,12 +35,10 @@ export function Header() {
 
   return (
     <>
-      <header className="bg-white border-b px-4 py-3">
+      <header className="bg-white border-b px-4 py-3 relative z-10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* Mobile menu button removed - handled by MainLayout */}
-
-            {/* Breadcrumbs */}
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Breadcrumbs - Hidden on mobile */}
             <div className="hidden md:flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Dashboard</span>
               {!isDashboard && currentSection && (
@@ -60,8 +58,13 @@ export function Header() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Search */}
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Mobile Search Button */}
+            <Button variant="ghost" size="icon" className="md:hidden">
+              <Search size={20} />
+            </Button>
+
+            {/* Desktop Search */}
             <div className="hidden md:flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
               <Search size={16} className="text-muted-foreground" />
               <input
@@ -73,7 +76,7 @@ export function Header() {
 
             {/* User Menu */}
             <div className="flex items-center gap-2">
-              <div className="hidden md:block text-right">
+              <div className="hidden sm:block text-right">
                 <p className="text-sm font-medium">{user?.name}</p>
                 <p className="text-xs text-muted-foreground">{user?.role}</p>
               </div>

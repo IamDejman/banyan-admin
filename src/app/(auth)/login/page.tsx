@@ -196,8 +196,8 @@ export default function LoginPage() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              <div className="space-y-2">
-                <Label htmlFor="2fa">Authentication Code</Label>
+              <div className="mb-6">
+                <Label htmlFor="2fa" className="mb-4 block">Authentication Code</Label>
                 <Input
                   id="2fa"
                   type="text"
@@ -213,7 +213,7 @@ export default function LoginPage() {
               </Button>
               
               {/* Resend OTP Section */}
-              <div className="text-center text-sm space-y-2">
+              <div className="text-center text-sm space-y-4 mt-8">
                 {countdown > 0 ? (
                   <div className="text-muted-foreground">
                     Resend OTP in {formatCountdown(countdown)}

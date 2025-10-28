@@ -2,15 +2,16 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Eye, Edit, Clock, Search, FileText, Trash2 } from "lucide-react"; // Removed unused CheckCircle, TrendingUp
+import { Plus, Eye, Edit, Clock, Search, FileText, Trash2, CheckCircle, X } from "lucide-react";
 import SettlementOfferForm from "./SettlementOfferForm";
-import { createSettlementOffer, getSettlementsWithStatus } from "@/app/services/dashboard";
+import { createSettlementOffer, getSettlementsWithStatus, approveSettlementOffer, rejectSettlementOffer } from "@/app/services/dashboard";
 import { Settlement, } from "@/lib/types/settlement";
-import { formatStatus, formatDate } from "@/lib/utils/text-formatting";
+import { formatStatus, formatDateTime } from "@/lib/utils/text-formatting";
 
 // Interface for the form data
 interface SettlementFormData {
@@ -39,6 +40,14 @@ interface CreateOffersTabProps {
 
 export default function CreateOffersTab({ settlements, loading, refetch }: CreateOffersTabProps) {
   const availableSettlements = useMemo(() => settlements && settlements.length > 0 ? settlements : [], [settlements]);
+  
+  // Format amount with commas
+  const formatAmount = (amount: string | number | undefined): string => {
+    if (!amount) return '₦0';
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(numAmount)) return '₦0';
+    return `₦${numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
   const [, setOffers] = useState<Settlement[]>(availableSettlements);
   const [settlementsData, setSettlementsData] = useState<Settlement[]>([]);
   const [settlementsLoading, setSettlementsLoading] = useState(false);
@@ -68,6 +77,10 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
   }>>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   console.log(availableSettlements, "availableSettlements__");
 
@@ -211,6 +224,77 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
     }
   }
 
+  async function handleApprove(offerId: number) {
+    try {
+      setIsApproving(true);
+      setSubmitError(null);
+      setSubmitSuccess(null);
+      
+      const response = await approveSettlementOffer({ id: offerId, approval_notes: "Approved by admin" });
+      console.log(response, "response__");
+      
+      setSubmitSuccess("Settlement offer approved successfully!");
+      if (refetch) {
+        refetch();
+      }
+      
+      // Close modal after a short delay to show success message
+      setTimeout(() => {
+        setModal(null);
+        setSubmitSuccess(null);
+      }, 2000);
+    } catch (error) {
+      console.error(error, "error__");
+      const errorResponse = error as { response?: { data?: { message?: string } }; message?: string };
+      setSubmitError(
+        errorResponse?.response?.data?.message || 
+        errorResponse?.message || 
+        "Failed to approve settlement offer. Please try again."
+      );
+    } finally {
+      setIsApproving(false);
+    }
+  }
+
+  async function handleReject(offerId: number) {
+    if (!rejectionReason.trim()) {
+      setSubmitError("Please provide a reason for rejection");
+      return;
+    }
+
+    try {
+      setIsRejecting(true);
+      setSubmitError(null);
+      setSubmitSuccess(null);
+      
+      const response = await rejectSettlementOffer({ id: offerId, rejection_reason: rejectionReason });
+      console.log(response, "response__");
+      
+      setSubmitSuccess("Settlement offer rejected successfully!");
+      if (refetch) {
+        refetch();
+      }
+      
+      // Close modal after a short delay to show success message
+      setTimeout(() => {
+        setModal(null);
+        setSubmitSuccess(null);
+        setShowRejectModal(false);
+        setRejectionReason("");
+      }, 2000);
+    } catch (error) {
+      console.error(error, "error__");
+      const errorResponse = error as { response?: { data?: { message?: string } }; message?: string };
+      setSubmitError(
+        errorResponse?.response?.data?.message || 
+        errorResponse?.message || 
+        "Failed to reject settlement offer. Please try again."
+      );
+    } finally {
+      setIsRejecting(false);
+    }
+  }
+
 
 
   function getStatusBadge(status: string) {
@@ -251,9 +335,10 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
           <Button 
             variant="default" 
             onClick={() => setModal({ mode: "create" })}
-            className="bg-blue-600 text-white hover:bg-blue-700"
+            className="bg-primary hover:bg-primary/90"
+            style={{ color: 'white' }}
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-2" style={{ color: 'white' }} />
             Create New Offer
           </Button>
         </div>
@@ -268,7 +353,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                 <p className="text-sm font-medium text-muted-foreground">Created Offers</p>
                 <p className="text-2xl font-bold">0</p>
               </div>
-              <div className="text-blue-600 font-bold text-lg">₦</div>
+              <div className="text-green-600 font-bold text-lg">₦</div>
             </div>
           </div>
         </Card>
@@ -337,7 +422,6 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                 <TableHead>Client Name</TableHead>
                 <TableHead>Claim Type</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Created Date</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -345,25 +429,24 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
             <TableBody>
               {settlementsLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Loading settlements...
                   </TableCell>
                 </TableRow>
               ) : filteredSettlements.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No settlement offers found.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredSettlements.map((settlement) => (
                 <TableRow key={settlement.id}>
-                  <TableCell className="font-medium">{settlement.id || 'N/A'}</TableCell>
-                  <TableCell>{(settlement as { client_name?: string }).client_name || 'N/A'}</TableCell>
+                  <TableCell className="font-medium">{(settlement as { claim_id?: string | number }).claim_id || 'N/A'}</TableCell>
+                  <TableCell>{(settlement as { client?: string }).client || 'N/A'}</TableCell>
                   <TableCell>{settlement.claim_type || 'N/A'}</TableCell>
-                  <TableCell>₦{settlement.offer_amount || (settlement as { final_amount?: string | number }).final_amount || '0'}</TableCell>
-                  <TableCell>{getStatusBadge(settlement.status || 'settlement_offered')}</TableCell>
-                  <TableCell>{settlement?.created_at ? formatDate(settlement.created_at) : 'N/A'}</TableCell>
+                  <TableCell>{formatAmount(settlement.offer_amount || (settlement as { final_amount?: string | number }).final_amount)}</TableCell>
+                  <TableCell>{settlement?.created_at ? formatDateTime(settlement.created_at) : 'N/A'}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -472,7 +555,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                       <div>Payment Method: {modal.offer.payment_method.replace('_', ' ')}</div>
                       <div>Payment Timeline: {modal.offer.payment_timeline} days</div>
                       <div>Validity Period: {modal.offer.offer_validity_period} days</div>
-                      <div>Created: {modal.offer.created_at ? formatDate(modal.offer.created_at) : "N/A"}</div>
+                      <div>Created: {modal.offer.created_at ? formatDateTime(modal.offer.created_at) : "N/A"}</div>
                     </div>
                   </div>
 
@@ -506,11 +589,68 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                       Edit Offer
                     </Button>
                   )}
+                  {modal.offer.status === "settlement_offered" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowRejectModal(true)}
+                        className="text-red-600 hover:text-red-700"
+                        disabled={isApproving || isRejecting}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        {isRejecting ? "Rejecting..." : "Reject"}
+                      </Button>
+                      <Button
+                        onClick={() => modal?.offer && handleApprove(modal.offer.id)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        disabled={isApproving || isRejecting}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        {isApproving ? "Approving..." : "Approve"}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </>
             )}
 
 
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
+            <h3 className="text-lg font-semibold mb-4">Reject Settlement Offer</h3>
+            <p className="text-sm text-gray-600 mb-4">Please provide a reason for rejecting this offer:</p>
+            <Textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter rejection reason..."
+              rows={4}
+              className="mb-4"
+            />
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason("");
+                }}
+                disabled={isRejecting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => modal?.offer && handleReject(modal.offer.id)}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={isRejecting || !rejectionReason.trim()}
+              >
+                {isRejecting ? "Rejecting..." : "Confirm Rejection"}
+              </Button>
+            </div>
           </div>
         </div>
       )}
