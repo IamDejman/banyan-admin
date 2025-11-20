@@ -210,6 +210,8 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       setTimeout(() => {
         setModal(null);
         setSubmitSuccess(null);
+        // Refresh the page after successful API call
+        window.location.reload();
       }, 2000);
     } catch (error) {
       console.error(error, "error__");
@@ -242,6 +244,8 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       setTimeout(() => {
         setModal(null);
         setSubmitSuccess(null);
+        // Refresh the page after successful API call
+        window.location.reload();
       }, 2000);
     } catch (error) {
       console.error(error, "error__");
@@ -281,6 +285,8 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
         setSubmitSuccess(null);
         setShowRejectModal(false);
         setRejectionReason("");
+        // Refresh the page after successful API call
+        window.location.reload();
       }, 2000);
     } catch (error) {
       console.error(error, "error__");

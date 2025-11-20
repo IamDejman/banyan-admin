@@ -59,6 +59,8 @@ export default function PresentOffersTab({ settlements, loading }: PresentOffers
         variant: "default",
       });
       setModal(null);
+      // Refresh the page after successful API call
+      window.location.reload();
     } catch (error) {
       toast({
         title: "Error updating presentation setup",

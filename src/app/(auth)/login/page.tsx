@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BanyanLogo } from '@/components/ui/banyan-logo';
 import Link from 'next/link';
 import { login, verifyEmail, resendOtpWithHash } from '@/app/services/auth';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import cookie from '@/app/utils/cookie';
+import { useToast } from '@/components/ui/use-toast';
 
 // Define proper error types for Axios errors
 interface ApiError {
@@ -37,6 +37,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [isResending, setIsResending] = useState(false);
+  const { toast } = useToast();
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     try {
@@ -55,7 +56,13 @@ export default function LoginPage() {
       console.log(error?.message, "err?.message");
       setIsLoading(false);
       console.log(error?.response?.data?.message, "err?.response?.data?.message");
-      setError(error?.response?.data?.message || 'An error occurred');
+      const errorMessage = error?.response?.data?.message || 'An error occurred';
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
     }
   };
 
@@ -64,6 +71,20 @@ export default function LoginPage() {
       setIsLoading(true);
       e.preventDefault();
       setError('');
+      
+      // Validate OTP length
+      if (twoFactorCode.length !== 6) {
+        const errorMessage = 'The otp field must be 6 digits.';
+        setIsLoading(false);
+        setError(errorMessage);
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: errorMessage,
+        });
+        return;
+      }
+      
       const res = await verifyEmail({ otp_hash: otpHash, otp: twoFactorCode });
       console.log(res.token, "res");
       cookie().setCookie('token', res?.token);
@@ -74,7 +95,13 @@ export default function LoginPage() {
     } catch (err: unknown) {
       const error = err as ApiError;
       setIsLoading(false);
-      setError(error?.response?.data?.message || 'An error occurred');
+      const errorMessage = error?.response?.data?.message || 'An error occurred';
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
     }
   };
 
@@ -100,9 +127,19 @@ export default function LoginPage() {
       // Restart countdown after successful resend
       setCountdown(300); // 5 minutes
       setError(''); // Clear any previous errors
+      toast({
+        title: "Success",
+        description: "OTP has been resent successfully.",
+      });
     } catch (err: unknown) {
       const error = err as ApiError;
-      setError(error?.response?.data?.message || 'Failed to resend OTP');
+      const errorMessage = error?.response?.data?.message || 'Failed to resend OTP';
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
     } finally {
       setIsResending(false);
     }
@@ -134,11 +171,6 @@ export default function LoginPage() {
         <CardContent>
           {step === 'credentials' ? (
             <form onSubmit={handleCredentialsSubmit} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -191,11 +223,6 @@ export default function LoginPage() {
             </form>
           ) : (
             <form onSubmit={handle2FASubmit} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
               <div className="mb-6">
                 <Label htmlFor="2fa" className="mb-4 block">Authentication Code</Label>
                 <Input

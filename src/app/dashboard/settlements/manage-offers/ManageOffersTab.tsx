@@ -11,7 +11,7 @@ import PaymentProcessingForm from "./PaymentProcessingForm";
 import type {  ClientResponse, PaymentDetails } from "@/lib/types/settlement";
 import { Settlement } from "@/lib/types/settlement";
 import { formatDate } from "@/lib/utils/text-formatting";
-import { getSettlementsWithStatus } from "@/app/services/dashboard";
+import { getSettlements } from "@/app/services/dashboard";
 
 // Removed unused interface ManageOffersTabProps
 
@@ -28,36 +28,24 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
   const [claimTypeFilter, setClaimTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Function to fetch managed settlements from API (settlement_presented, settlement_accepted, settlement_rejected, settlement_paid)
+  // Function to fetch all settlements from API
   const fetchManagedSettlements = async () => {
     try {
-      // setSettlementsLoading(true); // Removed unused
-      // Fetch settlements with multiple statuses
-      const statuses = ['settlement_presented', 'settlement_accepted', 'settlement_rejected', 'settlement_paid'];
-      const allSettlements = [];
+      // Fetch all settlements without status filter
+      const response = await getSettlements();
+      console.log('Settlements API response:', response);
       
-      for (const status of statuses) {
-        try {
-          const response = await getSettlementsWithStatus(status);
-          console.log(`${status} settlements API response:`, response);
-          
-          // Extract data from the nested response structure
-          let settlementsArray = [];
-          if (response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
-            settlementsArray = response.data.data;
-          } else if (Array.isArray(response)) {
-            settlementsArray = response;
-          }
-          
-          allSettlements.push(...settlementsArray);
-        } catch (error) {
-          console.error(`Error fetching ${status} settlements:`, error);
-        }
+      // Extract data from the nested response structure
+      let settlementsArray: Settlement[] = [];
+      if (response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
+        settlementsArray = response.data.data as Settlement[];
+      } else if (Array.isArray(response)) {
+        settlementsArray = response as Settlement[];
       }
       
-      setSettlementsData(allSettlements);
+      setSettlementsData(settlementsArray);
     } catch (error) {
-      console.error('Error fetching managed settlements:', error);
+      console.error('Error fetching settlements:', error);
       setSettlementsData([]);
     } finally {
       // setSettlementsLoading(false); // Removed unused
@@ -97,10 +85,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
       (offer.claim_type && offer.claim_type.toLowerCase() === claimTypeFilter);
     
     const matchesStatus = statusFilter === "all" ||
-      (statusFilter === "settlement_presented" && offer.status === "settlement_presented") ||
-      (statusFilter === "settlement_accepted" && offer.status === "settlement_accepted") ||
-      (statusFilter === "settlement_rejected" && offer.status === "settlement_rejected") ||
-      (statusFilter === "settlement_paid" && offer.status === "settlement_paid");
+      offer.status === statusFilter;
     
     return matchesSearch && matchesClaimType && matchesStatus;
   });
@@ -225,6 +210,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="settlement_offered">Offered</SelectItem>
               <SelectItem value="settlement_presented">Presented</SelectItem>
               <SelectItem value="settlement_accepted">Accepted</SelectItem>
               <SelectItem value="settlement_rejected">Rejected</SelectItem>

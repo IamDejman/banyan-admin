@@ -106,6 +106,9 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
         description: "Offer approved successfully",
         variant: "default",
       });
+      setModal(null);
+      // Refresh the page after successful API call
+      window.location.reload();
     } catch (error) {
       console.error(error, "error__");
       toast({
@@ -113,8 +116,8 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
         description: "Error approving offer",
         variant: "destructive",
       });
+      setModal(null);
     }
-    setModal(null);
   }
 
   async function handleReject(offerId: number, reason: string) {
@@ -126,6 +129,9 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
         description: "Offer rejected successfully",
         variant: "default",
       });
+      setModal(null);
+      // Refresh the page after successful API call
+      window.location.reload();
     } catch (error) {
       console.error(error, "error__");
       toast({
@@ -133,8 +139,8 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
         description: "Error rejecting offer",
         variant: "destructive",
       });
+      setModal(null);
     }
-    setModal(null);
   }
 
   function getStatusBadge(status: string) {
