@@ -24,6 +24,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -58,7 +59,8 @@
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: oklch(0.45 0.22 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -83,5 +85,91 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Improve touch interactions on mobile */
+  button, a {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Prevent body scroll when mobile drawer is open */
+  body.mobile-menu-open {
+    overflow: hidden;
+  }
+  
+  /* Text selection styles for better visibility - high contrast for all backgrounds */
+  ::selection {
+    background-color: #0066cc !important;
+    color: #ffffff !important;
+  }
+  
+  ::-moz-selection {
+    background-color: #0066cc !important;
+    color: #ffffff !important;
+  }
+  
+  /* Specific selection styles for sidebar navigation */
+  nav ::selection,
+  nav a::selection,
+  nav *::selection {
+    background-color: #0066cc !important;
+    color: #ffffff !important;
+  }
+  
+  nav ::-moz-selection,
+  nav a::-moz-selection,
+  nav *::-moz-selection {
+    background-color: #0066cc !important;
+    color: #ffffff !important;
+  }
+  
+  /* Ensure selection is visible on hover - override hover styles */
+  nav a:hover::selection,
+  nav a:hover *::selection,
+  nav *:hover::selection {
+    background-color: #0066cc !important;
+    color: #ffffff !important;
+  }
+  
+  nav a:hover::-moz-selection,
+  nav a:hover *::-moz-selection,
+  nav *:hover::-moz-selection {
+    background-color: #0066cc !important;
+    color: #ffffff !important;
+  }
+  
+  /* Selection on primary background items - use bright blue for visibility */
+  nav .bg-primary::selection,
+  nav [class*="bg-primary"]::selection,
+  nav .bg-primary *::selection,
+  nav [class*="bg-primary"] *::selection {
+    background-color: #0066cc !important;
+    color: #ffffff !important;
+  }
+  
+  nav .bg-primary ::-moz-selection,
+  nav [class*="bg-primary"] ::-moz-selection,
+  nav .bg-primary *::-moz-selection,
+  nav [class*="bg-primary"] *::-moz-selection {
+    background-color: #0066cc !important;
+    color: #ffffff !important;
+  }
+  
+  /* Ensure selection on primary background is visible on hover */
+  nav .bg-primary:hover::selection,
+  nav [class*="bg-primary"]:hover::selection,
+  nav .bg-primary:hover *::selection,
+  nav [class*="bg-primary"]:hover *::selection {
+    background-color: #0066cc !important;
+    color: #ffffff !important;
+  }
+  
+  nav .bg-primary:hover::-moz-selection,
+  nav [class*="bg-primary"]:hover::-moz-selection,
+  nav .bg-primary:hover *::-moz-selection,
+  nav [class*="bg-primary"]:hover *::-moz-selection {
+    background-color: #0066cc !important;
+    color: #ffffff !important;
   }
 }

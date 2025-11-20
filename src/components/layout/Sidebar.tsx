@@ -149,8 +149,8 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
   }
 
   return (
-    <nav className="h-full w-full bg-white border-r flex flex-col">
-      <div className="flex flex-col gap-1 sm:gap-2 p-2 sm:p-4 overflow-y-auto">
+    <nav className="h-full w-full bg-white border-r flex flex-col overflow-hidden">
+      <div className="flex flex-col gap-1 sm:gap-2 p-2 sm:p-4 overflow-y-auto overscroll-contain">
         {navigationSections.map((section) => {
           const hasSubmenu = section.items && section.items.length > 0;
           const isExpanded = expandedSections.includes(section.name);
@@ -159,7 +159,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
               <div className="flex items-center">
                 <Link
                   href={section.href || '#'}
-                  className={`py-3 px-3 rounded-lg hover:bg-gray-100 font-medium flex-1 text-sm sm:text-base transition-all duration-200 ${pathname === section.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
+                  className={`py-3 px-3 rounded-lg font-medium flex-1 text-sm sm:text-base transition-all duration-200 touch-manipulation active:scale-[0.98] ${pathname === section.href ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}`}
                   onClick={(e) => {
                     if (hasSubmenu) {
                       e.preventDefault();
@@ -175,8 +175,9 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
                 {hasSubmenu && (
                   <button
                     onClick={() => toggleSection(section.name)}
-                    className="ml-2 focus:outline-none p-2 rounded hover:bg-gray-100 transition-colors"
+                    className="ml-2 focus:outline-none p-2 rounded hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation"
                     aria-label={`Toggle ${section.name} menu`}
+                    aria-expanded={isExpanded}
                   >
                     <ChevronRight size={16} className={`text-gray-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
                   </button>
@@ -188,7 +189,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
                     <Link 
                       key={item.name} 
                       href={item.href} 
-                      className={`py-3 px-3 rounded-md hover:bg-gray-50 text-xs sm:text-sm transition-all duration-200 ${pathname === item.href ? ' bg-primary text-primary-foreground shadow-sm' : 'text-gray-700 hover:text-gray-900'}`}
+                      className={`py-3 px-3 rounded-md text-xs sm:text-sm transition-all duration-200 touch-manipulation active:scale-[0.98] ${pathname === item.href ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'}`}
                       onClick={() => onItemClick?.()}
                     >
                       {item.name}

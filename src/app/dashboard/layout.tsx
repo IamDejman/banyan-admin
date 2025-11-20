@@ -20,20 +20,26 @@ export default function DashboardLayout({
   const [adminName, setAdminName] = useState<string>('');
 
 
-  // Handle mobile detection
+  // Handle mobile and tablet detection
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth >= 768) {
+    const checkDevice = () => {
+      const width = window.innerWidth;
+      // Mobile: < 768px, Tablet: 768px - 1024px, Desktop: > 1024px
+      const isMobileOrTablet = width < 1024;
+      setIsMobile(isMobileOrTablet);
+      
+      if (width >= 1024) {
+        // Desktop: sidebar always open
         setIsSidebarOpen(true);
       } else {
+        // Mobile/Tablet: sidebar closed by default
         setIsSidebarOpen(false);
       }
     };
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    checkDevice();
+    window.addEventListener('resize', checkDevice);
+    return () => window.removeEventListener('resize', checkDevice);
   }, []);
 
   const toggleSidebar = () => {
@@ -45,6 +51,18 @@ export default function DashboardLayout({
       setIsSidebarOpen(false);
     }
   };
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobile && isSidebarOpen) {
+      document.body.classList.add('mobile-menu-open');
+    } else {
+      document.body.classList.remove('mobile-menu-open');
+    }
+    return () => {
+      document.body.classList.remove('mobile-menu-open');
+    };
+  }, [isMobile, isSidebarOpen]);
 
   const handleLogoutClick = () => {
     setShowLogoutModal(true);
@@ -89,54 +107,88 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Navbar */}
-      <nav className="w-full h-14 flex items-center justify-between bg-white border-b px-4 fixed top-0 left-0 z-50">
+      <nav className="w-full h-14 flex items-center justify-between bg-white border-b px-4 fixed top-0 left-0 right-0 z-50">
         <div className="flex items-center gap-3">
+          {/* Hamburger Menu Button - visible on mobile and tablet */}
           <button
-            className="p-2 rounded hover:bg-gray-100"
+            className="p-2 rounded-md hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation lg:hidden"
+            onClick={toggleSidebar}
+            aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isSidebarOpen}
+          >
+            {isSidebarOpen ? (
+              <X size={24} className="text-gray-700" />
+            ) : (
+              <Menu size={24} className="text-gray-700" />
+            )}
+          </button>
+          
+          {/* Desktop Sidebar Toggle - only visible on desktop */}
+          <button
+            className="hidden lg:block p-2 rounded-md hover:bg-gray-100 transition-colors"
             onClick={toggleSidebar}
             aria-label={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-expanded={isSidebarOpen}
           >
-            {isSidebarOpen && isMobile ? <X size={24} /> : <Menu size={24} />}
+            <Menu size={20} className="text-gray-600" />
           </button>
+
           <div className="flex items-center gap-2">
             <BanyanLogo size={32} className="text-primary" />
-            <span className="font-bold text-lg tracking-tight">Banyan Admin</span>
+            <span className="font-bold text-lg tracking-tight hidden sm:inline">Banyan Admin</span>
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
           <span className="font-medium text-sm hidden sm:block">{adminName}</span>
           <button
-            className="p-2 rounded hover:bg-gray-100"
+            className="p-2 rounded-md hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation"
             onClick={handleLogoutClick}
             aria-label="Logout"
           >
-            <LogOut size={20} />
+            <LogOut size={20} className="text-gray-700" />
           </button>
         </div>
       </nav>
 
-      <div className="flex flex-1 pt-14">
-        {/* Sidebar */}
-        <div className={`transition-all duration-300 ${isSidebarOpen
-          ? 'w-64'
-          : isMobile
-            ? 'w-0'
-            : 'w-20'
-          } flex-shrink-0 relative`}>
+      <div className="flex flex-1 pt-14 relative">
+        {/* Desktop Sidebar - always visible on desktop */}
+        <div className={`hidden lg:block transition-all duration-300 ${
+          isSidebarOpen ? 'w-64' : 'w-20'
+        } flex-shrink-0 relative`}>
           <Sidebar collapsed={!isSidebarOpen} />
         </div>
 
-        {/* Overlay for mobile */}
-        {isSidebarOpen && isMobile && (
-          <div
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={closeSidebar}
-          />
+        {/* Mobile/Tablet Sidebar - slide-out drawer */}
+        {isMobile && (
+          <>
+            {/* Overlay */}
+            {isSidebarOpen && (
+              <div
+                className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300"
+                onClick={closeSidebar}
+                aria-hidden="true"
+              />
+            )}
+
+            {/* Drawer */}
+            <div
+              className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out lg:hidden pt-14 ${
+                isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+              }`}
+            >
+              <Sidebar collapsed={false} onItemClick={closeSidebar} />
+            </div>
+          </>
         )}
 
         {/* Main Content */}
-        <div className="flex-1 min-w-0">
-          <main className="p-4 sm:p-6" onClick={closeSidebar}>{children}</main>
+        <div className="flex-1 min-w-0 w-full">
+          <main 
+            className="p-4 sm:p-6 h-full overflow-y-auto" 
+            onClick={isMobile ? closeSidebar : undefined}
+          >
+            {children}
+          </main>
         </div>
       </div>
 
