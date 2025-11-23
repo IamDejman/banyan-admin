@@ -31,7 +31,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [otpHash, setOtpHash] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
-  const [error, setError] = useState('');
+  const [, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);

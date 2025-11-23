@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Eye, Edit, Clock, Search, FileText, Trash2, CheckCircle, X } from "lucide-react";
 import SettlementOfferForm from "./SettlementOfferForm";
-import { createSettlementOffer, getSettlementsWithStatus, approveSettlementOffer, rejectSettlementOffer } from "@/app/services/dashboard";
+import { createSettlementOffer, getSettlementsWithStatus, approveSettlementOffer, rejectSettlementOffer, getClaimOffersStatistics } from "@/app/services/dashboard";
 import { Settlement, } from "@/lib/types/settlement";
 import { formatStatus, formatDateTime } from "@/lib/utils/text-formatting";
 
@@ -34,6 +34,12 @@ interface CreateOffersTabProps {
   settlements: Settlement[];
   loading: boolean;
   refetch?: () => void;
+}
+
+interface ClaimOffersStatistics {
+  created_offers?: number;
+  pending_approval?: number;
+  [key: string]: unknown;
 }
 
 
@@ -81,6 +87,11 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
   const [isRejecting, setIsRejecting] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [statistics, setStatistics] = useState<ClaimOffersStatistics>({
+    created_offers: 0,
+    pending_approval: 0,
+  });
+  const [statisticsLoading, setStatisticsLoading] = useState(false);
 
   console.log(availableSettlements, "availableSettlements__");
 
@@ -136,9 +147,78 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
     }
   };
 
+  // Function to fetch statistics from API
+  const fetchStatistics = async () => {
+    try {
+      setStatisticsLoading(true);
+      const response = await getClaimOffersStatistics();
+      console.log('Statistics API response:', response);
+      
+      // Extract statistics from response - handle various response structures
+      let stats: ClaimOffersStatistics = {
+        created_offers: 0,
+        pending_approval: 0,
+      };
+      
+      if (response && typeof response === 'object') {
+        // Try to find the data in different possible locations
+        let data: unknown = null;
+        
+        // Check if response has nested data structure: response.data.data
+        if ('data' in response && response.data && typeof response.data === 'object') {
+          if ('data' in response.data && response.data.data && typeof response.data.data === 'object') {
+            data = response.data.data;
+          } else {
+            data = response.data;
+          }
+        } else {
+          // Response might be the data directly
+          data = response;
+        }
+        
+        if (data && typeof data === 'object') {
+          const statsData = data as Record<string, unknown>;
+          
+          // Extract created_offers - try multiple possible field names
+          const createdOffers = 
+            (typeof statsData.created_offers === 'number' ? statsData.created_offers : null) ||
+            (typeof statsData.total_offers === 'number' ? statsData.total_offers : null) ||
+            (typeof statsData.offers_created === 'number' ? statsData.offers_created : null) ||
+            0;
+          
+          // Extract offers_pending_approval - try multiple possible field names
+          const pendingApproval = 
+            (typeof statsData.offers_pending_approval === 'number' ? statsData.offers_pending_approval : null) ||
+            (typeof statsData.pending_approval === 'number' ? statsData.pending_approval : null) ||
+            (typeof statsData.pending === 'number' ? statsData.pending : null) ||
+            (typeof statsData.offers_pending === 'number' ? statsData.offers_pending : null) ||
+            0;
+          
+          stats = {
+            created_offers: createdOffers,
+            pending_approval: pendingApproval,
+          };
+          
+          console.log('Extracted statistics:', stats);
+        }
+      }
+      
+      setStatistics(stats);
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+      setStatistics({
+        created_offers: 0,
+        pending_approval: 0,
+      });
+    } finally {
+      setStatisticsLoading(false);
+    }
+  };
+
   useEffect(() => {
     setOffers(availableSettlements);
     fetchSettlements(); // Fetch settlements on component mount
+    fetchStatistics(); // Fetch statistics on component mount
   }, [availableSettlements]);
 
 
@@ -357,7 +437,13 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Created Offers</p>
-                <p className="text-2xl font-bold">0</p>
+                <p className="text-2xl font-bold">
+                  {statisticsLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    statistics.created_offers || 0
+                  )}
+                </p>
               </div>
               <div className="text-green-600 font-bold text-lg">₦</div>
             </div>
@@ -369,7 +455,13 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Offers Pending Approval</p>
-                <p className="text-2xl font-bold">0</p>
+                <p className="text-2xl font-bold">
+                  {statisticsLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    statistics.pending_approval || 0
+                  )}
+                </p>
               </div>
               <Clock className="h-4 w-4 text-orange-600" />
             </div>

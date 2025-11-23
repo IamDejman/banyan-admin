@@ -2,20 +2,26 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Edit, RotateCcw, Search } from "lucide-react";
+import { Eye, Edit, RotateCcw, Search, Clock } from "lucide-react";
 import PaymentProcessingForm from "./PaymentProcessingForm";
-import type {  ClientResponse, PaymentDetails } from "@/lib/types/settlement";
+import type { PaymentDetails } from "@/lib/types/settlement";
 import { Settlement } from "@/lib/types/settlement";
 import { formatDate } from "@/lib/utils/text-formatting";
-import { getSettlements } from "@/app/services/dashboard";
+import { getSettlements, getClaimOffersStatistics } from "@/app/services/dashboard";
 
 // Removed unused interface ManageOffersTabProps
 
 
+
+interface ClaimOffersStatistics {
+  created_offers?: number;
+  pending_approval?: number;
+  [key: string]: unknown;
+}
 
 export default function ManageOffersTab({ loading }: { loading: boolean }) {
   // const availableSettlements = settlements.length > 0 ? settlements : []; // Removed unused variable
@@ -27,11 +33,16 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
   const [search, setSearch] = useState("");
   const [claimTypeFilter, setClaimTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statistics, setStatistics] = useState<ClaimOffersStatistics>({
+    created_offers: 0,
+    pending_approval: 0,
+  });
+  const [statisticsLoading, setStatisticsLoading] = useState(false);
 
   // Function to fetch all settlements from API
   const fetchManagedSettlements = async () => {
     try {
-      // Fetch all settlements without status filter
+      // Fetch all settlements from /admin/claims/settlements
       const response = await getSettlements();
       console.log('Settlements API response:', response);
       
@@ -52,12 +63,89 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
     }
   };
 
+  // Function to fetch statistics from API
+  const fetchStatistics = async () => {
+    try {
+      setStatisticsLoading(true);
+      const response = await getClaimOffersStatistics();
+      console.log('Statistics API response:', response);
+      
+      // Extract statistics from response - handle various response structures
+      let stats: ClaimOffersStatistics = {
+        created_offers: 0,
+        pending_approval: 0,
+      };
+      
+      if (response && typeof response === 'object') {
+        // Try to find the data in different possible locations
+        let data: unknown = null;
+        
+        // Check if response has nested data structure: response.data.data
+        if ('data' in response && response.data && typeof response.data === 'object') {
+          if ('data' in response.data && response.data.data && typeof response.data.data === 'object') {
+            data = response.data.data;
+          } else {
+            data = response.data;
+          }
+        } else {
+          // Response might be the data directly
+          data = response;
+        }
+        
+        if (data && typeof data === 'object') {
+          const statsData = data as Record<string, unknown>;
+          
+          // Extract created_offers - try multiple possible field names
+          const createdOffers = 
+            (typeof statsData.created_offers === 'number' ? statsData.created_offers : null) ||
+            (typeof statsData.total_offers === 'number' ? statsData.total_offers : null) ||
+            (typeof statsData.offers_created === 'number' ? statsData.offers_created : null) ||
+            0;
+          
+          // Extract offers_pending_approval - try multiple possible field names
+          const pendingApproval = 
+            (typeof statsData.offers_pending_approval === 'number' ? statsData.offers_pending_approval : null) ||
+            (typeof statsData.pending_approval === 'number' ? statsData.pending_approval : null) ||
+            (typeof statsData.pending === 'number' ? statsData.pending : null) ||
+            (typeof statsData.offers_pending === 'number' ? statsData.offers_pending : null) ||
+            0;
+          
+          stats = {
+            created_offers: createdOffers,
+            pending_approval: pendingApproval,
+          };
+          
+          console.log('Extracted statistics:', stats);
+        }
+      }
+      
+      setStatistics(stats);
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+      setStatistics({
+        created_offers: 0,
+        pending_approval: 0,
+      });
+    } finally {
+      setStatisticsLoading(false);
+    }
+  };
+
   // Fetch managed settlements on component mount
   useEffect(() => {
     fetchManagedSettlements();
+    fetchStatistics();
   }, []);
 
   // Use settlements data if available, otherwise fall back to mock data
+
+  // Format amount with thousand separators
+  const formatAmount = (amount: string | number | undefined): string => {
+    if (!amount) return '₦0.00';
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (isNaN(numAmount)) return '₦0.00';
+    return `₦${numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   // Extract unique claim types from settlements data
   const extractUniqueClaimTypes = (settlementsData: Settlement[]): string[] => {
@@ -96,19 +184,6 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
     if (days === 0) return "Today";
     if (days === 1) return "1 day";
     return `${days} days`;
-  }
-
-  function getLastContact(offer: Settlement & { clientResponse?: ClientResponse }) {
-    if (offer.clientResponse) {
-      const days = Math.floor((new Date().getTime() - offer.clientResponse.responseDate.getTime()) / (1000 * 60 * 60 * 24));
-      if (days === 0) return "Today";
-      if (days === 1) return "Yesterday";
-      return `${days} days ago`;
-    }
-    const days = Math.floor((new Date().getTime() - new Date(offer.presented_at!).getTime()) / (1000 * 60 * 60 * 24));
-    if (days === 0) return "Today";
-    if (days === 1) return "Yesterday";
-    return `${days} days ago`;
   }
 
   function getStatusBadge(offer: Settlement) {
@@ -171,6 +246,45 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
         </Card>
       )}
 
+      {/* Statistics Cards */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Created Offers
+            </CardTitle>
+            <div className="text-green-600 text-xl font-semibold">₦</div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {statisticsLoading ? (
+                <div className="animate-pulse">...</div>
+              ) : (
+                statistics.created_offers || 0
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Offers Pending Approval
+            </CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {statisticsLoading ? (
+                <div className="animate-pulse">...</div>
+              ) : (
+                statistics.pending_approval || 0
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Data Info */}
       {/* {!loading && availableSettlements.length > 0 && (
         <Card className="p-4">
@@ -232,15 +346,13 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                 <TableHead>Client</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Days Left</TableHead>
-                <TableHead>Last Contact</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredOffers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No offers found.
                   </TableCell>
                 </TableRow>
@@ -249,12 +361,8 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                 <TableRow key={offer.id}>
                   <TableCell className="font-medium">{offer.id}</TableCell>
                   <TableCell>{offer.client}</TableCell>
-                  <TableCell>₦{offer.offer_amount}</TableCell>
+                  <TableCell>{formatAmount(offer.offer_amount)}</TableCell>
                   <TableCell>{getStatusBadge(offer)}</TableCell>
-                  <TableCell>
-                    {offer.expired ? getDaysLeft(new Date(offer.expiry_period)) : "N/A"}
-                  </TableCell>
-                  <TableCell>{getLastContact(offer)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -327,7 +435,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                       <span className="font-medium">Client:</span> {modal.offer.client}
                     </div>
                     <div>
-                      <span className="font-medium">Amount:</span> ₦{modal.offer.offer_amount}
+                      <span className="font-medium">Amount:</span> {formatAmount(modal.offer.offer_amount)}
                     </div>
                     <div>
                       <span className="font-medium">Status:</span> {getStatusBadge(modal.offer)}
@@ -352,7 +460,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                         </div>
                         {modal.offer.client_response.counterOfferAmount && (
                           <div>
-                            <span className="font-medium">Counter Offer:</span> ₦{modal.offer.client_response.counterOfferAmount.toLocaleString()}
+                            <span className="font-medium">Counter Offer:</span> {formatAmount(modal.offer.client_response.counterOfferAmount)}
                           </div>
                         )}
                         {modal.offer.client_response.comments && (
@@ -388,7 +496,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                       <span className="font-medium">Client:</span> {modal.offer.client}
                     </div>
                     <div>
-                      <span className="font-medium">Amount:</span> ₦{modal.offer.offer_amount}
+                      <span className="font-medium">Amount:</span> {formatAmount(modal.offer.offer_amount)}
                     </div>
                     <div>
                       <span className="font-medium">Status:</span> {getStatusBadge(modal.offer)}

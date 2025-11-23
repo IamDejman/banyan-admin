@@ -279,6 +279,12 @@ export const approveClaim = (claimId: string): Promise<ApiResponse<unknown>> => 
 // get settlements with status filter
 export const getSettlementsWithStatus = (status: string = 'settlement_offered'): Promise<ApiResponse<unknown>> => Http.get(`/admin/claims/settlements?status=${status}`);
 
+// get claim offers statistics
+export const getClaimOffersStatistics = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claim-offers/statistics`);
+
+// get claim offers
+export const getClaimOffers = (): Promise<ApiResponse<unknown>> => Http.get(`/claims/claim-offer/`);
+
 // get approved claims for settlement offers
 export const getApprovedClaims = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claims?status=approved`);
 
