@@ -136,6 +136,7 @@ export interface Settlement {
   send_status: string,
   presented_at: string,
   client_response: ClientResponse | null,
+  phone?: string,
 }
 export interface SettlementStatistics {
   active_offers: number;

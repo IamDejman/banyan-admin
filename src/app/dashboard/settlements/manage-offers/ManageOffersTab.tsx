@@ -6,12 +6,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Edit, RotateCcw, Search, Clock } from "lucide-react";
+import { Eye, Edit, Search, Clock } from "lucide-react";
 import PaymentProcessingForm from "./PaymentProcessingForm";
 import type { PaymentDetails } from "@/lib/types/settlement";
 import { Settlement } from "@/lib/types/settlement";
 import { formatDate } from "@/lib/utils/text-formatting";
-import { getSettlements, getClaimOffersStatistics } from "@/app/services/dashboard";
+import { getSettlements, getClaimOffersStatistics, completeOffer } from "@/app/services/dashboard";
 
 // Removed unused interface ManageOffersTabProps
 
@@ -38,6 +38,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
     pending_approval: 0,
   });
   const [statisticsLoading, setStatisticsLoading] = useState(false);
+  const [markingAsPaid, setMarkingAsPaid] = useState(false);
 
   // Function to fetch all settlements from API
   const fetchManagedSettlements = async () => {
@@ -186,6 +187,18 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
     return `${days} days`;
   }
 
+  function formatStatus(status: string): string {
+    const statusMap: Record<string, string> = {
+      'settlement_offered': 'Offer Created',
+      'settlement_approved': 'Offer Approved',
+      'client_accepted': 'Offer Accepted',
+      'client_rejected': 'Offer Rejected',
+      'settlement_paid': 'Offer Paid',
+      'paid': 'Paid',
+    };
+    return statusMap[status] || status;
+  }
+
   function getStatusBadge(offer: Settlement) {
     // Check for payment-related statuses first
     if (offer.status === "PAYMENT_PROCESSING") {
@@ -226,6 +239,22 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
     console.log("Payment submitted:", paymentDetails);
     // In a real app, this would update the offer status and payment details
     setModal(null);
+  }
+
+  async function handleMarkAsPaid(offer: Settlement) {
+    try {
+      setMarkingAsPaid(true);
+      await completeOffer(offer.id);
+      // Refresh the settlements data
+      await fetchManagedSettlements();
+      // Close the modal
+      setModal(null);
+    } catch (error) {
+      console.error('Error marking offer as paid:', error);
+      // You might want to show an error toast here
+    } finally {
+      setMarkingAsPaid(false);
+    }
   }
 
   return (
@@ -362,7 +391,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                   <TableCell className="font-medium">{offer.id}</TableCell>
                   <TableCell>{offer.client}</TableCell>
                   <TableCell>{formatAmount(offer.offer_amount)}</TableCell>
-                  <TableCell>{getStatusBadge(offer)}</TableCell>
+                  <TableCell>{formatStatus(offer.status)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -476,9 +505,6 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                     <Button variant="outline" onClick={() => setModal(null)}>
                       Close
                     </Button>
-                    <Button onClick={() => setModal({ mode: "manage", offer: modal.offer })}>
-                      Manage Response
-                    </Button>
                   </div>
                 </div>
               </>
@@ -506,31 +532,29 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                   <div className="border-t pt-4">
                     <h4 className="font-medium mb-4">Available Actions</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Button variant="outline" className="justify-start">
-                        {/* NairaIcon was removed, so this button will be empty or need a replacement */}
-                        Call Client
-                      </Button>
-                      <Button variant="outline" className="justify-start">
-                        {/* NairaIcon was removed, so this button will be empty or need a replacement */}
-                        Send Reminder
-                      </Button>
-                      <Button variant="outline" className="justify-start">
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                      </Button>
-                      {modal.offer.client_response?.responseType === "COUNTER_OFFER" && (
-                        <Button variant="outline" className="justify-start">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Respond to Counter-Offer
+                      {modal.offer.phone ? (
+                        <Button 
+                          variant="outline" 
+                          className="justify-start"
+                          asChild
+                        >
+                          <a href={`tel:${modal.offer.phone}`}>
+                            Call Client
+                          </a>
+                        </Button>
+                      ) : (
+                        <Button variant="outline" className="justify-start" disabled>
+                          Call Client
                         </Button>
                       )}
-                        {modal.offer.client_response?.responseType === "ACCEPTED" && (
-                        <Button
-                          variant="outline"
+                      {modal.offer.status === "client_accepted" && (
+                        <Button 
+                          variant="outline" 
                           className="justify-start"
-                          onClick={() => modal.offer && handlePaymentProcessing(modal.offer)}
+                          onClick={() => handleMarkAsPaid(modal.offer)}
+                          disabled={markingAsPaid}
                         >
-                          {/* NairaIcon was removed, so this button will be empty or need a replacement */}
-                          Move to Payment Processing
+                          {markingAsPaid ? 'Processing...' : 'Mark as Paid'}
                         </Button>
                       )}
                     </div>

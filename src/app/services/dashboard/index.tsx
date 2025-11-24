@@ -285,6 +285,9 @@ export const getClaimOffersStatistics = (): Promise<ApiResponse<unknown>> => Htt
 // get claim offers
 export const getClaimOffers = (): Promise<ApiResponse<unknown>> => Http.get(`/claims/claim-offer/`);
 
+// complete offer (mark as paid)
+export const completeOffer = (claimOfferId: number): Promise<ApiResponse<unknown>> => Http.post(`/admin/claim-offers/complete-offer`, { claim_offer_id: claimOfferId });
+
 // get approved claims for settlement offers
 export const getApprovedClaims = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claims?status=approved`);
 
