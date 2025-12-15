@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCSPPolicy } from '@/lib/config/csp';
 
 // Define allowed origins based on environment
 const getAllowedOrigins = () => {
@@ -90,27 +91,8 @@ export function middleware(request: NextRequest) {
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
   response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
   
-  // Add Content Security Policy
-  const cspHeader = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-    "img-src 'self' data: blob: https: http:",
-    "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
-    "connect-src 'self' https://api.banyanclaims.com https://banyan.backend.ricive.com wss: ws:",
-    "media-src 'self'",
-    "object-src 'none'",
-    "frame-src 'none'",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "manifest-src 'self'",
-    "worker-src 'self' blob:",
-    "child-src 'self' blob:",
-    "upgrade-insecure-requests",
-    "block-all-mixed-content"
-  ].join('; ');
-  
+  // Add Content Security Policy (uses centralized config)
+  const cspHeader = getCSPPolicy();
   response.headers.set('Content-Security-Policy', cspHeader);
   
   // Add CORS headers for allowed origins only

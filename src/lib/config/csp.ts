@@ -8,7 +8,7 @@ export interface CSPConfig {
   production: string;
 }
 
-// CSP Policy for Development
+// CSP Policy for Development (allows unsafe directives for hot reloading)
 const developmentCSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
@@ -25,14 +25,12 @@ const developmentCSP = [
   "manifest-src 'self'",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
-  // Development-specific: Allow hot reloading
-  "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
 ].join('; ');
 
-// CSP Policy for Production
+// CSP Policy for Production (secure - no unsafe directives)
 const productionCSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
+  "script-src 'self' 'strict-dynamic' https://cdn.jsdelivr.net https://unpkg.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
   "img-src 'self' data: blob: https:",
   "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
