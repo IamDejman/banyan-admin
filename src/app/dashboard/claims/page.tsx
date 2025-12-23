@@ -145,7 +145,6 @@ export default function ClaimsReviewPage() {
   useEffect(() => {
     // Only call API when debounced value changes (not on initial load or empty search)
     if (debouncedSearchTerm !== '') {
-      console.log('Search API called with:', debouncedSearchTerm);
       const combinedFilters = {
         ...filters,
         search: debouncedSearchTerm
@@ -153,7 +152,6 @@ export default function ClaimsReviewPage() {
       fetchClaimsWithFilters(1, combinedFilters);
     } else if (debouncedSearchTerm === '' && search.search === '') {
       // Clear search - reload without search term
-      console.log('Clearing search');
       fetchClaimsWithFilters(1, filters);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -282,9 +280,7 @@ export default function ClaimsReviewPage() {
     setClaimTypesLoading(true);
     setClaimTypesError(null);
     try {
-      console.log('Fetching claim types...');
       const res = await getClaimTypes();
-      console.log('Claim types response:', res);
       
       // Handle different possible response structures
       let claimTypesData = null;
@@ -299,11 +295,9 @@ export default function ClaimsReviewPage() {
           id: type.id,
           name: type.name
         }));
-        console.log('Mapped claim types:', mappedTypes);
         setClaimTypes(mappedTypes);
       } else {
         const errorMsg = 'No claim types data found in API response';
-        console.log(errorMsg);
         setClaimTypesError(errorMsg);
         toast({
           title: "Error",
@@ -333,7 +327,6 @@ export default function ClaimsReviewPage() {
     try {
       const params = filterParams || { ...filters, search: search.search };
       const res: unknown = await getClaims(page, pagination.itemsPerPage, params);
-      console.log(res, "res__");
 
       // Helper function to safely extract claims data and pagination info
       const extractClaimsData = (response: unknown): { claims: ApiClaim[], pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number } } => {
@@ -381,7 +374,6 @@ export default function ClaimsReviewPage() {
 
   useEffect(() => {
     getClaimsStatistics().then((res) => {
-      console.log(res, "res__111");
       const statsData = Array.isArray(res) ? res[0] : res;
       setStatistics(statsData as Statistics);
     });

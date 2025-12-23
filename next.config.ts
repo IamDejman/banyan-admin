@@ -93,6 +93,9 @@ const nextConfig: NextConfig = {
   compress: true,
   // Production optimizations
   productionBrowserSourceMaps: false,
+  // Console.log removal is handled by .babelrc with babel-plugin-transform-remove-console
+  // This removes console.log, console.info, console.debug, console.warn in production
+  // but keeps console.error for error tracking
 };
 
 export default nextConfig;
