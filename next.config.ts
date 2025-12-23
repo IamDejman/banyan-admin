@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { getCSPPolicy } from "./src/lib/config/csp";
 
 const nextConfig: NextConfig = {
   // Security headers
@@ -52,25 +53,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-              "img-src 'self' data: blob: https: http:",
-              "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
-              "connect-src 'self' https://api.banyanclaims.com https://banyan.backend.ricive.com wss: ws:",
-              "media-src 'self'",
-              "object-src 'none'",
-              "frame-src 'none'",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-              "manifest-src 'self'",
-              "worker-src 'self' blob:",
-              "child-src 'self' blob:",
-              "upgrade-insecure-requests",
-              "block-all-mixed-content"
-            ].join('; '),
+            value: getCSPPolicy(),
           },
         ],
       },
