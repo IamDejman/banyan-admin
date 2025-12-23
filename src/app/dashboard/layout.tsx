@@ -217,7 +217,7 @@ export default function DashboardLayout({
               <Button
                 variant="destructive"
                 onClick={handleLogout}
-                className="flex-1 sm:flex-none"
+                className="flex-1 sm:flex-none text-white"
               >
                 Logout
               </Button>
