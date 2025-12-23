@@ -68,11 +68,13 @@ app.prepare().then(() => {
       res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
       res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
       
-      // Content Security Policy (secure - no unsafe-inline/unsafe-eval in production; allow specific inline scripts via hashes)
+      // Content Security Policy (uses simplified policy: 'self' + 'unsafe-inline' for Next.js)
+      // Note: In production, we use the centralized CSP config via Next.js headers/middleware
+      // This is a fallback for the custom server. For consistency, we should use the same policy.
       const isDev = process.env.NODE_ENV !== 'production';
       const cspHeader = isDev
         ? "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https: http:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://api.banyanclaims.com https://banyan.backend.ricive.com wss: ws:; media-src 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'; worker-src 'self' blob:; child-src 'self' blob:"
-        : "default-src 'self'; script-src 'self' 'strict-dynamic' https://cdn.jsdelivr.net https://unpkg.com 'sha256-OBTN3RiyCV4Bq7dFqZ5a2pAXjnCcCYeTJMO2I/LYKeo=' 'sha256-Q/ZSkqA9m4j3jRW7iqIpyUAaoSHu6mzxX0IHdNGmTaY=' 'sha256-J8bSn6lu10bLZU5fvLCoJLfGVequTEB6hA+c6vHQFJc=' 'sha256-E7rC4mqDTMqvvA3OJF3uSPVwnekVy5o+uXPcIZzl1k4=' 'sha256-/Imymk8LRsPN4Ex80id7QPlAeu2LQGntk3kvJZ4xDec=' 'sha256-Xka8pqG+MmVEnJcSzHeVSwRkF3IOprpXAeh6PJbnG7c=' 'sha256-LexGdM2+l2FqzwWPmFrotqA1h7aPhcNXfmrGfqxPo9U=' 'sha256-sSejOOq8tIqJI2GM+EanMgmNmOO2BPJ4c8n3DXfeYnk='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://api.banyanclaims.com https://banyan.backend.ricive.com wss: ws:; media-src 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'; worker-src 'self' blob:; child-src 'self' blob:; upgrade-insecure-requests; block-all-mixed-content; report-uri /api/csp-report";
+        : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.banyanclaims.com https://banyan.backend.ricive.com wss: ws:; media-src 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; manifest-src 'self'; worker-src 'self' blob:; child-src 'self' blob:; upgrade-insecure-requests; block-all-mixed-content; report-uri /api/csp-report";
       
       res.setHeader('Content-Security-Policy', cspHeader);
       

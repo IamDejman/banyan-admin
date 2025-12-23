@@ -27,14 +27,18 @@ const developmentCSP = [
   "child-src 'self' blob:",
 ].join('; ');
 
-// CSP Policy for Production (secure - no unsafe-inline/unsafe-eval, allows specific inline scripts via hashes)
+// CSP Policy for Production
+// Pragmatic approach for Next.js: allows 'unsafe-inline' for scripts since Next.js generates
+// safe inline scripts dynamically. All dependencies are bundled, so we only allow 'self' for scripts.
+// CSP reporting is enabled to monitor for any security issues.
 const productionCSP = [
   "default-src 'self'",
-  // Allow trusted scripts from self and CDNs, plus specific inline scripts by hash
-  "script-src 'self' 'strict-dynamic' https://cdn.jsdelivr.net https://unpkg.com 'sha256-OBTN3RiyCV4Bq7dFqZ5a2pAXjnCcCYeTJMO2I/LYKeo=' 'sha256-Q/ZSkqA9m4j3jRW7iqIpyUAaoSHu6mzxX0IHdNGmTaY=' 'sha256-J8bSn6lu10bLZU5fvLCoJLfGVequTEB6hA+c6vHQFJc=' 'sha256-E7rC4mqDTMqvvA3OJF3uSPVwnekVy5o+uXPcIZzl1k4=' 'sha256-/Imymk8LRsPN4Ex80id7QPlAeu2LQGntk3kvJZ4xDec=' 'sha256-Xka8pqG+MmVEnJcSzHeVSwRkF3IOprpXAeh6PJbnG7c=' 'sha256-LexGdM2+l2FqzwWPmFrotqA1h7aPhcNXfmrGfqxPo9U=' 'sha256-sSejOOq8tIqJI2GM+EanMgmNmOO2BPJ4c8n3DXfeYnk='",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+  // Next.js generates inline scripts that change with each build, so we use 'unsafe-inline'
+  // but restrict script sources to 'self' only (all dependencies are bundled)
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
-  "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
+  "font-src 'self' https://fonts.gstatic.com",
   "connect-src 'self' https://api.banyanclaims.com https://banyan.backend.ricive.com wss: ws:",
   "media-src 'self'",
   "object-src 'none'",
@@ -47,7 +51,7 @@ const productionCSP = [
   "child-src 'self' blob:",
   "upgrade-insecure-requests",
   "block-all-mixed-content",
-  // Add CSP violation reporting
+  // CSP violation reporting for monitoring
   "report-uri /api/csp-report",
 ].join('; ');
 
