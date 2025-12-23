@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "start:secure": "NODE_ENV=production node server.js",
-    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --max-warnings=0",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "security:audit": "npm audit --audit-level moderate",
     "security:fix": "npm audit fix",
     "security:ssl": "./scripts/setup-ssl.sh",

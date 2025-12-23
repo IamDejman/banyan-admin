@@ -149,12 +149,11 @@ export const useClaimsStore = create<ClaimsState>((set) => ({
     }
   },
 
-  uploadDocument: async (claimId: string, fileName: string) => {
+  uploadDocument: async (_claimId: string, _fileName: string) => {
     set({ isLoading: true });
     try {
       // TODO: Implement API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Document uploaded:', fileName);
       set({ isLoading: false });
     } catch {
       console.error('Failed to upload document');

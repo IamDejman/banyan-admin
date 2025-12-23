@@ -29,7 +29,6 @@ export const Http = axios.create({
 Http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = cookie().getCookie("token");
   const userType = cookie().getCookie("userType");
-  console.log(token, 'token______');
   // const apiKey = cookie().getCookie("API_KEY");
 
 
@@ -77,7 +76,7 @@ Http.interceptors.response.use(
       }
 
       if (error.response.status === 500) {
-        console.log("Server error occurred");
+        // Optionally handle server error globally here (e.g. reporting)
       }
     }
 

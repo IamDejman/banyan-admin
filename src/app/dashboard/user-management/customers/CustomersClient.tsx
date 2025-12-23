@@ -103,9 +103,7 @@ export default function CustomersClient() {
         
         try {
           // Use the new API with filters
-          console.log(`Fetching customers with filters - page ${currentPage}, search: ${searchParam}, bvn: ${bvnParam}`);
           response = await getCustomers(currentPage, itemsPerPage);
-          console.log('Filtered customers response:', response);
         } catch (primaryError) {
           console.warn('Filtered customers endpoint failed, trying fallback...', primaryError);
           try {
@@ -117,7 +115,6 @@ export default function CustomersClient() {
             try {
               // Last resort: get all users and filter client-side
               response = await getAllUsers();
-              console.log('All users response:', response);
               
               // Filter customers from all users on the client side and implement pagination
               if (response && response.data && Array.isArray(response.data)) {

@@ -103,9 +103,7 @@ export default function AgentsPage() {
   const handleSearch = async (searchTerm: string) => {
     setSearchLoading(true);
     try {
-      console.log('Searching agents with term:', searchTerm);
       const response = await searchAgents(searchTerm);
-      console.log('Search response:', response);
       
       if (response?.data && Array.isArray(response.data)) {
         const transformedAgents = (response.data as unknown as { id: string | number; first_name: string; last_name: string; email: string; phone: string; status: string; created_at: string; last_login_at?: string; employee_id?: string; department?: string; supervisor?: string; assigned_claims?: string[]; completed_claims?: string[]; performance_rating?: number; specializations?: string[] }[]).map((agent: { 
@@ -162,14 +160,11 @@ export default function AgentsPage() {
   const fetchAgents = async () => {
     setAgentsLoading(true);
     try {
-      console.log('Fetching agents from user management API...');
       const res = await getAgents();
-      console.log('Agents response:', res);
       
       // Check if response indicates an error
       if (res && res.status && Number(res.status) >= 400) {
         console.error('User Management API returned error status:', res.status, res.data);
-        console.log('API Error Details:', (res.data as { message?: string })?.message);
         setAgents([]);
         return;
       }
@@ -183,8 +178,6 @@ export default function AgentsPage() {
       } else if (res && typeof res === 'object' && 'data' in res && res.data && typeof res.data === 'object' && 'data' in res.data && Array.isArray(res.data.data)) {
         agentsData = res.data.data;
       }
-      
-      console.log('Agents data from API:', agentsData);
       
       // Transform API data to match our Agent type
       const transformedAgents = agentsData.map((agent: { 
@@ -242,7 +235,6 @@ export default function AgentsPage() {
     try {
       setLoading(true);
       setError(null);
-      console.log('Creating agent with data:', agentData);
       
       // Prepare data for API
       const apiData = {
@@ -255,7 +247,6 @@ export default function AgentsPage() {
       };
       
       const response = await createAgent(apiData);
-      console.log('Agent creation response:', response);
       
       // If we get here, the API call succeeded (200 response)
       if (response?.data) {

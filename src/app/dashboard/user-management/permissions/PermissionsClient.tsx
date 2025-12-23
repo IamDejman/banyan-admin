@@ -132,7 +132,6 @@ export default function PermissionsClient() {
       try {
         setLoading(true);
         const response = await getPermissions();
-        console.log('Permissions API response:', response);
         
         // Handle different possible response structures
         let permissionsData: Permission[] = [];
@@ -146,7 +145,6 @@ export default function PermissionsClient() {
         
         // If API returns empty array, use mock data
         if (permissionsData.length === 0) {
-          console.log('No permissions from API, using mock data');
           setPermissions(mockPermissions);
         } else {
           setPermissions(permissionsData);
@@ -169,7 +167,6 @@ export default function PermissionsClient() {
       try {
         setRolesLoading(true);
         const response = await getRoles();
-        console.log('Roles API response:', response);
         
         // Handle different possible response structures
         let rolesData: Role[] = [];
@@ -203,7 +200,6 @@ export default function PermissionsClient() {
         if (rolesData.length > 0) {
           setRoles(rolesData);
         } else {
-          console.log('No roles from API, using mock data');
           setRoles(mockRoles);
         }
       } catch (error) {

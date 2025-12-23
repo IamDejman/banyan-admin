@@ -72,8 +72,6 @@ export default function AgentsClient() {
 
   async function handleAdd(agentData: { firstName: string; lastName: string; email: string; phoneNumber: string; password?: string }) {
     try {
-      console.log('Creating agent with data:', agentData);
-      
       // Prepare data for API
       const apiData = {
         email: agentData.email,
@@ -85,7 +83,6 @@ export default function AgentsClient() {
       };
       
       const response = await createAgent(apiData);
-      console.log('Agent creation response:', response);
       
       if (response && response.data) {
         // Transform API response to match Agent interface

@@ -48,7 +48,6 @@ export default function PaymentConfigurationsClient() {
     try {
       setLoading(true);
       const response = await getPaymentConfigurations();
-      console.log('Payment configurations API response:', response);
       
       let configurationsArray: PaymentConfiguration[] = [];
       if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {

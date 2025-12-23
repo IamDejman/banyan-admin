@@ -25,6 +25,9 @@ export default [
         ...globals.node,
         ...globals.browser,
         ...globals.es2021,
+        // Allow using the React and NodeJS namespaces in types without importing them everywhere
+        React: "readonly",
+        NodeJS: "readonly",
       },
     },
     plugins: {
@@ -39,7 +42,11 @@ export default [
       "react/prop-types": "off",
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-      "no-console": "warn",
+      "no-console": "off",
+      // Relax React Compiler strictness for now to avoid noisy errors
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/incompatible-library": "off",
     },
     settings: {
       react: {

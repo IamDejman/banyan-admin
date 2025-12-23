@@ -95,13 +95,11 @@ export default function AdminsPage() {
     try {
       setLoading(true);
       setError(null);
-      console.log("Fetching admins from API...");
       let response;
       
       try {
         // Try the primary admins endpoint first
         response = await getAdmins();
-        console.log("Primary admins response:", response);
       } catch (primaryError) {
         console.warn('Primary admins endpoint failed, trying alternative...', primaryError);
         try {
@@ -191,9 +189,7 @@ export default function AdminsPage() {
   const handleSearch = async (searchTerm: string) => {
     setSearchLoading(true);
     try {
-      console.log('Searching admins with term:', searchTerm);
       const response = await searchAdmins(searchTerm);
-      console.log('Search response:', response);
       
       if (response?.data && Array.isArray(response.data)) {
         const transformedAdmins = (response.data as unknown as { id: string | number; first_name: string; last_name: string; email: string; phone: string; status: string; created_at: string; last_login_at?: string; permissions?: string[]; is_super_admin?: boolean; department?: string }[]).map((admin: { 

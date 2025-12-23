@@ -32,7 +32,6 @@ export function ClaimDetailsPageClient({ claimId }: ClaimDetailsPageClientProps)
                 claimId={claimId}
                 onSuccess={() => {
                   // API not ready for use yet
-                  console.log('Review submitted for claim:', claimId);
                 }}
               />
             ) : (

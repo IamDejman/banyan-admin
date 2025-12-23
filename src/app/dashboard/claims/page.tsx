@@ -292,8 +292,6 @@ export default function ClaimsReviewPage() {
         claimTypesData = res.data;
       } else if (Array.isArray(res)) {
         claimTypesData = res;
-      } else if (res && Array.isArray(res)) {
-        claimTypesData = res;
       }
       
       if (claimTypesData && claimTypesData.length > 0) {

@@ -30,9 +30,7 @@ export function usePaymentMethods(): UsePaymentMethodsReturn {
       setLoading(true);
       setError(null);
       
-      console.log('🔄 Fetching payment configurations from API...');
       const response = await getPaymentConfigurations();
-      console.log('✅ Raw payment configurations response:', response);
 
       let paymentData: PaymentMethod[] = [];
 
@@ -46,9 +44,6 @@ export function usePaymentMethods(): UsePaymentMethodsReturn {
 
       // Filter only active payment methods
       const activePaymentMethods = paymentData.filter(method => method.active === 1);
-      
-      console.log('📊 Processed payment methods:', activePaymentMethods);
-      console.log('📈 Number of active payment methods found:', activePaymentMethods.length);
       
       setPaymentMethods(activePaymentMethods);
     } catch (err) {

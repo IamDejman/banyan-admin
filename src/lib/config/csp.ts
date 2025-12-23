@@ -27,10 +27,11 @@ const developmentCSP = [
   "child-src 'self' blob:",
 ].join('; ');
 
-// CSP Policy for Production (secure - no unsafe directives)
+// CSP Policy for Production (secure - no unsafe-inline/unsafe-eval, allows specific inline scripts via hashes)
 const productionCSP = [
   "default-src 'self'",
-  "script-src 'self' 'strict-dynamic' https://cdn.jsdelivr.net https://unpkg.com",
+  // Allow trusted scripts from self and CDNs, plus specific inline scripts by hash
+  "script-src 'self' 'strict-dynamic' https://cdn.jsdelivr.net https://unpkg.com 'sha256-OBTN3RiyCV4Bq7dFqZ5a2pAXjnCcCYeTJMO2I/LYKeo=' 'sha256-Q/ZSkqA9m4j3jRW7iqIpyUAaoSHu6mzxX0IHdNGmTaY=' 'sha256-J8bSn6lu10bLZU5fvLCoJLfGVequTEB6hA+c6vHQFJc=' 'sha256-E7rC4mqDTMqvvA3OJF3uSPVwnekVy5o+uXPcIZzl1k4=' 'sha256-/Imymk8LRsPN4Ex80id7QPlAeu2LQGntk3kvJZ4xDec='",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
   "img-src 'self' data: blob: https:",
   "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
