@@ -233,7 +233,7 @@ export default function ApproveOffersTab({ settlements, loading }: ApproveOffers
               )}
               {filteredOffers.map((offer) => (
                 <TableRow key={offer.id}>
-                  <TableCell className="font-medium">{offer.id}</TableCell>
+                  <TableCell className="font-medium">{offer.claim_id}</TableCell>
                   <TableCell>{offer.client}</TableCell>
                   <TableCell>₦{offer.offer_amount}</TableCell>
                   <TableCell>{getStatusBadge(offer.status)}</TableCell>

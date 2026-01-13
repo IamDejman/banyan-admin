@@ -388,7 +388,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
               )}
               {filteredOffers.map((offer) => (
                 <TableRow key={offer.id}>
-                  <TableCell className="font-medium">{offer.id}</TableCell>
+                  <TableCell className="font-medium">{offer.claim_id}</TableCell>
                   <TableCell>{offer.client}</TableCell>
                   <TableCell>{formatAmount(offer.offer_amount)}</TableCell>
                   <TableCell>{formatStatus(offer.status)}</TableCell>
