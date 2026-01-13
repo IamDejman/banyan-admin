@@ -106,7 +106,6 @@ export interface Settlement {
   claim_type: string,
   client: string,
   claim_id: number,
-  claim_id_number: number,
   calculation_breakdown: null,
   offer_modifications: null,
   assessed_claim_value: string,

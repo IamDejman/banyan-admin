@@ -43,6 +43,53 @@ interface ClaimOffersStatistics {
 }
 
 
+interface OfferDetails {
+  id: number;
+  claim_type: string;
+  email: string;
+  phone: string;
+  claim_id: string;
+  calculation_breakdown: null | string | Record<string, unknown>;
+  offer_modifications: null | string | Record<string, unknown>;
+  assessed_claim_value: string;
+  fee_structure: null | string | Record<string, unknown>;
+  offer_amount: string;
+  offer_terms: null | string | Record<string, unknown>;
+  expiry_period: string;
+  status: string;
+  approval_notes: string | null;
+  rejection_reason: string | null;
+  offer_acceptance_notes: string | null;
+  offer_acceptance_status: string | null;
+  offer_acceptance_reason: string | null;
+  approved_by: string | null;
+  rejected_by: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  created_at: string;
+  updated_at: string;
+  payment_method: string;
+  payment_timeline: string;
+  offer_validity_period: string;
+  supporting_documents: string[];
+  special_conditions: string | null;
+  expired: boolean;
+  contact_method: string | null;
+  settlement_offer_letter: number;
+  payment_breakdown: number;
+  terms_and_condition: number;
+  bank_details_form: number;
+  acceptance_form: number;
+  subject_line: string | null;
+  message: string | null;
+  tracking_number: string | null;
+  scheduled_send_date: string | null;
+  presented_at: string | null;
+  client_response: null | Record<string, unknown>;
+  send_status: 'Pending' | 'Sent' | 'Delivered' | 'Failed';
+}
+
+
 
 export default function CreateOffersTab({ settlements, loading, refetch }: CreateOffersTabProps) {
   const availableSettlements = useMemo(() => settlements && settlements.length > 0 ? settlements : [], [settlements]);
@@ -92,7 +139,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
     pending_approval: 0,
   });
   const [statisticsLoading, setStatisticsLoading] = useState(false);
-  const [offerDetails, setOfferDetails] = useState<Record<string, unknown> | null>(null);
+  const [offerDetails, setOfferDetails] = useState<OfferDetails | null>(null);
   const [offerDetailsLoading, setOfferDetailsLoading] = useState(false);
 
 
@@ -242,8 +289,10 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
               } else if (response.data && !Array.isArray(response.data)) {
                 offerData = response.data;
               }
+            } else {
+              offerData = response;
             }
-            setOfferDetails(offerData as Record<string, unknown>);
+            setOfferDetails(offerData as OfferDetails);
           })
           .catch((error) => {
             console.error('Error fetching offer details:', error);
@@ -727,55 +776,278 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                   )}
 
                   {!offerDetailsLoading && offerDetails && (
-                    <div className="border-t pt-4">
-                      <h4 className="font-medium mb-2">Additional Offer Information</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        {Object.entries(offerDetails).map(([key, value]) => {
-                          // Skip fields that are already displayed above
-                          const excludedKeys = [
-                            'id', 'client', 'claim_type', 'status', 'assessed_claim_value',
-                            'deductions', 'service_fee_percentage', 'offer_amount',
-                            'payment_method', 'payment_timeline', 'offer_validity_period',
-                            'created_at', 'special_conditions', 'supporting_documents',
-                            'claim_id'
-                          ];
+                    <>
+                      {/* Contact Information */}
+                      {(offerDetails.email || offerDetails.phone) && (
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-2">Contact Information</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            {offerDetails.email && (
+                              <div>
+                                <span className="font-medium">Email:</span> {String(offerDetails.email)}
+                              </div>
+                            )}
+                            {offerDetails.phone && (
+                              <div>
+                                <span className="font-medium">Phone:</span> {String(offerDetails.phone)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
-                          if (excludedKeys.includes(key)) return null;
-
-                          // Format the key for display
-                          const displayKey = key
-                            .replace(/_/g, ' ')
-                            .replace(/\b\w/g, l => l.toUpperCase());
-
-                          // Format the value
-                          let displayValue = value;
-                          if (value === null || value === undefined) {
-                            displayValue = 'N/A';
-                          } else if (typeof value === 'boolean') {
-                            displayValue = value ? 'Yes' : 'No';
-                          } else if (typeof value === 'object' && !Array.isArray(value)) {
-                            displayValue = JSON.stringify(value);
-                          } else if (Array.isArray(value)) {
-                            displayValue = value.length > 0 ? value.join(', ') : 'None';
-                          } else if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
-                            // Try to format as date
-                            try {
-                              displayValue = formatDateTime(value);
-                            } catch {
-                              displayValue = value;
-                            }
-                          } else if (typeof value === 'number' && key.toLowerCase().includes('amount')) {
-                            displayValue = formatAmount(value);
-                          }
-
-                          return (
-                            <div key={key}>
-                              <span className="font-medium">{displayKey}:</span> {String(displayValue)}
+                      {/* Claim Information */}
+                      {offerDetails.claim_id && (
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-2 text-primary">Claim Information</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="font-medium">Claim ID:</span> {String(offerDetails.claim_id)}
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                            {offerDetails.claim_type && (
+                              <div>
+                                <span className="font-medium">Claim Type:</span> {String(offerDetails.claim_type)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Approval & Status Information */}
+                      {(offerDetails.approval_notes || offerDetails.rejection_reason || offerDetails.approved_by || offerDetails.rejected_by) && (
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-2">Approval & Status Information</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            {offerDetails.approval_notes && (
+                              <div>
+                                <span className="font-medium">Approval Notes:</span> {String(offerDetails.approval_notes)}
+                              </div>
+                            )}
+                            {offerDetails.rejection_reason && (
+                              <div>
+                                <span className="font-medium">Rejection Reason:</span> {String(offerDetails.rejection_reason)}
+                              </div>
+                            )}
+                            {offerDetails.approved_by && (
+                              <div>
+                                <span className="font-medium">Approved By:</span> {String(offerDetails.approved_by)}
+                              </div>
+                            )}
+                            {offerDetails.rejected_by && (
+                              <div>
+                                <span className="font-medium">Rejected By:</span> {String(offerDetails.rejected_by)}
+                              </div>
+                            )}
+                            {offerDetails.approved_at && (
+                              <div>
+                                <span className="font-medium">Approved At:</span> {formatDateTime(String(offerDetails.approved_at))}
+                              </div>
+                            )}
+                            {offerDetails.rejected_at && (
+                              <div>
+                                <span className="font-medium">Rejected At:</span> {formatDateTime(String(offerDetails.rejected_at))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Client Response */}
+                      {offerDetails.offer_acceptance_status && (
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-2">Client Response</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="font-medium">Acceptance Status:</span> {String(offerDetails.offer_acceptance_status)}
+                            </div>
+                            {offerDetails.offer_acceptance_notes && (
+                              <div>
+                                <span className="font-medium">Acceptance Notes:</span> {String(offerDetails.offer_acceptance_notes)}
+                              </div>
+                            )}
+                            {offerDetails.offer_acceptance_reason && (
+                              <div>
+                                <span className="font-medium">Acceptance Reason:</span> {String(offerDetails.offer_acceptance_reason)}
+                              </div>
+                            )}
+                            {offerDetails.client_response && typeof offerDetails.client_response === 'object' && (
+                              <div className="col-span-2">
+                                <span className="font-medium">Client Response Details:</span>
+                                <pre className="mt-1 text-xs bg-gray-50 p-2 rounded">
+                                  {JSON.stringify(offerDetails.client_response, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Presentation Details */}
+                      {(offerDetails.contact_method || offerDetails.send_status || offerDetails.presented_at || offerDetails.tracking_number) && (
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-2">Presentation Details</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            {offerDetails.contact_method && (
+                              <div>
+                                <span className="font-medium">Contact Method:</span> {String(offerDetails.contact_method)}
+                              </div>
+                            )}
+                            {offerDetails.send_status && (
+                              <div>
+                                <span className="font-medium">Send Status:</span>
+                                <Badge variant={offerDetails.send_status === 'Pending' ? 'secondary' : offerDetails.send_status === 'Sent' ? 'default' : offerDetails.send_status === 'Delivered' ? 'default' : 'destructive'} className="ml-2">
+                                  {String(offerDetails.send_status)}
+                                </Badge>
+                              </div>
+                            )}
+                            {offerDetails.presented_at && (
+                              <div>
+                                <span className="font-medium">Presented At:</span> {formatDateTime(String(offerDetails.presented_at))}
+                              </div>
+                            )}
+                            {offerDetails.tracking_number && (
+                              <div>
+                                <span className="font-medium">Tracking Number:</span> {String(offerDetails.tracking_number)}
+                              </div>
+                            )}
+                            {offerDetails.scheduled_send_date && (
+                              <div>
+                                <span className="font-medium">Scheduled Send Date:</span> {formatDateTime(String(offerDetails.scheduled_send_date))}
+                              </div>
+                            )}
+                            {offerDetails.subject_line && (
+                              <div>
+                                <span className="font-medium">Subject Line:</span> {String(offerDetails.subject_line)}
+                              </div>
+                            )}
+                            {offerDetails.message && (
+                              <div className="col-span-2">
+                                <span className="font-medium">Message:</span>
+                                <p className="mt-1 text-xs bg-gray-50 p-2 rounded">{String(offerDetails.message)}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Document Package Status */}
+                      {(offerDetails.settlement_offer_letter !== undefined || offerDetails.payment_breakdown !== undefined ||
+                        offerDetails.terms_and_condition !== undefined || offerDetails.bank_details_form !== undefined ||
+                        offerDetails.acceptance_form !== undefined) && (
+                          <div className="border-t pt-4">
+                            <h4 className="font-medium mb-2">Document Package Status</h4>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              {offerDetails.settlement_offer_letter !== undefined && (
+                                <div>
+                                  <span className="font-medium">Settlement Offer Letter:</span>
+                                  <Badge variant={offerDetails.settlement_offer_letter ? 'default' : 'secondary'} className="ml-2">
+                                    {offerDetails.settlement_offer_letter ? 'Included' : 'Not Included'}
+                                  </Badge>
+                                </div>
+                              )}
+                              {offerDetails.payment_breakdown !== undefined && (
+                                <div>
+                                  <span className="font-medium">Payment Breakdown:</span>
+                                  <Badge variant={offerDetails.payment_breakdown ? 'default' : 'secondary'} className="ml-2">
+                                    {offerDetails.payment_breakdown ? 'Included' : 'Not Included'}
+                                  </Badge>
+                                </div>
+                              )}
+                              {offerDetails.terms_and_condition !== undefined && (
+                                <div>
+                                  <span className="font-medium">Terms and Conditions:</span>
+                                  <Badge variant={offerDetails.terms_and_condition ? 'default' : 'secondary'} className="ml-2">
+                                    {offerDetails.terms_and_condition ? 'Included' : 'Not Included'}
+                                  </Badge>
+                                </div>
+                              )}
+                              {offerDetails.bank_details_form !== undefined && (
+                                <div>
+                                  <span className="font-medium">Bank Details Form:</span>
+                                  <Badge variant={offerDetails.bank_details_form ? 'default' : 'secondary'} className="ml-2">
+                                    {offerDetails.bank_details_form ? 'Included' : 'Not Included'}
+                                  </Badge>
+                                </div>
+                              )}
+                              {offerDetails.acceptance_form !== undefined && (
+                                <div>
+                                  <span className="font-medium">Acceptance Form:</span>
+                                  <Badge variant={offerDetails.acceptance_form ? 'default' : 'secondary'} className="ml-2">
+                                    {offerDetails.acceptance_form ? 'Included' : 'Not Included'}
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                      {/* Additional Information */}
+                      {(offerDetails.expiry_period || offerDetails.expired !== undefined || offerDetails.updated_at) && (
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-2">Additional Information</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            {offerDetails.expiry_period && (
+                              <div>
+                                <span className="font-medium">Expiry Period:</span> {formatDateTime(String(offerDetails.expiry_period))}
+                              </div>
+                            )}
+                            {offerDetails.expired !== undefined && (
+                              <div>
+                                <span className="font-medium">Expired:</span>
+                                <Badge variant={offerDetails.expired ? 'destructive' : 'default'} className="ml-2">
+                                  {offerDetails.expired ? 'Yes' : 'No'}
+                                </Badge>
+                              </div>
+                            )}
+                            {offerDetails.updated_at && (
+                              <div>
+                                <span className="font-medium">Last Updated:</span> {formatDateTime(String(offerDetails.updated_at))}
+                              </div>
+                            )}
+                            {offerDetails.calculation_breakdown && (
+                              <div className="col-span-2">
+                                <span className="font-medium">Calculation Breakdown:</span>
+                                <pre className="mt-1 text-xs bg-gray-50 p-2 rounded">
+                                  {typeof offerDetails.calculation_breakdown === 'string'
+                                    ? offerDetails.calculation_breakdown
+                                    : JSON.stringify(offerDetails.calculation_breakdown, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                            {offerDetails.offer_modifications && (
+                              <div className="col-span-2">
+                                <span className="font-medium">Offer Modifications:</span>
+                                <pre className="mt-1 text-xs bg-gray-50 p-2 rounded">
+                                  {typeof offerDetails.offer_modifications === 'string'
+                                    ? offerDetails.offer_modifications
+                                    : JSON.stringify(offerDetails.offer_modifications, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                            {offerDetails.fee_structure && (
+                              <div className="col-span-2">
+                                <span className="font-medium">Fee Structure:</span>
+                                <pre className="mt-1 text-xs bg-gray-50 p-2 rounded">
+                                  {typeof offerDetails.fee_structure === 'string'
+                                    ? offerDetails.fee_structure
+                                    : JSON.stringify(offerDetails.fee_structure, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                            {offerDetails.offer_terms && (
+                              <div className="col-span-2">
+                                <span className="font-medium">Offer Terms:</span>
+                                <pre className="mt-1 text-xs bg-gray-50 p-2 rounded">
+                                  {typeof offerDetails.offer_terms === 'string'
+                                    ? offerDetails.offer_terms
+                                    : JSON.stringify(offerDetails.offer_terms, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {!offerDetailsLoading && !offerDetails && (
