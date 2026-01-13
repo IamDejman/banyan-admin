@@ -1,7 +1,7 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
-import { Building, FileText } from "lucide-react";
+import { Building, FileText, AlertTriangle } from "lucide-react";
 
 export default function SystemConfigPage() {
   return (
@@ -31,6 +31,19 @@ export default function SystemConfigPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Claim Types</h3>
+              </div>
+            </div>
+          </Card>
+        </Link>
+
+        <Link href="/dashboard/system-config/incident-types">
+          <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-orange-100 rounded-lg">
+                <AlertTriangle className="h-6 w-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Incident Types</h3>
               </div>
             </div>
           </Card>

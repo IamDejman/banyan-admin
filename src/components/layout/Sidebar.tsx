@@ -59,6 +59,10 @@ const navigationSections = [
         href: '/dashboard/system-config/claim-types',
       },
       {
+        name: 'Incident Types',
+        href: '/dashboard/system-config/incident-types',
+      },
+      {
         name: 'Payment Configurations',
         href: '/dashboard/system-config/payment-configurations',
       },
@@ -112,7 +116,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
   // Auto-expand sections when pathname matches a submenu item
   React.useEffect(() => {
     const sectionsToExpand: string[] = [];
-    
+
     navigationSections.forEach((section) => {
       if (section.items && section.items.length > 0) {
         // Check if any submenu item matches the current pathname
@@ -122,7 +126,7 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
         }
       }
     });
-    
+
     if (sectionsToExpand.length > 0) {
       setExpandedSections(prev => {
         // Merge new sections with existing ones, removing duplicates
@@ -186,9 +190,9 @@ export function Sidebar({ collapsed = false, onItemClick }: SidebarProps) {
               {hasSubmenu && isExpanded && (
                 <div className="ml-4 mt-2 mb-2 border-l-2 border-gray-200 pl-4 flex flex-col gap-1">
                   {section.items.map((item) => (
-                    <Link 
-                      key={item.name} 
-                      href={item.href} 
+                    <Link
+                      key={item.name}
+                      href={item.href}
                       className={`py-3 px-3 rounded-md text-xs sm:text-sm transition-all duration-200 touch-manipulation active:scale-[0.98] ${pathname === item.href ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'}`}
                       onClick={() => onItemClick?.()}
                     >

@@ -4,89 +4,92 @@ import { SettlementsResponse } from "@/lib/types/settlement";
 
 // Generic API response interface
 interface ApiResponse<T> {
-    data?: T;
-    message?: string;
-    status?: string;
+  data?: T;
+  message?: string;
+  status?: string;
 }
 
 // Specific interfaces for different entities
 interface Insurer {
-    id: number;
-    name: string;
-    code: string;
-    logo?: string;
-    contact_email?: string;
-    contact_phone?: string;
-    address?: string;
-    active: number;
-    supported_claim_types: string[];
-    special_instructions?: string;
-    created_at?: string;
-    updated_at?: string;
+  id: number;
+  name: string;
+  code: string;
+  logo?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  address?: string;
+  active: number;
+  supported_claim_types: string[];
+  special_instructions?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface ClaimType {
-    id: string | number;
-    name: string;
-    code: string;
-    tracking_prefix: string;
-    description: string;
-    required_documents: string[] | null;
-    active: number;
-    processing_time_estimate: string | null;
-    created_at: string | null;
-    updated_at: string | null;
+  id: string | number;
+  name: string;
+  code: string;
+  tracking_prefix: string;
+  description: string;
+  required_documents: string[] | null;
+  active: number;
+  processing_time_estimate: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 interface IncidentType {
-    id: string | number;
-    name: string;
-    description?: string;
-    active: number;
-    created_at?: string;
-    updated_at?: string;
+  id: string | number;
+  name: string;
+  code: string;
+  description: string;
+  applicable_claim_types: string | null; // JSON string from API
+  required_documents: string | null; // JSON string from API
+  active: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface PaymentConfiguration {
-    id: string | number;
-    name: string;
-    code: string;
-    description: string;
-    applicable_claim_types?: string;
-    terms_and_conditions: string;
-    active: number;
-    created_at?: string;
-    updated_at?: string;
+  id: string | number;
+  name: string;
+  code: string;
+  description: string;
+  applicable_claim_types?: string;
+  terms_and_conditions: string;
+  active: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface Claim {
-    id: string | number;
-    claim_number: string;
-    client: {
-        first_name: string;
-        last_name: string;
-    };
-    claim_type_details: {
-        name: string;
-    };
-    estimated_value: number;
-    status: string;
-    created_at?: string;
-    updated_at?: string;
+  id: string | number;
+  claim_number: string;
+  client: {
+    first_name: string;
+    last_name: string;
+  };
+  claim_type_details: {
+    name: string;
+  };
+  estimated_value: number;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface Document {
-    id: string | number;
-    document_type: string;
-    claim_id: string | number;
-    client: string;
-    document_uploaded: boolean;
-    file_type: string;
-    file_size?: string;
-    document_url?: string;
-    status?: string;
-    created_at?: string;
-    updated_at?: string;
+  id: string | number;
+  document_type: string;
+  claim_id: string | number;
+  client: string;
+  document_uploaded: boolean;
+  file_type: string;
+  file_size?: string;
+  document_url?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const getDashboardMetrics = (): Promise<Metric[]> => Http.get(`/admin/dashboard`);
@@ -114,13 +117,13 @@ export const getClaimTypes = (): Promise<ApiResponse<ClaimType[]>> => Http.get(`
 
 // Agent interface
 interface Agent {
-    id: string | number;
-    first_name: string;
-    last_name: string;
-    email?: string;
-    active?: number;
-    created_at?: string;
-    updated_at?: string;
+  id: string | number;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  active?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // NOTE: This API currently returns 500 error due to backend filtering issue
@@ -137,11 +140,11 @@ interface Agent {
 // 1. /admin/user-management (without role filter)
 // 2. /admin/users?role=agent
 // 3. /admin/agents
-export const getAgents = (page: number = 1, perPage: number = 15): Promise<ApiResponse<Agent[]>> => 
+export const getAgents = (page: number = 1, perPage: number = 15): Promise<ApiResponse<Agent[]>> =>
   Http.get(`/admin/user-management/?role=agent&page=${page}&per_page=${perPage}`);
 
 // Search agents with search parameter
-export const searchAgents = (searchTerm: string): Promise<ApiResponse<Agent[]>> => 
+export const searchAgents = (searchTerm: string): Promise<ApiResponse<Agent[]>> =>
   Http.get(`/admin/user-management/?role=agent&search=${encodeURIComponent(searchTerm)}`);
 
 // Alternative function to get all users and filter agents client-side
@@ -238,11 +241,11 @@ export const getClaimById = (id: string): Promise<ApiResponse<Claim>> => Http.ge
 // NOTE: This API currently returns 500 error due to backend filtering issue
 // The endpoint expects an array for filter parameter but receives null
 // Same issue as getAgents and getCustomers - will use getAllUsers as fallback
-export const getAdmins = (page: number = 1, perPage: number = 15): Promise<ApiResponse<Admin[]>> => 
+export const getAdmins = (page: number = 1, perPage: number = 15): Promise<ApiResponse<Admin[]>> =>
   Http.get(`/admin/user-management/?role=admin&page=${page}&per_page=${perPage}`);
 
 // Search admins with search parameter
-export const searchAdmins = (searchTerm: string): Promise<ApiResponse<Admin[]>> => 
+export const searchAdmins = (searchTerm: string): Promise<ApiResponse<Admin[]>> =>
   Http.get(`/admin/user-management/?role=admin&search=${encodeURIComponent(searchTerm)}`);
 
 export const getDocumentStatistics = (): Promise<ApiResponse<unknown>> => Http.get(`/admin/claims/document-statistics`);
@@ -252,10 +255,10 @@ export const updateDocument = (document_id: string, status: "approve" | "reject"
 export const getPendingDocuments = (): Promise<ApiResponse<Document[]>> => Http.get(`/admin/claims/pending-documents`);
 
 export const getSettlements = (optionalParams?: string): Promise<SettlementsResponse> => {
-    if (optionalParams && optionalParams !== "all") {
-        return Http.get(`/admin/claims/settlements?status=${optionalParams}`);
-    }
-    return Http.get(`/admin/claims/settlements`);
+  if (optionalParams && optionalParams !== "all") {
+    return Http.get(`/admin/claims/settlements?status=${optionalParams}`);
+  }
+  return Http.get(`/admin/claims/settlements`);
 }
 
 
@@ -284,6 +287,9 @@ export const getClaimOffersStatistics = (): Promise<ApiResponse<unknown>> => Htt
 
 // get claim offers
 export const getClaimOffers = (): Promise<ApiResponse<unknown>> => Http.get(`/claims/claim-offer/`);
+
+// get claim offer by claim ID
+export const getClaimOfferByClaimId = (claimId: string | number): Promise<ApiResponse<unknown>> => Http.get(`/admin/claims/claim-offer/${claimId}`);
 
 // complete offer (mark as paid)
 export const completeOffer = (claimOfferId: number): Promise<ApiResponse<unknown>> => Http.post(`/admin/claim-offers/complete-offer`, { claim_offer_id: claimOfferId });
@@ -320,7 +326,7 @@ interface ClaimAssignmentStatistics {
 export const getClaimAssignmentStatistics = (): Promise<ApiResponse<ClaimAssignmentStatistics>> => Http.get(`/admin/claim-assignments/statistics`);
 
 // assign claim to agent
-export const assignClaim = (claimId: string, agentId: string, specialInstructions?: string): Promise<ApiResponse<unknown>> => 
+export const assignClaim = (claimId: string, agentId: string, specialInstructions?: string): Promise<ApiResponse<unknown>> =>
   Http.post(`/admin/claim-assignments`, {
     claim_id: claimId,
     agent_id: agentId,
@@ -331,11 +337,11 @@ export const assignClaim = (claimId: string, agentId: string, specialInstruction
 export const updateClaimAssignment = (claimAssignmentId: string, claimId: string, agentId?: string): Promise<ApiResponse<unknown>> => {
   // Try sending just the agent_id since we're reassigning
   const payload: { agent_id?: number } = {};
-  
+
   if (agentId) {
     payload.agent_id = parseInt(agentId);
   }
-  
+
   return Http.patch(`/admin/claim-assignments/update-assignment/${claimAssignmentId}`, payload);
 };
 
@@ -358,60 +364,60 @@ interface AuditLog {
   updated_at: string;
 }
 
-export const getAuditLogs = (): Promise<ApiResponse<AuditLog[]>> => Http.get(`/admin/audit-logs`);
+export const getAuditLogs = (page: number = 1): Promise<ApiResponse<AuditLog[]>> => Http.get(`/admin/audit-logs?page=${page}`);
 
 // Customer interface
 interface Customer {
-    id: string | number;
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone?: string;
-    status?: string;
-    role: string;
-    created_at?: string;
-    updated_at?: string;
-    last_login?: string;
-    date_of_birth?: string;
-    address?: string;
-    emergency_contact?: {
-        name: string;
-        phone: string;
-        relationship: string;
-    };
-    claims?: string[];
-    preferences?: {
-        notifications: boolean;
-        language: string;
-    };
+  id: string | number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  status?: string;
+  role: string;
+  created_at?: string;
+  updated_at?: string;
+  last_login?: string;
+  date_of_birth?: string;
+  address?: string;
+  emergency_contact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  claims?: string[];
+  preferences?: {
+    notifications: boolean;
+    language: string;
+  };
 }
 
 // Admin interface
 interface Admin {
-    id: string | number;
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone?: string;
-    status?: string;
-    role: string;
-    created_at?: string;
-    updated_at?: string;
-    last_login?: string;
-    permissions?: string[];
-    is_super_admin?: boolean;
-    department?: string;
+  id: string | number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  status?: string;
+  role: string;
+  created_at?: string;
+  updated_at?: string;
+  last_login?: string;
+  permissions?: string[];
+  is_super_admin?: boolean;
+  department?: string;
 }
 
 // Get customers from the API with pagination
 // NOTE: This API currently returns 500 error due to backend filtering issue
 // The endpoint expects an array for filter parameter but receives null
 // Same issue as getAgents - will use getAllUsers as fallback
-export const getCustomers = (page: number = 1, perPage: number = 15): Promise<ApiResponse<Customer[]>> => 
+export const getCustomers = (page: number = 1, perPage: number = 15): Promise<ApiResponse<Customer[]>> =>
   Http.get(`/admin/user-management/?role=customer&page=${page}&per_page=${perPage}`);
 
 // Search customers with search parameter
-export const searchCustomers = (searchTerm: string): Promise<ApiResponse<Customer[]>> => 
+export const searchCustomers = (searchTerm: string): Promise<ApiResponse<Customer[]>> =>
   Http.get(`/admin/user-management/?role=customer&search=${encodeURIComponent(searchTerm)}`);
 
 // Create a new customer

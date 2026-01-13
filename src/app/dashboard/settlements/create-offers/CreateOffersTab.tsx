@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Eye, Edit, Clock, Search, FileText, Trash2, CheckCircle, X } from "lucide-react";
 import SettlementOfferForm from "./SettlementOfferForm";
-import { createSettlementOffer, getSettlementsWithStatus, approveSettlementOffer, rejectSettlementOffer, getClaimOffersStatistics } from "@/app/services/dashboard";
+import { createSettlementOffer, getSettlementsWithStatus, approveSettlementOffer, rejectSettlementOffer, getClaimOffersStatistics, getClaimOfferByClaimId } from "@/app/services/dashboard";
 import { Settlement, } from "@/lib/types/settlement";
 import { formatStatus, formatDateTime } from "@/lib/utils/text-formatting";
 
@@ -46,7 +46,7 @@ interface ClaimOffersStatistics {
 
 export default function CreateOffersTab({ settlements, loading, refetch }: CreateOffersTabProps) {
   const availableSettlements = useMemo(() => settlements && settlements.length > 0 ? settlements : [], [settlements]);
-  
+
   // Format amount with commas
   const formatAmount = (amount: string | number | undefined): string => {
     if (!amount) return '₦0';
@@ -92,8 +92,10 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
     pending_approval: 0,
   });
   const [statisticsLoading, setStatisticsLoading] = useState(false);
+  const [offerDetails, setOfferDetails] = useState<Record<string, unknown> | null>(null);
+  const [offerDetailsLoading, setOfferDetailsLoading] = useState(false);
 
-  console.log(availableSettlements, "availableSettlements__");
+
 
   // Function to get saved drafts
   const getSavedDrafts = () => {
@@ -112,7 +114,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
         return null;
       }
     }).filter(Boolean);
-    
+
     return savedDrafts.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
   };
 
@@ -129,7 +131,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       setSettlementsLoading(true);
       const response = await getSettlementsWithStatus('settlement_offered');
       console.log('Settlements API response:', response);
-      
+
       // Extract data from the nested response structure
       let settlementsArray = [];
       if (response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
@@ -137,7 +139,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       } else if (Array.isArray(response)) {
         settlementsArray = response;
       }
-      
+
       setSettlementsData(settlementsArray);
     } catch (error) {
       console.error('Error fetching settlements:', error);
@@ -153,17 +155,17 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       setStatisticsLoading(true);
       const response = await getClaimOffersStatistics();
       console.log('Statistics API response:', response);
-      
+
       // Extract statistics from response - handle various response structures
       let stats: ClaimOffersStatistics = {
         created_offers: 0,
         pending_approval: 0,
       };
-      
+
       if (response && typeof response === 'object') {
         // Try to find the data in different possible locations
         let data: unknown = null;
-        
+
         // Check if response has nested data structure: response.data.data
         if ('data' in response && response.data && typeof response.data === 'object') {
           if ('data' in response.data && response.data.data && typeof response.data.data === 'object') {
@@ -175,34 +177,34 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
           // Response might be the data directly
           data = response;
         }
-        
+
         if (data && typeof data === 'object') {
           const statsData = data as Record<string, unknown>;
-          
+
           // Extract created_offers - try multiple possible field names
-          const createdOffers = 
+          const createdOffers =
             (typeof statsData.created_offers === 'number' ? statsData.created_offers : null) ||
             (typeof statsData.total_offers === 'number' ? statsData.total_offers : null) ||
             (typeof statsData.offers_created === 'number' ? statsData.offers_created : null) ||
             0;
-          
+
           // Extract offers_pending_approval - try multiple possible field names
-          const pendingApproval = 
+          const pendingApproval =
             (typeof statsData.offers_pending_approval === 'number' ? statsData.offers_pending_approval : null) ||
             (typeof statsData.pending_approval === 'number' ? statsData.pending_approval : null) ||
             (typeof statsData.pending === 'number' ? statsData.pending : null) ||
             (typeof statsData.offers_pending === 'number' ? statsData.offers_pending : null) ||
             0;
-          
+
           stats = {
             created_offers: createdOffers,
             pending_approval: pendingApproval,
           };
-          
+
           console.log('Extracted statistics:', stats);
         }
       }
-      
+
       setStatistics(stats);
     } catch (error) {
       console.error('Error fetching statistics:', error);
@@ -220,6 +222,43 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
     fetchSettlements(); // Fetch settlements on component mount
     fetchStatistics(); // Fetch statistics on component mount
   }, [availableSettlements]);
+
+  // Fetch offer details when view modal opens
+  useEffect(() => {
+    if (modal?.mode === "view" && modal.offer) {
+      // Get claim_id from the settlement offer
+      const claimId = modal.offer.claim_id;
+      if (claimId) {
+        setOfferDetailsLoading(true);
+        setOfferDetails(null);
+        getClaimOfferByClaimId(claimId)
+          .then((response) => {
+            console.log('Claim offer details response:', response);
+            // Handle different response structures
+            let offerData = null;
+            if (response && typeof response === 'object' && 'data' in response) {
+              if (Array.isArray(response.data) && response.data.length > 0) {
+                offerData = response.data[0];
+              } else if (response.data && !Array.isArray(response.data)) {
+                offerData = response.data;
+              }
+            }
+            setOfferDetails(offerData as Record<string, unknown>);
+          })
+          .catch((error) => {
+            console.error('Error fetching offer details:', error);
+            setOfferDetails(null);
+          })
+          .finally(() => {
+            setOfferDetailsLoading(false);
+          });
+      }
+    } else {
+      // Reset when modal closes
+      setOfferDetails(null);
+      setOfferDetailsLoading(false);
+    }
+  }, [modal]);
 
 
   // Extract unique claim types from settlements data
@@ -244,10 +283,10 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       settlement?.claim_type?.toLowerCase().includes(searchLower) ||
       (settlement as Settlement & { amount?: number }).amount?.toString().toLowerCase().includes(searchLower)
     );
-    
-    const matchesClaimType = claimTypeFilter === "all" || 
+
+    const matchesClaimType = claimTypeFilter === "all" ||
       (settlement.claim_type && settlement.claim_type.toLowerCase() === claimTypeFilter);
-    
+
     return matchesSearch && matchesClaimType;
   });
 
@@ -262,7 +301,7 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       setIsSubmitting(true);
       setSubmitError(null);
       setSubmitSuccess(null);
-      
+
       console.log(newOffer, "newOffer__");
       const payload = {
         claim_id: parseInt(newOffer.claimId),
@@ -280,12 +319,12 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       console.log(payload, "payload__");
       const response = await createSettlementOffer(payload);
       console.log(response, "response__");
-      
+
       setSubmitSuccess(`Settlement offer ${action === 'draft' ? 'saved as draft' : 'submitted for approval'} successfully!`);
       if (refetch) {
         refetch();
       }
-      
+
       // Close modal after a short delay to show success message
       setTimeout(() => {
         setModal(null);
@@ -297,8 +336,8 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       console.error(error, "error__");
       const errorResponse = error as { response?: { data?: { message?: string } }; message?: string };
       setSubmitError(
-        errorResponse?.response?.data?.message || 
-        errorResponse?.message || 
+        errorResponse?.response?.data?.message ||
+        errorResponse?.message ||
         "Failed to create settlement offer. Please try again."
       );
     } finally {
@@ -311,15 +350,15 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       setIsApproving(true);
       setSubmitError(null);
       setSubmitSuccess(null);
-      
+
       const response = await approveSettlementOffer({ id: offerId, approval_notes: "Approved by admin" });
       console.log(response, "response__");
-      
+
       setSubmitSuccess("Settlement offer approved successfully!");
       if (refetch) {
         refetch();
       }
-      
+
       // Close modal after a short delay to show success message
       setTimeout(() => {
         setModal(null);
@@ -331,8 +370,8 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       console.error(error, "error__");
       const errorResponse = error as { response?: { data?: { message?: string } }; message?: string };
       setSubmitError(
-        errorResponse?.response?.data?.message || 
-        errorResponse?.message || 
+        errorResponse?.response?.data?.message ||
+        errorResponse?.message ||
         "Failed to approve settlement offer. Please try again."
       );
     } finally {
@@ -350,15 +389,15 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       setIsRejecting(true);
       setSubmitError(null);
       setSubmitSuccess(null);
-      
+
       const response = await rejectSettlementOffer({ id: offerId, rejection_reason: rejectionReason });
       console.log(response, "response__");
-      
+
       setSubmitSuccess("Settlement offer rejected successfully!");
       if (refetch) {
         refetch();
       }
-      
+
       // Close modal after a short delay to show success message
       setTimeout(() => {
         setModal(null);
@@ -372,8 +411,8 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
       console.error(error, "error__");
       const errorResponse = error as { response?: { data?: { message?: string } }; message?: string };
       setSubmitError(
-        errorResponse?.response?.data?.message || 
-        errorResponse?.message || 
+        errorResponse?.response?.data?.message ||
+        errorResponse?.message ||
         "Failed to reject settlement offer. Please try again."
       );
     } finally {
@@ -410,16 +449,16 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
           <h2 className="text-2xl font-bold">Create Offers</h2>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setModal({ mode: "drafts" })}
             className="flex items-center gap-2"
           >
             <FileText className="h-4 w-4" />
             View Drafts ({drafts.length})
           </Button>
-          <Button 
-            variant="default" 
+          <Button
+            variant="default"
             onClick={() => setModal({ mode: "create" })}
             className="bg-primary hover:bg-primary/90"
             style={{ color: 'white' }}
@@ -539,38 +578,38 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                 </TableRow>
               ) : (
                 filteredSettlements.map((settlement) => (
-                <TableRow key={settlement.id}>
-                  <TableCell className="font-medium">{(settlement as { claim_id?: string | number }).claim_id || 'N/A'}</TableCell>
-                  <TableCell>{(settlement as { client?: string }).client || 'N/A'}</TableCell>
-                  <TableCell>{settlement.claim_type || 'N/A'}</TableCell>
-                  <TableCell>{formatAmount(settlement.offer_amount || (settlement as { final_amount?: string | number }).final_amount)}</TableCell>
-                  <TableCell>{settlement?.created_at ? formatDateTime(settlement.created_at) : 'N/A'}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setModal({ mode: "view", offer: settlement })}
-                        title="View Offer Details"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {settlement.status === "DRAFT" && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setModal({ mode: "edit", offer: settlement })}
-                            title="Edit Offer"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                  <TableRow key={settlement.id}>
+                    <TableCell className="font-medium">{(settlement as { claim_id?: string | number }).claim_id || 'N/A'}</TableCell>
+                    <TableCell>{(settlement as { client?: string }).client || 'N/A'}</TableCell>
+                    <TableCell>{settlement.claim_type || 'N/A'}</TableCell>
+                    <TableCell>{formatAmount(settlement.offer_amount || (settlement as { final_amount?: string | number }).final_amount)}</TableCell>
+                    <TableCell>{settlement?.created_at ? formatDateTime(settlement.created_at) : 'N/A'}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setModal({ mode: "view", offer: settlement })}
+                          title="View Offer Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {settlement.status === "DRAFT" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setModal({ mode: "edit", offer: settlement })}
+                              title="Edit Offer"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
 
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
             </TableBody>
@@ -593,19 +632,19 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
             {modal.mode === "create" && (
               <>
                 <h3 className="text-lg font-semibold mb-4">New Settlement Offer Form</h3>
-                
+
                 {submitError && (
                   <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-red-700 text-sm">{submitError}</p>
                   </div>
                 )}
-                
+
                 {submitSuccess && (
                   <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-green-700 text-sm">{submitSuccess}</p>
                   </div>
                 )}
-                
+
                 <SettlementOfferForm
                   onSubmit={handleCreateOffer}
                   onCancel={() => {
@@ -674,6 +713,74 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                           </Badge>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Additional Offer Details from API */}
+                  {offerDetailsLoading && (
+                    <div className="border-t pt-4">
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        <span className="text-sm text-muted-foreground">Loading additional offer details...</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {!offerDetailsLoading && offerDetails && (
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium mb-2">Additional Offer Information</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {Object.entries(offerDetails).map(([key, value]) => {
+                          // Skip fields that are already displayed above
+                          const excludedKeys = [
+                            'id', 'client', 'claim_type', 'status', 'assessed_claim_value',
+                            'deductions', 'service_fee_percentage', 'offer_amount',
+                            'payment_method', 'payment_timeline', 'offer_validity_period',
+                            'created_at', 'special_conditions', 'supporting_documents',
+                            'claim_id'
+                          ];
+
+                          if (excludedKeys.includes(key)) return null;
+
+                          // Format the key for display
+                          const displayKey = key
+                            .replace(/_/g, ' ')
+                            .replace(/\b\w/g, l => l.toUpperCase());
+
+                          // Format the value
+                          let displayValue = value;
+                          if (value === null || value === undefined) {
+                            displayValue = 'N/A';
+                          } else if (typeof value === 'boolean') {
+                            displayValue = value ? 'Yes' : 'No';
+                          } else if (typeof value === 'object' && !Array.isArray(value)) {
+                            displayValue = JSON.stringify(value);
+                          } else if (Array.isArray(value)) {
+                            displayValue = value.length > 0 ? value.join(', ') : 'None';
+                          } else if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+                            // Try to format as date
+                            try {
+                              displayValue = formatDateTime(value);
+                            } catch {
+                              displayValue = value;
+                            }
+                          } else if (typeof value === 'number' && key.toLowerCase().includes('amount')) {
+                            displayValue = formatAmount(value);
+                          }
+
+                          return (
+                            <div key={key}>
+                              <span className="font-medium">{displayKey}:</span> {String(displayValue)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {!offerDetailsLoading && !offerDetails && (
+                    <div className="border-t pt-4">
+                      <p className="text-sm text-muted-foreground">No additional offer details available.</p>
                     </div>
                   )}
                 </div>

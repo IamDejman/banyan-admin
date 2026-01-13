@@ -1,33 +1,52 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Filter, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { getAuditLogs } from "@/app/services/dashboard";
 import { toast } from "@/components/ui/use-toast";
-// import { formatDateTime } from "@/lib/utils/text-formatting"; // Removed unused import
 
-
-// API Response interfaces
+// API Response interfaces based on actual API response
 interface ApiAuditLog {
-  id: number;
-  log_name: string;
+  action: string;
   description: string;
-  subject_type: string | null;
-  event: string | null;
-  subject_id: string | null;
-  causer_type: string;
-  causer_id: number;
-  properties: {
-    action: string;
-    status: string;
-  };
-  batch_uuid: string | null;
-  created_at: string;
-  updated_at: string;
+  user: string | null;
+  role: string;
+  status: string;
+  time: string;
+  date: string;
+}
+
+interface PaginationLinks {
+  first: string | null;
+  last: string | null;
+  prev: string | null;
+  next: string | null;
+}
+
+interface PaginationMeta {
+  current_page: number;
+  from: number;
+  last_page: number;
+  links: Array<{
+    url: string | null;
+    label: string;
+    active: boolean;
+  }>;
+  path: string;
+  per_page: number;
+  to: number;
+  total: number;
+}
+
+interface PaginatedApiResponse {
+  data: ApiAuditLog[];
+  links: PaginationLinks;
+  meta: PaginationMeta;
 }
 
 interface TransformedAuditLog {
@@ -36,10 +55,8 @@ interface TransformedAuditLog {
   userType: string;
   action: string;
   description: string;
-  causerId?: number;
-  userName: string;
-  ipAddress?: string;
-  status?: string;
+  role: string;
+  status: string;
 }
 
 // Error interface for proper typing
@@ -74,79 +91,62 @@ export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
   const [userTypeFilter, setUserTypeFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
 
   // Fetch audit logs from API
   useEffect(() => {
     const fetchAuditLogs = async () => {
       setLoading(true);
       try {
-        console.log('Fetching audit logs...');
-        // Add timeout to prevent hanging
         const res = await Promise.race([
-          getAuditLogs(),
-          new Promise((_, reject) => 
+          getAuditLogs(currentPage),
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Request timeout')), 10000)
           )
         ]);
-        console.log('Audit logs response:', res);
-        console.log('Response status:', (res as { status?: number })?.status || 'No status');
-        console.log('Response type:', typeof res);
-        console.log('Response keys:', res ? Object.keys(res) : 'null');
 
-        // Extract audit logs data from API response
-        let auditLogsData = null;
-        const response = res as { data?: unknown[] } | unknown[];
-        if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-          auditLogsData = response.data;
-        } else if (Array.isArray(response)) {
-          auditLogsData = response;
+        // Handle paginated response structure
+        const response = res as PaginatedApiResponse | { data?: PaginatedApiResponse };
+
+        let paginatedResponse: PaginatedApiResponse;
+        if ('data' in response && response.data && 'data' in response.data) {
+          // Nested structure
+          paginatedResponse = response.data as PaginatedApiResponse;
+        } else if ('data' in response && Array.isArray(response.data)) {
+          // Direct structure with data array
+          paginatedResponse = response as PaginatedApiResponse;
+        } else {
+          // Try as direct response
+          paginatedResponse = res as PaginatedApiResponse;
         }
 
-        console.log('Extracted audit logs data:', auditLogsData);
-        console.log('Is array:', Array.isArray(auditLogsData));
-        console.log('Length:', auditLogsData?.length);
-
-        if (auditLogsData && auditLogsData.length > 0) {
-          const transformedLogs = auditLogsData.map((log: unknown) => {
-            const apiLog = log as ApiAuditLog;
-            // Extract user name from description or use fallback
-            let userName = 'System';
-            const causerType = apiLog.causer_type || '';
-            
-            if (causerType.includes('User')) {
-              // Try to extract name from description (e.g., "John Doe logged in" or "User John Doe updated...")
-              const nameMatch = (apiLog.description || '').match(/(?:User\s+)?([A-Za-z\s]+?)(?:\s+(?:logged|accessed|updated|created|submitted|verified|rejected))/i);
-              if (nameMatch && nameMatch[1]) {
-                userName = nameMatch[1].trim();
-              } else {
-                // Fallback to User ID if no name found
-                userName = `User #${apiLog.causer_id || 'Unknown'}`;
-              }
-            }
-            
+        if (paginatedResponse && paginatedResponse.data && Array.isArray(paginatedResponse.data)) {
+          const transformedLogs = paginatedResponse.data.map((log: ApiAuditLog, index: number) => {
             return {
-              id: apiLog.id,
-              timestamp: new Date(apiLog.created_at || new Date().toISOString()),
-              userType: causerType.includes('User') ? 'user' : 'system',
-              action: apiLog.properties?.action || 'Unknown Action',
-              description: apiLog.description || 'No description available',
-              causerId: apiLog.causer_id,
-              userName: userName,
-              ipAddress: 'Unknown',
-              status: apiLog.properties?.status || 'unknown'
+              id: index + 1, // Use index as ID since API doesn't provide one
+              timestamp: new Date(log.date || new Date().toISOString()),
+              userType: log.role || 'customer',
+              action: log.action || 'Unknown Action',
+              description: log.description || 'No description available',
+              role: log.role || 'customer',
+              status: log.status || 'unknown'
             };
           });
-          
-          console.log('Transformed audit logs:', transformedLogs);
+
           setAuditLogs(transformedLogs);
+
+          // Set pagination metadata
+          if (paginatedResponse.meta) {
+            setPagination(paginatedResponse.meta);
+          }
         } else {
-          console.log('No audit logs data found in API response');
-          console.log('Raw response:', res);
           setAuditLogs([]);
+          setPagination(null);
         }
       } catch (error: unknown) {
         console.error('Error fetching audit logs:', error);
-        
+
         let errorMsg = 'Failed to fetch audit logs';
         if (error && typeof error === 'object') {
           const err = error as ApiError;
@@ -165,46 +165,52 @@ export default function AuditLogsPage() {
             } else {
               errorMsg = err.response.data?.message || err.response.statusText || `HTTP ${status}`;
             }
-            console.error('Response error:', { status, data: err.response.data });
           } else if (err.message) {
             errorMsg = err.message;
           }
         }
-        
+
         toast({
           title: "Error",
           description: errorMsg,
           variant: "destructive",
         });
-        // Set empty data when API fails
         setAuditLogs([]);
+        setPagination(null);
       } finally {
         setLoading(false);
       }
     };
 
     fetchAuditLogs();
-  }, []);
+  }, [currentPage]);
 
   const filteredLogs = auditLogs.filter((log) => {
-    const matchesSearch = 
+    const matchesSearch =
       log.description.toLowerCase().includes(search.toLowerCase()) ||
       log.action.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesUserType = userTypeFilter === "all" || log.userType === userTypeFilter;
+
+    const matchesUserType = userTypeFilter === "all" || log.role === userTypeFilter;
     const matchesAction = actionFilter === "all" || log.action === actionFilter;
-    
+
     return matchesSearch && matchesUserType && matchesAction;
   });
 
-  function getUserTypeBadge(userType: string) {
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= (pagination?.last_page || 1)) {
+      setCurrentPage(page);
+    }
+  };
+
+  function getUserTypeBadge(role: string) {
     const colors = {
       admin: "bg-blue-100 text-blue-800",
       agent: "bg-green-100 text-green-800",
+      customer: "bg-purple-100 text-purple-800",
       user: "bg-purple-100 text-purple-800",
       system: "bg-gray-100 text-gray-800",
     };
-    return colors[userType as keyof typeof colors] || "bg-gray-100 text-gray-800";
+    return colors[role as keyof typeof colors] || "bg-gray-100 text-gray-800";
   }
 
   function formatTimestamp(timestamp: Date) {
@@ -304,11 +310,11 @@ export default function AuditLogsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredLogs.map((log) => (
-                    <TableRow key={log.id}>
+                  filteredLogs.map((log, index) => (
+                    <TableRow key={`${log.id}-${index}`}>
                       <TableCell>
-                        <Badge className={getUserTypeBadge(log.userType)}>
-                          {log.userType}
+                        <Badge className={getUserTypeBadge(log.role)}>
+                          {log.role}
                         </Badge>
                       </TableCell>
                       <TableCell>{log.action}</TableCell>
@@ -320,14 +326,14 @@ export default function AuditLogsPage() {
               </TableBody>
             </Table>
           </div>
-          
+
           {/* Mobile Audit Logs Cards */}
           <div className="sm:hidden space-y-3 p-4">
-            {filteredLogs.map((log) => (
-              <div key={log.id} className="border rounded-lg p-3 space-y-2">
+            {filteredLogs.map((log, index) => (
+              <div key={`${log.id}-${index}`} className="border rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <Badge className={getUserTypeBadge(log.userType)}>
-                    {log.userType}
+                  <Badge className={getUserTypeBadge(log.role)}>
+                    {log.role}
                   </Badge>
                   <span className="text-xs text-muted-foreground">{formatTimestamp(log.timestamp)}</span>
                 </div>
@@ -346,6 +352,74 @@ export default function AuditLogsPage() {
           </div>
         </Card>
       </Card>
+
+      {/* Pagination Controls */}
+      {!loading && pagination && pagination.total > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {pagination.from} to {pagination.to} of {pagination.total} results
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1 || !pagination.links.find(link => link.label === "&laquo; Previous" && link.url)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-1">
+                  {pagination.links
+                    .filter(link => link.label !== "&laquo; Previous" && link.label !== "Next &raquo;")
+                    .map((link, index) => {
+                      if (!link.url) return null;
+                      const pageNum = parseInt(link.label);
+                      if (isNaN(pageNum)) return null;
+
+                      return (
+                        <Button
+                          key={index}
+                          variant={link.active ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className="w-8 h-8"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === pagination.last_page || !pagination.links.find(link => link.label === "Next &raquo;" && link.url)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.last_page)}
+                  disabled={currentPage === pagination.last_page}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
