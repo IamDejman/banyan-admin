@@ -283,7 +283,7 @@ export default function SettlementOfferForm({
       savedAt: new Date().toISOString(),
     };
 
-  
+
 
     if (action === 'draft') {
       // Save draft locally to localStorage
@@ -334,32 +334,39 @@ export default function SettlementOfferForm({
           <div className="border-b pb-3">
             <h3 className="text-lg font-semibold text-gray-900">Claim Information</h3>
           </div>
-          {/* <div className="space-y-4">
-            <Label htmlFor="claim" className="text-sm font-medium">Claim Selection *</Label>
-            <Select
-              value={selectedClaimId || ""}
-              onValueChange={handleClaimSelection}
-            >
-              <SelectTrigger className={`h-12 ${errors.claimId ? "border-red-500" : ""}`}>
-                <SelectValue placeholder="Select an approved claim">
-                  {selectedClaimId && selectedClaim ? selectedClaim.claim_number +
-                    " - " + selectedClaim.client?.first_name +
-                    " " + selectedClaim.client?.last_name +
-                    " (" + selectedClaim.claim_type_details?.name + ")"
-                    : "Select an approved claim"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {claims.map((claim) => (
-                  <SelectItem key={claim.id} value={claim.id}>
-                    {claim.claim_number} - {claim.client?.first_name} {claim.client?.last_name} ({claim.claim_type_details?.name})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.claimId && <p className="text-red-500 text-sm mt-1">{errors.claimId}</p>}
-          </div> */}
-          <p>Claim ID: {selectedClaimId}</p>
+          {
+            existingOffer ? (
+              <p>Claim ID: {selectedClaimId}</p>
+            ) : (
+              <div className="space-y-4">
+                <Label htmlFor="claim" className="text-sm font-medium">Claim Selection *</Label>
+                <Select
+                  value={selectedClaimId || ""}
+                  onValueChange={handleClaimSelection}
+                >
+                  <SelectTrigger className={`h-12 ${errors.claimId ? "border-red-500" : ""}`}>
+                    <SelectValue placeholder="Select an approved claim">
+                      {selectedClaimId && selectedClaim ? selectedClaim.claim_number +
+                        " - " + selectedClaim.client?.first_name +
+                        " " + selectedClaim.client?.last_name +
+                        " (" + selectedClaim.claim_type_details?.name + ")"
+                        : "Select an approved claim"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {claims.map((claim) => (
+                      <SelectItem key={claim.id} value={claim.id}>
+                        {claim.claim_number} - {claim.client?.first_name} {claim.client?.last_name} ({claim.claim_type_details?.name})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.claimId && <p className="text-red-500 text-sm mt-1">{errors.claimId}</p>}
+              </div>
+            )
+          }
+
+          {/* <p>Claim ID: {selectedClaimId}</p> */}
         </div>
 
         {/* Client Details (Auto-populated) */}

@@ -492,7 +492,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      {
+                      {/* {
                         (offer.status === "draft" || offer.status === "settlement_offered" || offer.status === "submitted") && (
                           <Button
                             size="sm"
@@ -503,15 +503,15 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                             <Edit className="h-4 w-4" />
                           </Button>
                         )
-                      }
-                      {/* <Button
+                      } */}
+                      <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setModal({ mode: "edit", offer })}
                         title="Edit Offer"
                       >
                         <Edit className="h-4 w-4" />
-                      </Button> */}
+                      </Button>
                       {/* Removed Mark as Expired button - function was removed */}
                       {offer.client_response?.responseType === "ACCEPTED" && offer.status !== "PAYMENT_PROCESSING" && offer.status !== "PAID" && (
                         <Button
