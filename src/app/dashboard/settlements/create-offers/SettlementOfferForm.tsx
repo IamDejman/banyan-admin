@@ -12,6 +12,7 @@ import { X, Upload, FileText } from "lucide-react";
 import type { SettlementOffer } from "@/lib/types/settlement";
 import { getApprovedClaims } from '@/app/services/dashboard';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useClaimsStore } from "@/lib/store/claims-store";
 
 // Interface for the actual claims data structure from API
 interface ApiClaim {
@@ -32,6 +33,11 @@ interface ClaimsApiResponse {
   data?: {
     data?: ApiClaim[];
   };
+}
+
+// Add these type definitions after the imports and before MOCK_CLAIMS
+interface UploadDocumentResponse {
+  image_url: string;
 }
 
 
@@ -58,39 +64,73 @@ export default function SettlementOfferForm({
   const [offerExpiryDate, setOfferExpiryDate] = useState<Date | undefined>();
   const [specialConditions, setSpecialConditions] = useState(existingOffer?.specialConditions || "");
   const [supportingDocuments, setSupportingDocuments] = useState<string[]>(existingOffer?.supportingDocuments || []);
+  const [supportingDocumentsNames, setSupportingDocumentsNames] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [claims, setClaims] = useState<ApiClaim[]>([]);
   const [selectedClaim, setSelectedClaim] = useState<ApiClaim | null>(null);
-  
+  const { uploadDocument } = useClaimsStore();
   // Use the payment methods hook
   const { paymentMethods, loading: paymentMethodsLoading, error: paymentMethodsError } = usePaymentMethods();
 
-  // Load saved draft on component mount
+  // Load saved draft on component mount or initialize from existing offer
   useEffect(() => {
-    const latestDraftKey = localStorage.getItem('latest-settlement-draft');
-    if (latestDraftKey && !existingOffer) {
-      try {
-        const draftData = localStorage.getItem(latestDraftKey);
-        if (draftData) {
-          const parsedDraft = JSON.parse(draftData);
-          console.log('Loading saved draft:', parsedDraft);
-          
-          // Restore form state from draft
-          if (parsedDraft.claimId) setSelectedClaimId(parsedDraft.claimId);
-          if (parsedDraft.assessedAmount) setAssessedAmount(parsedDraft.assessedAmount);
-          if (parsedDraft.deductions) setDeductions(parsedDraft.deductions);
-          if (parsedDraft.serviceFeePercentage) setServiceFeePercentage(parsedDraft.serviceFeePercentage);
-          if (parsedDraft.finalAmount) setFinalAmount(parsedDraft.finalAmount);
-          if (parsedDraft.paymentMethod) setPaymentMethod(parsedDraft.paymentMethod);
-          if (parsedDraft.paymentDueDate) setPaymentDueDate(new Date(parsedDraft.paymentDueDate));
-          if (parsedDraft.offerExpiryDate) setOfferExpiryDate(new Date(parsedDraft.offerExpiryDate));
-          if (parsedDraft.specialConditions) setSpecialConditions(parsedDraft.specialConditions);
-          if (parsedDraft.supportingDocuments) setSupportingDocuments(parsedDraft.supportingDocuments);
-          
-          alert('Draft loaded successfully! You can continue where you left off.');
+    if (existingOffer) {
+      // Initialize form from existing offer
+      if (existingOffer.claimId) setSelectedClaimId(existingOffer.claimId);
+      if (existingOffer.assessedAmount) setAssessedAmount(existingOffer.assessedAmount);
+      if (existingOffer.deductions) setDeductions(existingOffer.deductions);
+      if (existingOffer.serviceFeePercentage) setServiceFeePercentage(existingOffer.serviceFeePercentage);
+      if (existingOffer.finalAmount) setFinalAmount(existingOffer.finalAmount);
+      if (existingOffer.paymentMethod) setPaymentMethod(existingOffer.paymentMethod);
+      if (existingOffer.specialConditions) setSpecialConditions(existingOffer.specialConditions);
+      if (existingOffer.supportingDocuments) setSupportingDocuments(existingOffer.supportingDocuments);
+
+      // Initialize dates from existing offer (if available as extended properties)
+      const extendedOffer = existingOffer as SettlementOffer & { paymentDueDate?: string | Date; offerExpiryDate?: string | Date };
+      if (extendedOffer.paymentDueDate) {
+        setPaymentDueDate(extendedOffer.paymentDueDate instanceof Date ? extendedOffer.paymentDueDate : new Date(extendedOffer.paymentDueDate));
+      } else if (existingOffer.paymentTimeline && existingOffer.createdAt) {
+        // Calculate payment due date from timeline
+        const dueDate = new Date(existingOffer.createdAt);
+        dueDate.setDate(dueDate.getDate() + existingOffer.paymentTimeline);
+        setPaymentDueDate(dueDate);
+      }
+
+      if (extendedOffer.offerExpiryDate) {
+        setOfferExpiryDate(extendedOffer.offerExpiryDate instanceof Date ? extendedOffer.offerExpiryDate : new Date(extendedOffer.offerExpiryDate));
+      } else if (existingOffer.offerValidityPeriod && existingOffer.createdAt) {
+        // Calculate expiry date from validity period
+        const expiryDate = new Date(existingOffer.createdAt);
+        expiryDate.setDate(expiryDate.getDate() + existingOffer.offerValidityPeriod);
+        setOfferExpiryDate(expiryDate);
+      }
+    } else {
+      // Load saved draft on component mount
+      const latestDraftKey = localStorage.getItem('latest-settlement-draft');
+      if (latestDraftKey) {
+        try {
+          const draftData = localStorage.getItem(latestDraftKey);
+          if (draftData) {
+            const parsedDraft = JSON.parse(draftData);
+            console.log('Loading saved draft:', parsedDraft);
+
+            // Restore form state from draft
+            if (parsedDraft.claimId) setSelectedClaimId(parsedDraft.claimId);
+            if (parsedDraft.assessedAmount) setAssessedAmount(parsedDraft.assessedAmount);
+            if (parsedDraft.deductions) setDeductions(parsedDraft.deductions);
+            if (parsedDraft.serviceFeePercentage) setServiceFeePercentage(parsedDraft.serviceFeePercentage);
+            if (parsedDraft.finalAmount) setFinalAmount(parsedDraft.finalAmount);
+            if (parsedDraft.paymentMethod) setPaymentMethod(parsedDraft.paymentMethod);
+            if (parsedDraft.paymentDueDate) setPaymentDueDate(new Date(parsedDraft.paymentDueDate));
+            if (parsedDraft.offerExpiryDate) setOfferExpiryDate(new Date(parsedDraft.offerExpiryDate));
+            if (parsedDraft.specialConditions) setSpecialConditions(parsedDraft.specialConditions);
+            if (parsedDraft.supportingDocuments) setSupportingDocuments(parsedDraft.supportingDocuments);
+
+            alert('Draft loaded successfully! You can continue where you left off.');
+          }
+        } catch (error) {
+          console.error('Error loading draft:', error);
         }
-      } catch (error) {
-        console.error('Error loading draft:', error);
       }
     }
   }, [existingOffer]);
@@ -160,12 +200,12 @@ export default function SettlementOfferForm({
 
       console.log("📊 Processed approved claims data:", claimsData);
       console.log("📈 Number of approved claims found:", claimsData.length);
-      
+
       // Log each claim's status to verify they are approved
       claimsData.forEach((claim, index) => {
         console.log(`Claim ${index + 1}: ${claim.claim_number} - Status: ${(claim as { status?: string }).status || 'unknown'}`);
       });
-      
+
       setClaims(claimsData);
 
       // If we have an existing offer, try to find the claim
@@ -195,7 +235,7 @@ export default function SettlementOfferForm({
         newErrors.claimId = "Please select a claim when entering amounts";
       }
     }
-    
+
     // For submit, validate all required fields
     if (action === 'submit') {
       if (!selectedClaimId) newErrors.claimId = "Please select a claim";
@@ -243,41 +283,46 @@ export default function SettlementOfferForm({
       savedAt: new Date().toISOString(),
     };
 
-    console.log('Draft data being saved:', {
-      claimId: selectedClaimId,
-      claimNumber: selectedClaim?.claim_number,
-      selectedClaim: selectedClaim
-    });
+  
 
     if (action === 'draft') {
       // Save draft locally to localStorage
       const draftKey = `settlement-offer-draft-${Date.now()}`;
       localStorage.setItem(draftKey, JSON.stringify(offerData));
-      
+
       // Also save a reference to the latest draft
       localStorage.setItem('latest-settlement-draft', draftKey);
-      
+
       console.log('Draft saved locally:', draftKey);
       alert('Draft saved successfully! You can continue working on it later.');
-      
+
       // Don't call onSubmit for drafts - it's handled locally
       return;
     }
 
-    console.log(offerData, "offerData__");
     onSubmit(offerData, action);
   }
 
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (files) {
-      const newDocuments = Array.from(files).map(file => file.name);
-      setSupportingDocuments([...supportingDocuments, ...newDocuments]);
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', files[0]);
+      uploadFormData.append('document_type', selectedClaimId);
+      uploadFormData.append('name', files[0].name);
+      const response = await uploadDocument(uploadFormData);
+      const responseData = response as unknown as UploadDocumentResponse;
+      setSupportingDocuments([...supportingDocuments, responseData.image_url]);
+      setSupportingDocumentsNames([...supportingDocumentsNames, files[0].name]);
+      e.target.value = '';
+
+
     }
   }
 
   function handleRemoveDocument(docName: string) {
     setSupportingDocuments(supportingDocuments.filter(doc => doc !== docName));
+    setSupportingDocumentsNames(supportingDocumentsNames.filter(name => name !== docName));
   }
 
   return (
@@ -289,7 +334,7 @@ export default function SettlementOfferForm({
           <div className="border-b pb-3">
             <h3 className="text-lg font-semibold text-gray-900">Claim Information</h3>
           </div>
-          <div className="space-y-4">
+          {/* <div className="space-y-4">
             <Label htmlFor="claim" className="text-sm font-medium">Claim Selection *</Label>
             <Select
               value={selectedClaimId || ""}
@@ -313,7 +358,8 @@ export default function SettlementOfferForm({
               </SelectContent>
             </Select>
             {errors.claimId && <p className="text-red-500 text-sm mt-1">{errors.claimId}</p>}
-          </div>
+          </div> */}
+          <p>Claim ID: {selectedClaimId}</p>
         </div>
 
         {/* Client Details (Auto-populated) */}
@@ -468,7 +514,7 @@ export default function SettlementOfferForm({
         {/* Supporting Documents Section */}
         <div className="space-y-4">
           <div className="border-b pb-3">
-            <h3 className="text-lg font-semibold text-gray-900">Supporting Documents</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Supporting Documents </h3>
           </div>
 
           <div className="space-y-4">
@@ -512,18 +558,18 @@ export default function SettlementOfferForm({
         {/* Action Buttons */}
         <div className="border-t pt-6">
           <div className="flex flex-col sm:flex-row gap-3 justify-end">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onCancel} 
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
               disabled={isSubmitting}
               className="h-11 px-6"
             >
               Cancel
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => {
                 localStorage.removeItem('latest-settlement-draft');
                 alert('Draft cleared successfully!');
@@ -533,18 +579,18 @@ export default function SettlementOfferForm({
             >
               Clear Draft
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={(e) => handleSubmit(e, 'draft')} 
+            <Button
+              type="button"
+              variant="outline"
+              onClick={(e) => handleSubmit(e, 'draft')}
               disabled={isSubmitting}
               className="h-11 px-6"
             >
               {isSubmitting ? "Saving..." : "Save as Draft"}
             </Button>
-            <Button 
-              type="button" 
-              onClick={(e) => handleSubmit(e, 'submit')} 
+            <Button
+              type="button"
+              onClick={(e) => handleSubmit(e, 'submit')}
               disabled={isSubmitting}
               className="h-11 px-6 bg-primary text-white hover:bg-primary/90"
             >

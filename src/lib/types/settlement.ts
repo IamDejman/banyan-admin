@@ -130,7 +130,7 @@ export interface Settlement {
   payment_method: string,
   payment_timeline: string,
   offer_validity_period: string,
-  supporting_documents: [],
+  supporting_documents: string[],
   special_conditions: string,
   expired: boolean,
   send_status: string,

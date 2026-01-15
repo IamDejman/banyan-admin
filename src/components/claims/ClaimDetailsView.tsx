@@ -43,7 +43,11 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      await uploadDocument(claimId, file.name);
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('document_type', claimId);
+      uploadFormData.append('name', file.name);
+      await uploadDocument(uploadFormData);
     }
   };
 

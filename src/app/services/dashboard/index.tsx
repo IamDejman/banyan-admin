@@ -272,6 +272,8 @@ export const getSettlementStatistics = (): Promise<ApiResponse<unknown>> => Http
 
 export const createSettlementOffer = (payload: Record<string, unknown>): Promise<ApiResponse<unknown>> => Http.post(`/admin/claim-offers/store`, payload);
 
+export const updateSettlementOfferById = (id: number, payload: Record<string, unknown>): Promise<ApiResponse<unknown>> => Http.patch(`/admin/claim-offers/update/${id}`, payload);
+
 export const approveSettlementOffer = (payload: Record<string, unknown>): Promise<ApiResponse<unknown>> => Http.post(`/admin/claim-offers/approve-offer`, payload);
 
 export const rejectSettlementOffer = (payload: Record<string, unknown>): Promise<ApiResponse<unknown>> => Http.post(`/admin/claim-offers/reject-offer`, payload);

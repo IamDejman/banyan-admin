@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Claim, ClaimStatus, ClaimCommunication } from '../types/claims';
-
+import { Http } from "@/app/utils/http";
+import { AxiosResponse } from 'axios';
 
 const mockClaims: Claim[] = [
   {
@@ -97,7 +98,7 @@ interface ClaimsState {
   isLoading: boolean;
   fetchClaims: () => Promise<void>;
   updateClaimStatus: (id: string, status: ClaimStatus, notes: string) => Promise<void>;
-  uploadDocument: (claimId: string, fileName: string) => Promise<void>;
+  uploadDocument: (payload: FormData) => Promise<AxiosResponse>;
   addCommunication: (claimId: string, communication: Omit<ClaimCommunication, 'id' | 'timestamp'>) => Promise<void>;
   submitClaimReview: (claimId: string, outcome: 'APPROVED' | 'REJECTED' | 'NEEDS_INFO', notes: string) => Promise<void>;
 }
@@ -126,19 +127,19 @@ export const useClaimsStore = create<ClaimsState>((set) => ({
       // TODO: Implement API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       set(state => ({
-        claims: state.claims.map(claim => 
-          claim.id === id ? { 
-            ...claim, 
-            status, 
-            audits: [...claim.audits, { 
-              id: String(claim.audits.length + 1), 
+        claims: state.claims.map(claim =>
+          claim.id === id ? {
+            ...claim,
+            status,
+            audits: [...claim.audits, {
+              id: String(claim.audits.length + 1),
               claimId: id,
-              action: status, 
-              performedBy: 'Current User', 
+              action: status,
+              performedBy: 'Current User',
               performedById: 'current-user',
-              timestamp: new Date().toISOString(), 
-              notes 
-            }] 
+              timestamp: new Date().toISOString(),
+              notes
+            }]
           } : claim
         ),
         isLoading: false
@@ -149,15 +150,24 @@ export const useClaimsStore = create<ClaimsState>((set) => ({
     }
   },
 
-  uploadDocument: async (_claimId: string, _fileName: string) => {
+  uploadDocument: async (payload: FormData) => {
     set({ isLoading: true });
     try {
       // TODO: Implement API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await Http.post(`/upload-document`, payload, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log(response);
       set({ isLoading: false });
-    } catch {
-      console.error('Failed to upload document');
+      return response;
+
+    } catch (error) {
+      console.error('Failed to upload document', error);
       set({ isLoading: false });
+      throw error;
     }
   },
 
@@ -198,19 +208,19 @@ export const useClaimsStore = create<ClaimsState>((set) => ({
       // TODO: Implement API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       set(state => ({
-        claims: state.claims.map(claim => 
-          claim.id === claimId ? { 
-            ...claim, 
-            status: outcome, 
-            audits: [...claim.audits, { 
-              id: String(claim.audits.length + 1), 
+        claims: state.claims.map(claim =>
+          claim.id === claimId ? {
+            ...claim,
+            status: outcome,
+            audits: [...claim.audits, {
+              id: String(claim.audits.length + 1),
               claimId: claimId,
-              action: outcome, 
-              performedBy: 'Claims Reviewer', 
+              action: outcome,
+              performedBy: 'Claims Reviewer',
               performedById: 'reviewer',
-              timestamp: new Date().toISOString(), 
-              notes 
-            }] 
+              timestamp: new Date().toISOString(),
+              notes
+            }]
           } : claim
         ),
         isLoading: false

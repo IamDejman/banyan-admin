@@ -756,9 +756,10 @@ export default function CreateOffersTab({ settlements, loading, refetch }: Creat
                     <div className="border-t pt-4">
                       <h4 className="font-medium mb-2">Supporting Documents</h4>
                       <div className="flex flex-wrap gap-2">
-                        {modal.offer.supporting_documents.map((doc, index) => (
+                        {(modal.offer.supporting_documents as string[]).map((doc, index) => (
                           <Badge key={index} variant="outline">
-                            {doc}
+                            <a href={doc} target="_blank" rel="noopener noreferrer">{doc.split('__').pop()}</a>
+                            {/* <a href={doc} target="_blank" rel="noopener noreferrer">Documnet {index+1}</a> */}
                           </Badge>
                         ))}
                       </div>

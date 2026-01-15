@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, Edit, Search, Clock } from "lucide-react";
 import PaymentProcessingForm from "./PaymentProcessingForm";
-import type { PaymentDetails } from "@/lib/types/settlement";
+import SettlementOfferForm from "../create-offers/SettlementOfferForm";
+import type { PaymentDetails, SettlementOffer } from "@/lib/types/settlement";
 import { Settlement } from "@/lib/types/settlement";
 import { formatDate } from "@/lib/utils/text-formatting";
-import { getSettlements, getClaimOffersStatistics, completeOffer } from "@/app/services/dashboard";
+import { getSettlements, getClaimOffersStatistics, completeOffer, updateSettlementOfferById } from "@/app/services/dashboard";
+import { toast } from "@/components/ui/use-toast";
 
 // Removed unused interface ManageOffersTabProps
 
@@ -39,6 +41,9 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
   });
   const [statisticsLoading, setStatisticsLoading] = useState(false);
   const [markingAsPaid, setMarkingAsPaid] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
   // Function to fetch all settlements from API
   const fetchManagedSettlements = async () => {
@@ -46,7 +51,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
       // Fetch all settlements from /admin/claims/settlements
       const response = await getSettlements();
       console.log('Settlements API response:', response);
-      
+
       // Extract data from the nested response structure
       let settlementsArray: Settlement[] = [];
       if (response && typeof response === 'object' && 'data' in response && response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
@@ -54,7 +59,7 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
       } else if (Array.isArray(response)) {
         settlementsArray = response as Settlement[];
       }
-      
+
       setSettlementsData(settlementsArray);
     } catch (error) {
       console.error('Error fetching settlements:', error);
@@ -70,17 +75,17 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
       setStatisticsLoading(true);
       const response = await getClaimOffersStatistics();
       console.log('Statistics API response:', response);
-      
+
       // Extract statistics from response - handle various response structures
       let stats: ClaimOffersStatistics = {
         created_offers: 0,
         pending_approval: 0,
       };
-      
+
       if (response && typeof response === 'object') {
         // Try to find the data in different possible locations
         let data: unknown = null;
-        
+
         // Check if response has nested data structure: response.data.data
         if ('data' in response && response.data && typeof response.data === 'object') {
           if ('data' in response.data && response.data.data && typeof response.data.data === 'object') {
@@ -92,34 +97,34 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
           // Response might be the data directly
           data = response;
         }
-        
+
         if (data && typeof data === 'object') {
           const statsData = data as Record<string, unknown>;
-          
+
           // Extract created_offers - try multiple possible field names
-          const createdOffers = 
+          const createdOffers =
             (typeof statsData.created_offers === 'number' ? statsData.created_offers : null) ||
             (typeof statsData.total_offers === 'number' ? statsData.total_offers : null) ||
             (typeof statsData.offers_created === 'number' ? statsData.offers_created : null) ||
             0;
-          
+
           // Extract offers_pending_approval - try multiple possible field names
-          const pendingApproval = 
+          const pendingApproval =
             (typeof statsData.offers_pending_approval === 'number' ? statsData.offers_pending_approval : null) ||
             (typeof statsData.pending_approval === 'number' ? statsData.pending_approval : null) ||
             (typeof statsData.pending === 'number' ? statsData.pending : null) ||
             (typeof statsData.offers_pending === 'number' ? statsData.offers_pending : null) ||
             0;
-          
+
           stats = {
             created_offers: createdOffers,
             pending_approval: pendingApproval,
           };
-          
+
           console.log('Extracted statistics:', stats);
         }
       }
-      
+
       setStatistics(stats);
     } catch (error) {
       console.error('Error fetching statistics:', error);
@@ -169,13 +174,13 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
       offer.claim_type?.toLowerCase().includes(searchLower) ||
       (offer as Settlement & { amount?: number }).amount?.toString().toLowerCase().includes(searchLower)
     );
-    
-    const matchesClaimType = claimTypeFilter === "all" || 
+
+    const matchesClaimType = claimTypeFilter === "all" ||
       (offer.claim_type && offer.claim_type.toLowerCase() === claimTypeFilter);
-    
+
     const matchesStatus = statusFilter === "all" ||
       offer.status === statusFilter;
-    
+
     return matchesSearch && matchesClaimType && matchesStatus;
   });
 
@@ -254,6 +259,91 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
       // You might want to show an error toast here
     } finally {
       setMarkingAsPaid(false);
+    }
+  }
+
+  // Convert Settlement to SettlementOffer format for the form
+  function convertSettlementToOffer(settlement: Settlement): SettlementOffer & { paymentDueDate?: Date; offerExpiryDate?: Date } {
+    // Calculate payment due date and expiry date from timeline and validity period
+    const createdDate = new Date(settlement.created_at);
+    const paymentTimeline = parseInt(settlement.payment_timeline || '0');
+    const validityPeriod = parseInt(settlement.offer_validity_period || '0');
+    const paymentDueDate = new Date(createdDate);
+    paymentDueDate.setDate(paymentDueDate.getDate() + paymentTimeline);
+    const expiryDate = new Date(createdDate);
+    expiryDate.setDate(expiryDate.getDate() + validityPeriod);
+
+    return {
+      id: String(settlement.id),
+      offerId: String(settlement.id),
+      claimId: String(settlement.claim_id),
+      clientName: settlement.client,
+      claimType: settlement.claim_type,
+      assessedAmount: parseFloat(settlement.assessed_claim_value || '0'),
+      deductions: parseFloat(settlement.deductions || '0'),
+      serviceFeePercentage: parseFloat(settlement.service_fee_percentage || '0'),
+      finalAmount: parseFloat(settlement.offer_amount || '0'),
+      paymentMethod: (settlement.payment_method?.replace(/\s+/g, '_').toUpperCase() || 'BANK_TRANSFER') as SettlementOffer['paymentMethod'],
+      paymentTimeline: paymentTimeline,
+      offerValidityPeriod: validityPeriod,
+      specialConditions: settlement.special_conditions || '',
+      status: settlement.status as SettlementOffer['status'],
+      createdBy: 'Admin',
+      createdAt: createdDate,
+      supportingDocuments: settlement.supporting_documents || [],
+      clientResponse: settlement.client_response || undefined,
+      paymentDueDate: paymentDueDate,
+      offerExpiryDate: expiryDate,
+    };
+  }
+
+  async function handleUpdateOffer(updatedOffer: Omit<SettlementOffer, "id" | "offerId" | "createdAt" | "createdBy">, action: 'draft' | 'submit') {
+    if (!modal?.offer) return;
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      setSubmitSuccess(null);
+
+      const payload = {
+        claim_id: parseInt(updatedOffer.claimId),
+        offer_amount: updatedOffer.finalAmount,
+        status: action === 'draft' ? "draft" : updatedOffer.status || "submitted",
+        assessed_claim_value: updatedOffer.assessedAmount,
+        deductions: updatedOffer.deductions,
+        service_fee_percentage: updatedOffer.serviceFeePercentage,
+        payment_method: updatedOffer.paymentMethod,
+        payment_timeline: updatedOffer.paymentTimeline.toString(),
+        offer_validity_period: updatedOffer.offerValidityPeriod.toString(),
+        special_conditions: updatedOffer.specialConditions,
+        supporting_documents: updatedOffer.supportingDocuments,
+      };
+
+      const response = await updateSettlementOfferById(modal.offer.id, payload);
+      console.log('Update response:', response);
+
+      setSubmitSuccess(`Settlement offer ${action === 'draft' ? 'saved as draft' : 'updated'} successfully!`);
+
+      // Refresh the settlements data
+      await fetchManagedSettlements();
+
+      // Close modal after a short delay to show success message
+      setTimeout(() => {
+        setModal(null);
+        setSubmitSuccess(null);
+        // Refresh the page after successful API call
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error('Error updating offer:', error);
+      const errorResponse = error as { response?: { data?: { message?: string } }; message?: string };
+      setSubmitError(
+        errorResponse?.response?.data?.message ||
+        errorResponse?.message ||
+        "Failed to update settlement offer. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -402,14 +492,26 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button
+                      {
+                        (offer.status === "draft" || offer.status === "settlement_offered" || offer.status === "submitted") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setModal({ mode: "edit", offer })}
+                            title="Edit Offer"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )
+                      }
+                      {/* <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setModal({ mode: "manage", offer })}
-                        title="Manage Response"
+                        onClick={() => setModal({ mode: "edit", offer })}
+                        title="Edit Offer"
                       >
                         <Edit className="h-4 w-4" />
-                      </Button>
+                      </Button> */}
                       {/* Removed Mark as Expired button - function was removed */}
                       {offer.client_response?.responseType === "ACCEPTED" && offer.status !== "PAYMENT_PROCESSING" && offer.status !== "PAID" && (
                         <Button
@@ -533,8 +635,8 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                     <h4 className="font-medium mb-4">Available Actions</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {modal.offer.phone ? (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="justify-start"
                           asChild
                         >
@@ -548,8 +650,8 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                         </Button>
                       )}
                       {modal.offer.status === "client_accepted" && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="justify-start"
                           onClick={() => handleMarkAsPaid(modal.offer)}
                           disabled={markingAsPaid}
@@ -566,6 +668,35 @@ export default function ManageOffersTab({ loading }: { loading: boolean }) {
                     </Button>
                   </div>
                 </div>
+              </>
+            )}
+
+            {modal.mode === "edit" && modal.offer && (
+              <>
+                <h3 className="text-lg font-semibold mb-4">Edit Settlement Offer</h3>
+
+                {submitError && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-700 text-sm">{submitError}</p>
+                  </div>
+                )}
+
+                {submitSuccess && (
+                  <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-700 text-sm">{submitSuccess}</p>
+                  </div>
+                )}
+
+                <SettlementOfferForm
+                  existingOffer={convertSettlementToOffer(modal.offer)}
+                  onSubmit={handleUpdateOffer}
+                  onCancel={() => {
+                    setModal(null);
+                    setSubmitError(null);
+                    setSubmitSuccess(null);
+                  }}
+                  isSubmitting={isSubmitting}
+                />
               </>
             )}
 
